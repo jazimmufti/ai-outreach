@@ -16,11 +16,14 @@ class OutreachStage(str, Enum):
     INSTAGRAM_READY = "instagram_ready"
     MANUAL_MESSAGE_READY = "manual_message_ready"
     SENT = "sent"
+    VERIFIED = "verified"
+    REJECTED = "rejected"
 
 
 class ResearchRequest(BaseModel):
     """Incoming request to discover creator details from a YouTube URL."""
     youtube_url: str = Field(..., description="Full YouTube video URL or channel link")
+    user_role: Optional[str] = Field(default="Video editor", description="Role on the piece of content")
 
     @field_validator("youtube_url")
     @classmethod
@@ -28,7 +31,8 @@ class ResearchRequest(BaseModel):
         v = v.strip()
         if not v:
             raise ValueError("YouTube URL cannot be empty")
-        if "youtube.com" not in v and "youtu.be" not in v:
+        # Accept youtube.com, youtu.be, or direct channel handles starting with @ or channel names
+        if "youtube.com" not in v and "youtu.be" not in v and not v.startswith("@"):
             raise ValueError("Please enter a valid YouTube video or channel URL")
         return v
 
@@ -77,6 +81,9 @@ class CreatorProfile(BaseModel):
     video_title: Optional[str] = None
     video_url: Optional[str] = None
     description: Optional[str] = None
+    channel_description: Optional[str] = None
+    video_description: Optional[str] = None
+    channel_links: List[str] = Field(default_factory=list)
 
 
 class OutreachSession(BaseModel):
@@ -84,6 +91,7 @@ class OutreachSession(BaseModel):
     session_id: str
     youtube_url: str
     stage: OutreachStage = OutreachStage.INPUT
+    user_role: Optional[str] = "Video editor"
     creator: Optional[CreatorProfile] = None
     discovered_email: Optional[EmailCandidate] = None
     creator_confirmed: Optional[bool] = None
@@ -95,6 +103,9 @@ class OutreachSession(BaseModel):
     instagram_profile: Optional[SocialProfile] = None
     message: Optional[OutreachMessage] = None
     selected_channel: Optional[Literal["email", "instagram", "manual"]] = None
+    creator_response: Optional[Literal["pending", "confirmed", "rejected"]] = "pending"
+    verified_at: Optional[str] = None
+    verification_token: Optional[str] = None
     errors: List[str] = Field(default_factory=list)
 
 
@@ -114,6 +125,9 @@ class RawCreatorResearchResult(BaseModel):
     profile_image: Optional[str] = None
     subscriber_count: Optional[str] = None
     description: Optional[str] = None
+    channel_description: Optional[str] = None
+    video_description: Optional[str] = None
+    channel_links: List[str] = Field(default_factory=list)
     published_at: Optional[str] = None
     social_profiles: List[SocialProfile] = Field(default_factory=list)
     email_candidates: List[EmailCandidate] = Field(default_factory=list)
@@ -132,12 +146,14 @@ class ConfirmCreatorRequest(BaseModel):
     """User confirmation decision for discovered creator."""
     session_id: str
     creator_confirmed: bool
+    user_role: Optional[str] = None
 
 
 class ManualEmailRequest(BaseModel):
     """Manual email submission payload."""
     session_id: str
     email: str
+    user_role: Optional[str] = None
 
     @field_validator("email")
     @classmethod
@@ -155,6 +171,7 @@ class GenerateMessageRequest(BaseModel):
     """Request to generate/regenerate an outreach message."""
     session_id: str
     channel: Literal["email", "instagram", "manual"] = "email"
+    user_role: Optional[str] = None
     custom_notes: Optional[str] = None
 
 

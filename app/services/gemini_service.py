@@ -34,6 +34,8 @@ async def classify_and_verify_with_gemini(
     description: str,
     raw_socials: List[SocialProfile],
     raw_emails: List[EmailCandidate],
+    channel_description: Optional[str] = None,
+    video_description: Optional[str] = None,
 ) -> Optional[ProfileVerificationResult]:
     """Use Google Gemini to reason over extracted evidence and classify email authenticity."""
     if not settings.GEMINI_API_KEY:
@@ -52,10 +54,10 @@ async def classify_and_verify_with_gemini(
             "and rigorously verify and classify them.\n\n"
             "STRICT RULES:\n"
             "1. NEVER invent or hallucinate an email. If none of the candidates are legitimate, return null for selected_primary_email.\n"
-            "2. Distinguish between 'publicly_published' (explicitly stated on YouTube or website) vs 'inferred' (guessed from domain).\n"
+            "2. Distinguish between 'publicly_published' (explicitly stated on YouTube channel about/description or website) vs 'inferred' (guessed from domain).\n"
             "3. Reject sponsor/affiliate emails (e.g. support@expressvpn.com, contact@squarespace.com, discounts@brand.com).\n"
             "4. Assign email confidence:\n"
-            "   - 'high': Publicly published specifically for business, management, or creator contact.\n"
+            "   - 'high': Publicly published specifically for business, management, booking, or creator contact.\n"
             "   - 'medium': Publicly found on creator's personal website or bio.\n"
             "   - 'low': Inferred, guessed, or ambiguous.\n"
             "5. SOCIAL PROFILES: ONLY verify and return profiles for these platforms: 'Instagram', 'X', 'LinkedIn', 'Facebook', 'Discord', 'Reddit', 'TikTok'. Do NOT include any other platforms.\n"
@@ -66,7 +68,8 @@ async def classify_and_verify_with_gemini(
             "creator_name": creator_name,
             "channel_name": channel_name,
             "video_title": video_title,
-            "video_description_excerpt": description[:1500] if description else "",
+            "channel_description_excerpt": (channel_description[:1500] if channel_description else "") or (description[:1500] if description else ""),
+            "video_description_excerpt": video_description[:1500] if video_description else "",
             "candidate_emails": [e.model_dump() for e in raw_emails],
             "candidate_social_profiles": [s.model_dump() for s in raw_socials]
         }

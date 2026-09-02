@@ -3,172 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arclent — Creator Discovery & Outreach</title>
-    <meta name="description" content="Discover YouTube creators, find verified social profiles and public contact info, and manage outreach seamlessly with Arclent.">
-    <link rel="icon" type="image/png" href="/static/arclent-logo.png">
+    <title>Arclent — Creator Collaboration Verification & Outreach</title>
+    <meta name="description" content="Link your work, find the creator, and verify collaboration credentials seamlessly with Arclent.">
+    <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css?v=2.0">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css?v=3.0">
 </head>
 <body>
     <div class="app-container">
         
-        <!-- Header -->
+        <!-- Header with Logo and 4-Segment Progress Bar -->
         <header class="app-header">
             <div class="brand-group">
                 <a href="/" class="brand-logo-link" title="Arclent">
-                    <img src="/static/arclent-logo.png?v=2.0" alt="arclent." class="brand-logo-img" width="135" height="28" style="height: 28px; width: auto; max-width: 140px; object-fit: contain; display: block;">
+                    <img src="/static/arclent-logo.png?v=2.0" alt="Arclent" class="brand-logo-img" width="120" height="28">
                 </a>
             </div>
-            <div class="header-status">
-                <div id="gmail-status-pill" class="status-pill status-disconnected">
+
+            <!-- 4-Segment Progress Indicator matching screenshots -->
+            <div class="header-right-group">
+                <div id="gmail-status-pill" class="status-pill status-disconnected" title="Connected Gmail Account">
                     <span class="status-dot"></span>
                     <span id="gmail-status-text">Gmail: Not connected</span>
                     <button id="header-connect-btn" class="btn-micro">Connect</button>
-                    <button id="header-disconnect-btn" class="btn-micro btn-micro-danger" style="display: none;" title="Disconnect or Switch Gmail Account">Disconnect</button>
+                    <button id="header-disconnect-btn" class="btn-micro btn-micro-danger" style="display: none;">Disconnect</button>
+                </div>
+
+                <div class="progress-segments" aria-label="Step Progress">
+                    <div class="seg-bar active" id="prog-seg-1"></div>
+                    <div class="seg-bar" id="prog-seg-2"></div>
+                    <div class="seg-bar" id="prog-seg-3"></div>
+                    <div class="seg-bar" id="prog-seg-4"></div>
                 </div>
             </div>
         </header>
 
-        <!-- Sequential Step Progress Tracker -->
-        <nav class="step-tracker-bar" aria-label="Outreach Progress">
-            <div class="step-track-item active" id="track-step-1">
-                <span class="track-num">1</span>
-                <span class="track-name">Creator</span>
-            </div>
-            <div class="track-connector"></div>
-            <div class="step-track-item" id="track-step-2">
-                <span class="track-num">2</span>
-                <span class="track-name">Confirm</span>
-            </div>
-            <div class="track-connector"></div>
-            <div class="step-track-item" id="track-step-3">
-                <span class="track-num">3</span>
-                <span class="track-name">Contact</span>
-            </div>
-            <div class="track-connector"></div>
-            <div class="step-track-item" id="track-step-4">
-                <span class="track-num">4</span>
-                <span class="track-name">Message</span>
-            </div>
-            <div class="track-connector"></div>
-            <div class="step-track-item" id="track-step-5">
-                <span class="track-num">5</span>
-                <span class="track-name">Send</span>
-            </div>
-        </nav>
-
-        <!-- Main Workflow Container -->
+        <!-- Main Content Area -->
         <main class="main-content">
             
             <!-- ================================================================
-                 SCREEN 1: YouTube URL Input
+                 SCREEN 1: Link your work (Matches Screenshot 1)
                  ================================================================ -->
-            <section id="screen-input" class="workflow-card active">
-                <div class="card-tag">STEP 01 — TARGET DISCOVERY</div>
-                <h2 class="card-title">Find Creator Contact</h2>
-                <p class="card-subtitle">
-                    Enter a YouTube video or channel URL and we'll identify the creator and find the most credible public contact information.
+            <section id="screen-input" class="retro-card active">
+                <h1 class="card-main-heading">Link your work</h1>
+                <p class="card-main-subtext">
+                    Paste the link to a specific piece of content you worked on. We'll find the creator and confirm the collaboration for you.
                 </p>
 
-                <form id="discovery-form" class="search-form">
-                    <div class="input-container">
-                        <label for="youtube-url-input" class="visually-hidden">YouTube URL</label>
+                <form id="discovery-form" class="work-link-form">
+                    <div class="form-group">
+                        <label for="youtube-url-input" class="retro-label font-mono">Work link</label>
                         <input 
-                            type="url" 
+                            type="text" 
                             id="youtube-url-input" 
                             name="youtube_url" 
-                            class="text-input" 
-                            placeholder="Paste YouTube video or channel URL (e.g. youtube.com/watch?v=... or @handle)" 
+                            class="retro-input font-mono" 
+                            placeholder="https://youtube.com/watch?v=..." 
                             required
                             autocomplete="off"
                         >
-                        <button type="submit" id="find-creator-btn" class="btn btn-primary">
-                            <span>Find Creator</span>
-                            <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="user-role-input" class="retro-label font-mono">Your role on this piece</label>
+                        <input 
+                            type="text" 
+                            id="user-role-input" 
+                            name="user_role" 
+                            class="retro-input" 
+                            placeholder="e.g. Editor, thumbnail designer"
+                            value="Video editor"
+                            autocomplete="off"
+                        >
+                    </div>
+
+                    <div class="sample-chips-row">
+                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=0e3GPea1Tyg" data-role="Video editor">youtube.com/mrbeast-video</button>
+                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=XzWzKzT62p0" data-role="Thumbnail designer">youtube.com/mkbhd-review</button>
+                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" data-role="Editor">youtube.com/ishowspeed-clip</button>
+                    </div>
+
+                    <div class="action-submit-wrapper">
+                        <button type="submit" id="find-creator-btn" class="btn-retro-green">
+                            <span>Find the creator</span>
                         </button>
                     </div>
                 </form>
-
-                <div class="sample-links-bar">
-                    <span class="sample-label">Quick samples:</span>
-                    <div class="chip-group">
-                        <button type="button" class="sample-chip" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ">Rick Astley</button>
-                        <button type="button" class="sample-chip" data-url="https://www.youtube.com/watch?v=kqtD5dpn9C8">Python Tutorial</button>
-                        <button type="button" class="sample-chip" data-url="https://www.youtube.com/watch?v=3JZ_D3ELwOQ">NASA Live</button>
-                    </div>
-                </div>
-
-                <div class="features-row">
-                    <div class="feature-item">
-                        <div class="feature-icon">🔍</div>
-                        <div>
-                            <strong>Deterministic Extraction</strong>
-                            <span>Live YouTube & channel identity</span>
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">🛡️</div>
-                        <div>
-                            <strong>Evidence Verification</strong>
-                            <span>Explicitly published emails only</span>
-                        </div>
-                    </div>
-                    <div class="feature-item">
-                        <div class="feature-icon">✉️</div>
-                        <div>
-                            <strong>Direct Gmail OAuth</strong>
-                            <span>Real 1-click email outreach</span>
-                        </div>
-                    </div>
-                </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 2: Analyzing Live Stepper
+                 SCREEN 2: Analyzing Stepper
                  ================================================================ -->
-            <section id="screen-analyzing" class="workflow-card hidden">
-                <div class="card-tag">STEP 02 — AGENT ANALYSIS</div>
-                <div class="analyzing-header">
-                    <h2 class="card-title">Analyzing YouTube creator...</h2>
+            <section id="screen-analyzing" class="retro-card hidden">
+                <div class="analyzing-header-row">
+                    <h2 class="card-main-heading">Finding the creator...</h2>
                     <div class="analyzing-spinner"></div>
                 </div>
-                <p class="card-subtitle">
-                    Finding public contact information and verifying creator evidence.
+                <p class="card-main-subtext">
+                    Matching video link, extracting channel identity, and locating public contact evidence.
                 </p>
 
                 <div class="progress-stepper">
                     <div class="progress-step-item" id="prog-step-1">
                         <div class="step-indicator"><span class="step-icon">○</span></div>
                         <div class="step-content">
-                            <strong>Reading YouTube metadata</strong>
-                            <span class="step-detail">Parsing video ID, title, and channel info</span>
+                            <strong>Reading video & channel metadata</strong>
+                            <span class="step-detail">Parsing video title and creator credentials</span>
                         </div>
                     </div>
 
                     <div class="progress-step-item" id="prog-step-2">
                         <div class="step-indicator"><span class="step-icon">○</span></div>
                         <div class="step-content">
-                            <strong>Identifying creator/channel</strong>
-                            <span class="step-detail">Matching handle, subscriber badge & branding</span>
+                            <strong>Matching creator profile</strong>
+                            <span class="step-detail">Verifying handle, subscriber count & avatar</span>
                         </div>
                     </div>
 
                     <div class="progress-step-item" id="prog-step-3">
                         <div class="step-indicator"><span class="step-icon">○</span></div>
                         <div class="step-content">
-                            <strong>Searching for public contact information</strong>
-                            <span class="step-detail">Scanning descriptions, links & creator website</span>
+                            <strong>Scanning contact & social links</strong>
+                            <span class="step-detail">Checking channel links, description, and website</span>
                         </div>
                     </div>
 
                     <div class="progress-step-item" id="prog-step-4">
                         <div class="step-indicator"><span class="step-icon">○</span></div>
                         <div class="step-content">
-                            <strong>Verifying contact information</strong>
-                            <span class="step-detail">Classifying email authenticity with AI</span>
+                            <strong>Verifying evidence & generating draft</strong>
+                            <span class="step-detail">Preparing collaboration confirmation inquiry</span>
                         </div>
                     </div>
                 </div>
@@ -176,130 +143,111 @@
 
 
             <!-- ================================================================
-                 SCREEN 3A: Creator Discovery + Credible Email (Decision Point)
+                 SCREEN 3A: Is this who you worked with? (Matches Screenshot)
                  ================================================================ -->
-            <section id="screen-creator-found" class="workflow-card hidden">
-                <div class="card-header-bar">
-                    <div class="card-tag">STEP 02 — CREATOR FOUND</div>
-                    <button type="button" class="btn-outline-small reset-workflow-btn">← New Search</button>
-                </div>
-                <h2 class="card-title">Creator Discovered</h2>
-                <p class="card-subtitle">We identified the creator and located verified public contact evidence.</p>
+            <section id="screen-creator-found" class="retro-card hidden">
+                <h1 class="card-main-heading">Is this who you worked with?</h1>
+                <p class="card-main-subtext">
+                    We matched your link to this public profile. Confirm it's correct before we reach out.
+                </p>
 
-                <!-- Creator Card -->
-                <div class="creator-hero">
-                    <div class="avatar-frame">
-                        <img id="found-creator-avatar" src="" alt="Avatar" class="creator-avatar">
+                <!-- Creator Inset Match Card -->
+                <div class="creator-inset-card">
+                    <div class="creator-avatar-container" id="found-creator-avatar-container">
+                        <span id="found-creator-initial" class="avatar-initial-text">M</span>
+                        <img id="found-creator-avatar" src="" alt="Avatar" class="avatar-img-round hidden">
                     </div>
-                    <div class="creator-meta">
-                        <div class="name-badge-row">
-                            <h3 id="found-creator-name" class="creator-name">Creator Name</h3>
-                            <span id="found-subscriber-badge" class="badge badge-subscribers">0 subscribers</span>
-                        </div>
-                        <div class="handle-link-row">
-                            <span id="found-channel-handle" class="channel-handle">@handle</span>
-                            <span class="bullet-sep">•</span>
-                            <a id="found-video-link" href="#" target="_blank" rel="noopener noreferrer" class="link-external">
-                                <span>Watch Video</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            </a>
-                        </div>
-                        <div id="found-video-title" class="video-title-box">"Video Title"</div>
-                    </div>
-                </div>
-
-                <!-- Credible Email Display -->
-                <div class="email-evidence-box">
-                    <div class="evidence-header">
-                        <span class="section-label">CREDIBLE EMAIL DISCOVERED</span>
-                        <span id="found-email-status-badge" class="badge badge-high">Publicly Found</span>
-                    </div>
-                    <div class="evidence-main-row">
-                        <span id="found-email-address" class="email-display font-mono">email@domain.com</span>
-                        <div class="evidence-details">
-                            <div class="detail-item">
-                                <span class="detail-lbl">SOURCE:</span>
-                                <strong id="found-email-source">YouTube Description</strong>
-                            </div>
-                            <div class="detail-item">
-                                <span class="detail-lbl">STATUS:</span>
-                                <strong id="found-email-verification">Evidence Verified</strong>
-                            </div>
+                    <div class="creator-details-col">
+                        <div class="creator-name-title" id="found-creator-name">MrBeast</div>
+                        <div class="creator-handle-text font-mono" id="found-channel-handle">@MrBeast</div>
+                        <div class="creator-subs-pill">
+                            <span class="tag-label">YouTube</span>
+                            <span id="found-subscriber-badge" class="tag-val font-mono">350M subscribers</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Social Profiles Strip (Instagram, X, Discord, Reddit, Facebook only) -->
-                <div id="found-socials-container" class="social-mini-strip hidden">
-                    <span class="sub-label">Verified Social Profiles:</span>
-                    <div id="found-socials-list" class="socials-grid"></div>
+                <!-- Video Context Quote Line -->
+                <div class="video-quote-line font-mono">
+                    <span class="quote-pipe">|</span> On: <span id="found-video-title">"I Survived 50 Hours In Antarctica"</span>
                 </div>
 
-                <!-- Confirmation Box — CRITICAL STEP -->
-                <div class="decision-box">
-                    <h3 class="decision-prompt">Is this the right creator?</h3>
-                    <p class="decision-sub">Confirm the target creator before generating or sending any outreach message.</p>
-                    <div class="decision-btn-group">
-                        <button type="button" id="confirm-yes-btn" class="btn btn-primary btn-large">
-                            <span>✓ Yes, that's them</span>
-                        </button>
-                        <button type="button" id="confirm-no-btn" class="btn btn-outline-danger btn-large">
-                            <span>✕ No, that's not the right creator</span>
-                        </button>
-                    </div>
+                <!-- Confirmation Action Buttons -->
+                <div class="retro-btn-row">
+                    <button type="button" id="confirm-yes-btn" class="btn-retro-green">
+                        <span>Yes, that's them</span>
+                    </button>
+                    <button type="button" id="confirm-no-btn" class="btn-retro-outline">
+                        <span>Not the right creator</span>
+                    </button>
                 </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 3B: Email-First Contact & Discovered Socials Drawer
+                 SCREEN 3B: No Email Published on YouTube (Manual & Social Fallbacks)
                  ================================================================ -->
-            <section id="screen-no-email-choice" class="workflow-card hidden">
-                <div class="card-header-bar">
-                    <div class="card-tag">STEP 02 — CREATOR CONTACT</div>
-                    <button type="button" class="btn-outline-small reset-workflow-btn">← New Search</button>
-                </div>
+            <section id="screen-no-email-choice" class="retro-card hidden">
+                <h1 class="card-main-heading">Is this who you worked with?</h1>
+                <p class="card-main-subtext">
+                    We matched your link to this public profile. Confirm it's correct before we reach out.
+                </p>
 
-                <!-- 1. Creator Identity Card -->
-                <div class="creator-identity-strip">
-                    <img id="noemail-creator-avatar" src="" alt="Avatar" class="avatar-small">
-                    <div class="creator-identity-details">
-                        <div class="identity-name-row">
-                            <strong id="noemail-creator-name" class="identity-name">Creator Name</strong>
-                            <span id="noemail-subscriber-badge" class="badge badge-subscribers">Active Creator</span>
-                        </div>
-                        <div class="identity-handle-row">
-                            <span id="noemail-channel-handle" class="font-mono text-muted">@handle</span>
-                            <span class="bullet-sep">•</span>
-                            <a id="noemail-video-link" href="#" target="_blank" rel="noopener noreferrer" class="link-external">
-                                <span>Watch Video</span>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                            </a>
+                <!-- Creator Inset Match Card -->
+                <div class="creator-inset-card">
+                    <div class="creator-avatar-container" id="noemail-creator-avatar-container">
+                        <span id="noemail-creator-initial" class="avatar-initial-text">C</span>
+                        <img id="noemail-creator-avatar" src="" alt="Avatar" class="avatar-img-round hidden">
+                    </div>
+                    <div class="creator-details-col">
+                        <div class="creator-name-title" id="noemail-creator-name">Creator Name</div>
+                        <div class="creator-handle-text font-mono" id="noemail-channel-handle">@creator</div>
+                        <div class="creator-subs-pill">
+                            <span class="tag-label">YouTube</span>
+                            <span id="noemail-subscriber-badge" class="tag-val font-mono">Active Creator</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- 2. PRIMARY ACTION: Ask for Email First (Clean & Uncluttered) -->
-                <div class="primary-email-entry-card">
-                    <div class="email-entry-header">
-                        <div class="entry-title-group">
-                            <span class="section-label">PRIMARY OUTREACH METHOD</span>
-                            <h2 class="card-title" style="font-size: 20px; margin-top: 2px; margin-bottom: 4px;">Enter Creator's Email Address</h2>
-                            <p class="card-subtitle" style="margin-bottom: 16px;">
-                                We couldn't find a publicly listed email on YouTube. Enter their direct email to compose and send outreach directly via your connected Gmail.
-                            </p>
+                <!-- Video Context Quote Line -->
+                <div class="video-quote-line font-mono">
+                    <span class="quote-pipe">|</span> On: <span id="noemail-video-title">"Creator Video"</span>
+                </div>
+
+                <!-- Explicit "No worries, we've got other ways" Reassurance Alert Box -->
+                <div class="no-email-alert-box">
+                    <div class="no-email-alert-content">
+                        <span class="no-email-alert-icon">💡</span>
+                        <div class="no-email-alert-text-group">
+                            <div class="no-email-alert-title">
+                                No public email listed on this YouTube channel? No worries!
+                            </div>
+                            <div class="no-email-alert-desc">
+                                We've got other ways to get your collaboration verified: you can enter their direct email address below to reach out via Gmail, or connect directly through their verified social profiles (Instagram, X/Twitter, Discord, etc.).
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <form id="noemail-manual-email-form" class="direct-email-form">
+                <!-- 1. PRIMARY ACTION: Direct Email Input -->
+                <div class="manual-email-block">
+                    <div class="block-title-group">
+                        <span class="field-label-tag font-mono">PRIMARY OUTREACH METHOD</span>
+                        <h2 class="sub-heading">Enter Creator's Email Address</h2>
+                        <p class="card-main-subtext" style="margin-bottom: 14px;">
+                            Enter their direct email below to send this collaboration verification inquiry via Gmail:
+                        </p>
+                    </div>
+
+                    <form id="noemail-manual-email-form" class="manual-email-inline-form">
                         <div class="form-group" style="margin-bottom: 12px;">
-                            <label for="noemail-manual-email-input" class="field-label">CREATOR EMAIL ADDRESS</label>
+                            <label for="noemail-manual-email-input" class="retro-label font-mono">CREATOR EMAIL ADDRESS</label>
                             <div class="input-wrapper">
                                 <input 
                                     type="email" 
                                     id="noemail-manual-email-input" 
-                                    class="text-input" 
-                                    placeholder="e.g. creator@domain.com or collabs@brand.com"
+                                    class="retro-input font-mono" 
+                                    placeholder="creator@domain.com"
                                     autocomplete="off"
                                     required
                                 >
@@ -308,15 +256,13 @@
                             <span id="noemail-manual-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
                         </div>
 
-                        <div class="actions-row">
-                            <button type="submit" id="noemail-manual-submit-btn" class="btn btn-primary btn-large" style="width: 100%;" disabled>
-                                <span>Continue to Email Outreach →</span>
-                            </button>
-                        </div>
+                        <button type="submit" id="noemail-manual-submit-btn" class="btn-retro-green" style="width: 100%;" disabled>
+                            <span>Continue to Verification Outreach →</span>
+                        </button>
                     </form>
                 </div>
 
-                <!-- 3. SECONDARY ACTION: Click here to connect through social media profiles -->
+                <!-- 2. SECONDARY ACTION: Social Media Profiles Drawer -->
                 <div class="socials-drawer-container">
                     <details class="socials-expandable-drawer" id="socials-accordion">
                         <summary class="socials-drawer-summary" id="socials-drawer-trigger">
@@ -334,7 +280,6 @@
                         </summary>
 
                         <div class="socials-drawer-expanded-content">
-                            <!-- Social Profiles Sub-header -->
                             <div class="drawer-section-header">
                                 <h3 class="section-title" style="font-size: 16px;">Verified Social Media Profiles</h3>
                                 <p class="section-subtitle" style="font-size: 13px; margin-bottom: 12px;">
@@ -342,12 +287,8 @@
                                 </p>
                             </div>
 
-                            <!-- Dynamic Grid of Social Cards -->
-                            <div id="noemail-socials-grid" class="social-cards-grid">
-                                <!-- Populated dynamically by app.js -->
-                            </div>
+                            <div id="noemail-socials-grid" class="social-cards-grid"></div>
 
-                            <!-- Empty state if no socials found -->
                             <div id="noemail-socials-empty" class="empty-socials-card hidden">
                                 <div class="empty-icon">🔍</div>
                                 <div class="empty-content">
@@ -356,25 +297,24 @@
                                 </div>
                             </div>
 
-                            <!-- Personalized Pitch Message for Social DMs -->
                             <div class="pitch-drawer-block">
-                                <div class="drawer-section-header" style="margin-top: 20px;">
-                                    <div class="section-pill-tag secondary" style="font-size: 10px; padding: 2px 8px;">DM MESSAGE DRAFT</div>
-                                    <h3 class="section-title" style="font-size: 16px;">Personalized Pitch Message</h3>
+                                <div class="drawer-section-header" style="margin-top: 18px;">
+                                    <div class="section-pill-tag secondary font-mono">COLLABORATION VERIFICATION DM</div>
+                                    <h3 class="section-title" style="font-size: 16px;">Direct Message Draft</h3>
                                     <p class="section-subtitle" style="font-size: 13px; margin-bottom: 10px;">
-                                        Copy this personalized pitch and send it directly via social DMs:
+                                        Copy this verification message and send it directly via Instagram/X DMs:
                                     </p>
                                 </div>
 
                                 <div class="form-group" style="margin-bottom: 12px;">
-                                    <textarea id="noemail-copy-pitch-body" class="text-area font-mono" rows="5" placeholder="Generating personalized pitch..."></textarea>
+                                    <textarea id="noemail-copy-pitch-body" class="retro-textarea font-mono" rows="4"></textarea>
                                 </div>
 
                                 <div class="composer-actions">
-                                    <button type="button" id="noemail-pitch-regen-btn" class="btn btn-outline-small">
-                                        <span>🔄 Regenerate</span>
+                                    <button type="button" id="noemail-pitch-regen-btn" class="btn-retro-outline" style="padding: 8px 14px;">
+                                        <span>🔄 Reset</span>
                                     </button>
-                                    <button type="button" id="noemail-pitch-copy-btn" class="btn btn-primary">
+                                    <button type="button" id="noemail-pitch-copy-btn" class="btn-retro-green" style="padding: 8px 18px;">
                                         <span id="noemail-pitch-btn-text">📋 Copy Message</span>
                                     </button>
                                 </div>
@@ -386,166 +326,124 @@
 
 
             <!-- ================================================================
-                 SCREEN 4A: Enter Correct / Manual Email & Multi-Channel Fallbacks
+                 SCREEN 4A: Enter Correct / Manual Email (When user clicked "Not right creator")
                  ================================================================ -->
-            <section id="screen-manual-email" class="workflow-card hidden">
+            <section id="screen-manual-email" class="retro-card hidden">
                 <div class="card-header-bar">
-                    <div class="card-tag">STEP 03 — ALTERNATIVE CONTACT & MANUAL OUTREACH</div>
-                    <button type="button" id="back-from-manual-email-btn" class="btn-outline-small">← Back</button>
+                    <button type="button" id="back-from-manual-email-btn" class="btn-retro-outline" style="padding: 6px 14px;">← Back</button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
                 </div>
 
-                <!-- 1. CORRECT EMAIL OPTION -->
-                <div class="fallback-section-block">
-                    <h2 class="card-title">Enter the correct email address you want to contact.</h2>
-                    <p class="card-subtitle">
-                        If you know the creator's email address, enter it below to generate a message and send it directly via Gmail.
-                    </p>
+                <h1 class="card-main-heading">Enter the correct email address you want to contact.</h1>
+                <p class="card-main-subtext">
+                    If you know the creator's email address, enter it below to generate the collaboration verification message and send it directly via Gmail.
+                </p>
 
-                    <form id="manual-email-form" class="manual-email-form">
-                        <div class="form-group">
-                            <label for="manual-email-input-field" class="field-label">RECIPIENT EMAIL ADDRESS</label>
-                            <div class="input-wrapper">
-                                <input 
-                                    type="email" 
-                                    id="manual-email-input-field" 
-                                    class="text-input" 
-                                    placeholder="creator@customdomain.com"
-                                    required
-                                    autocomplete="off"
-                                >
-                                <span id="manual-email-status-icon" class="validation-icon"></span>
-                            </div>
-                            <span id="manual-email-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
+                <form id="manual-email-form" class="manual-email-form">
+                    <div class="form-group">
+                        <label for="manual-email-input-field" class="retro-label font-mono">RECIPIENT EMAIL ADDRESS</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="email" 
+                                id="manual-email-input-field" 
+                                class="retro-input font-mono" 
+                                placeholder="creator@customdomain.com"
+                                required
+                                autocomplete="off"
+                            >
+                            <span id="manual-email-status-icon" class="validation-icon"></span>
                         </div>
-
-                        <div class="actions-row">
-                            <button type="submit" id="submit-manual-email-btn" class="btn btn-primary" disabled>
-                                <span>Continue</span>
-                                <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- OR DIVIDER -->
-                <div class="flow-or-divider">
-                    <span class="divider-line"></span>
-                    <span class="divider-label">OR</span>
-                    <span class="divider-line"></span>
-                </div>
-
-                <!-- 2. SOCIAL MEDIA FALLBACK -->
-                <div class="fallback-section-block">
-                    <h3 class="section-title">Or, connect with the creator through social media</h3>
-                    <p class="card-subtitle">
-                        Open any of the discovered official profiles below to contact them directly on that platform.
-                    </p>
-
-                    <div id="manual-socials-list" class="social-direct-list">
-                        <!-- Populated dynamically by app.js with Open [Platform] buttons -->
+                        <span id="manual-email-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
                     </div>
-                </div>
 
-                <!-- OR DIVIDER -->
+                    <div class="actions-row">
+                        <button type="submit" id="submit-manual-email-btn" class="btn-retro-green" disabled>
+                            <span>Continue to Outreach →</span>
+                        </button>
+                    </div>
+                </form>
+
                 <div class="flow-or-divider">
                     <span class="divider-line"></span>
-                    <span class="divider-label">OR</span>
+                    <span class="divider-label font-mono">OR</span>
                     <span class="divider-line"></span>
                 </div>
 
-                <!-- 3. FINAL FALLBACK — COPY THE MESSAGE -->
                 <div class="fallback-section-block">
-                    <h3 class="section-title">No problem. Here's the message you can send yourself.</h3>
-                    <p class="card-subtitle">
-                        Here’s your message. You can copy it and send it to the creator however you prefer.
+                    <h3 class="section-title">Copy the verification message and send it yourself</h3>
+                    <p class="card-main-subtext" style="margin-bottom: 12px;">
+                        You can copy this verification inquiry and send it to the creator through any channel you prefer.
                     </p>
 
                     <div class="form-group">
-                        <label for="manual-copy-message-body" class="field-label">PERSONALIZED OUTREACH MESSAGE (Editable)</label>
-                        <textarea id="manual-copy-message-body" class="text-area font-mono" rows="6" placeholder="Generating message pitch..."></textarea>
+                        <textarea id="manual-copy-message-body" class="retro-textarea font-mono" rows="5"></textarea>
                     </div>
 
                     <div class="composer-actions">
-                        <button type="button" id="manual-copy-regen-btn" class="btn btn-outline-small">
-                            <span>🔄 Regenerate</span>
+                        <button type="button" id="manual-copy-regen-btn" class="btn-retro-outline" style="padding: 8px 14px;">
+                            <span>🔄 Reset</span>
                         </button>
-                        <div class="copy-action-wrapper">
-                            <button type="button" id="manual-copy-message-btn" class="btn btn-primary">
-                                <span id="manual-copy-btn-text">📋 Copy Message</span>
-                            </button>
-                        </div>
+                        <button type="button" id="manual-copy-message-btn" class="btn-retro-green" style="padding: 8px 18px;">
+                            <span id="manual-copy-btn-text">📋 Copy Message</span>
+                        </button>
                     </div>
                 </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 4B: Email Outreach & Message Draft (YES PATH / MANUAL EMAIL)
+                 SCREEN 4B: Outreach Email Draft (After "Yes, that's them")
                  ================================================================ -->
-            <section id="screen-message-email" class="workflow-card hidden">
+            <section id="screen-message-email" class="retro-card hidden">
                 <div class="card-header-bar">
-                    <div class="card-tag">STEP 04 — OUTREACH COMPOSER</div>
-                    <button type="button" class="btn-outline-small reset-workflow-btn">← New Search</button>
-                </div>
-
-                <!-- Confirmation Pill -->
-                <div class="confirmation-banner-green">
-                    <div class="banner-icon">✓</div>
-                    <div>
-                        <strong id="email-flow-confirmed-title">Creator confirmed ✓</strong>
-                        <span id="email-flow-confirmed-sub" class="banner-subtitle">Outreach email draft generated and ready to review.</span>
+                    <div class="header-flow-info">
+                        <h1 class="card-main-heading" id="email-flow-heading" style="margin-bottom: 2px;">Reaching out to MrBeast</h1>
+                        <span class="auto-sent-badge font-mono" id="email-flow-badge">Auto-sent by Arclent → @MrBeast</span>
                     </div>
-                </div>
-
-                <!-- Target Meta Summary -->
-                <div class="target-summary-row">
-                    <div class="meta-item">
-                        <span class="meta-label">RECIPIENT:</span>
-                        <strong id="composer-target-email" class="font-mono">creator@domain.com</strong>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">SOURCE:</span>
-                        <span id="composer-target-source" class="text-muted">YouTube Description</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">CONFIDENCE:</span>
-                        <span id="composer-target-confidence" class="badge badge-high">High</span>
-                    </div>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
                 </div>
 
                 <!-- Gmail Sender Status Box -->
                 <div class="sender-status-box">
                     <div class="sender-info">
-                        <span class="field-label">SENDER ACCOUNT (Connected Gmail):</span>
+                        <span class="retro-label font-mono" style="font-size: 11px;">SENDER ACCOUNT (Connected Gmail):</span>
                         <div id="composer-sender-badge" class="font-mono font-bold" style="color: var(--color-accent-amber);">Not connected (OAuth required)</div>
                     </div>
                     <div id="composer-gmail-actions">
-                        <button type="button" id="composer-connect-gmail-btn" class="btn btn-secondary btn-small">Connect Gmail</button>
-                        <button type="button" id="composer-disconnect-gmail-btn" class="btn btn-outline-small" style="display: none;">Switch Account</button>
+                        <button type="button" id="composer-connect-gmail-btn" class="btn-retro-outline" style="padding: 6px 14px;">Connect Gmail</button>
+                        <button type="button" id="composer-disconnect-gmail-btn" class="btn-retro-outline btn-micro-danger" style="display: none; padding: 6px 14px;">Switch Account</button>
                     </div>
                 </div>
 
                 <!-- Email Composer Form -->
                 <form id="workflow-email-form" class="email-composer-form">
                     <div class="form-group">
-                        <label for="workflow-email-subject" class="field-label">SUBJECT</label>
-                        <input type="text" id="workflow-email-subject" class="text-input" required value="Collaboration Opportunity">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <label for="workflow-email-recipient" class="retro-label font-mono" style="margin-bottom: 0;">RECIPIENT EMAIL (Editable)</label>
+                            <span id="composer-recipient-source-tag" class="badge badge-high" style="font-size: 10px;">Publicly Found</span>
+                        </div>
+                        <input type="email" id="workflow-email-recipient" class="retro-input font-mono" required placeholder="creator@domain.com">
                     </div>
 
                     <div class="form-group">
-                        <label for="workflow-email-body" class="field-label">MESSAGE BODY (Editable)</label>
-                        <textarea id="workflow-email-body" class="text-area" rows="8" required></textarea>
+                        <label for="workflow-email-subject" class="retro-label font-mono">SUBJECT</label>
+                        <input type="text" id="workflow-email-subject" class="retro-input" required value="Collaboration confirmation for video">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="workflow-email-body" class="retro-label font-mono">MESSAGE DRAFT (Editable)</label>
+                        <textarea id="workflow-email-body" class="retro-textarea font-mono" rows="6" required></textarea>
                     </div>
 
                     <div class="composer-actions">
-                        <button type="button" id="regenerate-email-btn" class="btn btn-outline-small">
-                            <span>🔄 Regenerate</span>
+                        <button type="button" id="regenerate-email-btn" class="btn-retro-outline">
+                            <span>🔄 Reset Draft</span>
                         </button>
                         
                         <div class="send-action-group">
-                            <button type="submit" id="workflow-send-email-btn" class="btn btn-primary btn-large" disabled>
+                            <button type="submit" id="workflow-send-email-btn" class="btn-retro-green" disabled>
                                 <span>Send Email</span>
-                                <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>
                         </div>
                     </div>
@@ -554,120 +452,107 @@
 
 
             <!-- ================================================================
-                 SCREEN 4C: Instagram Fallback Outreach
+                 SCREEN 4C: Instagram Fallback
                  ================================================================ -->
-            <section id="screen-message-instagram" class="workflow-card hidden">
+            <section id="screen-message-instagram" class="retro-card hidden">
                 <div class="card-header-bar">
-                    <div class="card-tag">STEP 04 — INSTAGRAM OUTREACH</div>
-                    <button type="button" id="back-from-instagram-btn" class="btn-outline-small">← Back</button>
+                    <button type="button" id="back-from-instagram-btn" class="btn-retro-outline" style="padding: 6px 14px;">← Back</button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
                 </div>
 
-                <h2 class="card-title">Instagram profile found</h2>
-                <p class="card-subtitle">
-                    We located the creator's matched Instagram account. Review your suggested message and open Instagram to connect.
+                <h1 class="card-main-heading">Instagram Profile Found</h1>
+                <p class="card-main-subtext">
+                    We located the creator's matched Instagram account. Review your verification message and open Instagram to connect.
                 </p>
 
-                <!-- Instagram Profile Card -->
                 <div class="instagram-matched-card">
                     <div class="insta-icon-badge">📸</div>
                     <div class="insta-details">
-                        <span class="social-platform">INSTAGRAM</span>
+                        <span class="social-platform font-mono">INSTAGRAM</span>
                         <h3 id="insta-username" class="insta-handle font-mono">@creatorusername</h3>
                         <span id="insta-creator-name" class="creator-name-sub">Creator Name</span>
                     </div>
-                    <span class="badge badge-high">✓ Profile match</span>
+                    <span class="badge badge-high">✓ Matched</span>
                 </div>
 
-                <!-- Suggested Instagram Message -->
                 <div class="form-group" style="margin-top: 18px;">
-                    <label for="insta-message-body" class="field-label">SUGGESTED INSTAGRAM DM (Editable)</label>
-                    <textarea id="insta-message-body" class="text-area" rows="5"></textarea>
+                    <label for="insta-message-body" class="retro-label font-mono">VERIFICATION MESSAGE (Editable)</label>
+                    <textarea id="insta-message-body" class="retro-textarea font-mono" rows="5"></textarea>
                 </div>
 
                 <div class="insta-actions-bar">
-                    <div class="action-note">
-                        <span>ℹ️ Clicking 'Open Instagram & Send' will open their verified profile. You can paste and send your DM manually.</span>
-                    </div>
-                    <div class="btn-group-right">
-                        <button type="button" id="copy-insta-msg-btn" class="btn btn-secondary">
-                            <span>📋 Copy Message</span>
-                        </button>
-                        <button type="button" id="open-instagram-btn" class="btn btn-primary">
-                            <span>Open Instagram & Send ↗</span>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-
-            <!-- ================================================================
-                 SCREEN 4D: Manual Copy Fallback
-                 ================================================================ -->
-            <section id="screen-message-manual" class="workflow-card hidden">
-                <div class="card-header-bar">
-                    <div class="card-tag">STEP 04 — DIRECT OUTREACH</div>
-                    <button type="button" id="back-from-manual-msg-btn" class="btn-outline-small">← Back</button>
-                </div>
-
-                <h2 class="card-title">Send it yourself</h2>
-                <p class="card-subtitle">
-                    No problem. Here's the message you can copy and send through any channel you prefer.
-                </p>
-
-                <div class="form-group">
-                    <label for="manual-copy-message-body" class="field-label">OUTREACH MESSAGE (Editable)</label>
-                    <textarea id="manual-copy-message-body" class="text-area" rows="8"></textarea>
-                </div>
-
-                <div class="composer-actions">
-                    <button type="button" id="regenerate-manual-msg-btn" class="btn btn-outline-small">
-                        <span>🔄 Regenerate</span>
-                    </button>
-                    <button type="button" id="copy-manual-msg-btn" class="btn btn-primary btn-large">
+                    <button type="button" id="copy-insta-msg-btn" class="btn-retro-outline">
                         <span>📋 Copy Message</span>
                     </button>
+                    <button type="button" id="open-instagram-btn" class="btn-retro-green">
+                        <span>Open Instagram & Send ↗</span>
+                    </button>
                 </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 5: Delivery Confirmation
+                 SCREEN 5: Delivery & Creator Verification Status
                  ================================================================ -->
-            <section id="screen-delivery-success" class="workflow-card result-success-card hidden">
-                <div class="card-tag">STEP 05 — OUTREACH DISPATCHED</div>
-                <div class="success-banner">
-                    <div class="success-icon">✓</div>
-                    <div>
-                        <h2 class="success-title">Email Sent Successfully!</h2>
-                        <p class="success-subtitle">The message was dispatched directly through your connected Gmail account.</p>
+            <section id="screen-delivery-success" class="retro-card result-success-card hidden">
+                <!-- State 1: Awaiting Creator Response -->
+                <div id="verification-pending-box" class="verification-status-stack">
+                    <div class="verification-step-card">
+                        <div class="v-step-icon">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Outreach sent</h3>
+                            <p class="v-step-sub" id="v-pending-recipient-sub">Message delivered to creator via verified channel</p>
+                        </div>
+                    </div>
+
+                    <div class="verification-step-card" style="background: #FAF8F2;">
+                        <div class="v-step-icon spinner-icon">●</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Waiting for creator response...</h3>
+                            <p class="v-step-sub">We sent an email inquiry with Yes / No collaboration confirmation buttons.</p>
+                        </div>
+                    </div>
+
+                    <!-- Instant testing demo button -->
+                    <div class="demo-simulation-bar">
+                        <span class="font-mono text-muted" style="font-size: 11.5px;">DEMO SIMULATION:</span>
+                        <button type="button" id="simulate-creator-confirm-btn" class="btn-retro-green" style="padding: 7px 16px; font-size: 12.5px;">
+                            ⚡ Simulate Creator Clicking "Yes"
+                        </button>
                     </div>
                 </div>
 
-                <div class="result-details-table">
-                    <div class="detail-row">
-                        <span class="detail-label">SENDER:</span>
-                        <span id="result-sender" class="detail-value font-mono">user@gmail.com</span>
+                <!-- State 2: Confirmed by Creator (Exact UI matching user prompt) -->
+                <div id="verification-success-box" class="verification-status-stack hidden">
+                    <!-- Step 1: Outreach sent -->
+                    <div class="verification-step-card">
+                        <div class="v-step-icon">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Outreach sent</h3>
+                            <p class="v-step-sub" id="v-success-recipient-sub">Message delivered to MrBeast via verified channel</p>
+                        </div>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">RECIPIENT:</span>
-                        <span id="result-recipient" class="detail-value font-mono">creator@domain.com</span>
+
+                    <!-- Step 2: Confirmed by creator -->
+                    <div class="verification-step-card">
+                        <div class="v-step-icon">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Confirmed by creator</h3>
+                            <p class="v-step-sub">Response received</p>
+                        </div>
                     </div>
-                    <div class="detail-row">
-                        <span class="detail-label">GMAIL MESSAGE ID:</span>
-                        <span id="result-message-id" class="detail-value font-mono">18f2938491...</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">TIMESTAMP:</span>
-                        <span id="result-timestamp" class="detail-value">Just now</span>
-                    </div>
-                    <div class="detail-row">
-                        <span class="detail-label">STATUS:</span>
-                        <span class="badge badge-success">Delivered to Gmail API</span>
+
+                    <!-- Step 3: Verified Shield Box -->
+                    <div class="verification-shield-card">
+                        <div class="v-shield-icon">🛡</div>
+                        <div class="v-shield-text" id="v-shield-audience-text">
+                            Collaboration verified against MrBeast's 350M YouTube audience.
+                        </div>
                     </div>
                 </div>
 
-                <div class="result-actions">
-                    <button type="button" class="btn btn-primary reset-workflow-btn">Find Another Creator</button>
+                <div class="result-actions" style="margin-top: 24px;">
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="width: 100%;">Verify Another Collaboration</button>
                 </div>
             </section>
 

@@ -5,7 +5,7 @@ from typing import TypedDict, List, Optional, Dict, Any, AsyncGenerator
 from langgraph.graph import StateGraph, START, END
 
 from app.models.schemas import SocialProfile, EmailCandidate, RawCreatorResearchResult
-from app.services.youtube_service import extract_video_id, get_youtube_metadata
+from app.services.youtube_service import parse_youtube_target, extract_video_id, get_youtube_metadata
 from app.services.social_discovery import extract_social_profiles, extract_website_urls
 from app.services.email_discovery import extract_emails_from_text, crawl_website_for_emails
 from app.services.gemini_service import classify_and_verify_with_gemini
@@ -28,6 +28,9 @@ class CreatorResearchState(TypedDict):
     video_title: Optional[str]
     subscriber_count: Optional[str]
     description: Optional[str]
+    channel_description: Optional[str]
+    video_description: Optional[str]
+    channel_links: List[str]
     published_at: Optional[str]
     social_profiles: List[Dict[str, Any]]
     email_candidates: List[Dict[str, Any]]
@@ -44,18 +47,20 @@ class CreatorResearchState(TypedDict):
 # ------------------------------------------------------------------------------
 
 async def validate_url_node(state: CreatorResearchState) -> Dict[str, Any]:
-    """Node 1: Validate YouTube URL and extract video ID."""
+    """Node 1: Validate YouTube URL and extract video ID or channel handle."""
     url = state.get("video_url", "").strip()
-    video_id = extract_video_id(url)
+    target = parse_youtube_target(url)
     
-    if not video_id:
+    if target.get("type") == "unknown":
         return {
             "current_step": "validate_url",
             "errors": state.get("errors", []) + [f"Invalid YouTube URL: {url}"]
         }
     
     return {
-        "video_id": video_id,
+        "video_id": target.get("video_id"),
+        "channel_handle": target.get("handle"),
+        "channel_id": target.get("channel_id"),
         "current_step": "validate_url"
     }
 
@@ -69,14 +74,19 @@ async def fetch_youtube_metadata_node(state: CreatorResearchState) -> Dict[str, 
     try:
         data = await get_youtube_metadata(url)
         return {
+            "video_id": data.get("video_id") or state.get("video_id"),
             "video_title": data.get("video_title"),
+            "video_url": data.get("video_url") or state.get("video_url"),
             "creator_name": data.get("creator_name"),
             "channel_name": data.get("channel_name"),
-            "channel_handle": data.get("channel_handle"),
+            "channel_handle": data.get("channel_handle") or state.get("channel_handle"),
             "channel_url": data.get("channel_url"),
             "profile_image": data.get("profile_image"),
             "subscriber_count": data.get("subscriber_count"),
             "description": data.get("description", ""),
+            "channel_description": data.get("channel_description", ""),
+            "video_description": data.get("video_description", ""),
+            "channel_links": data.get("channel_links", []),
             "published_at": data.get("published_at"),
             "current_step": "fetch_metadata"
         }
@@ -110,12 +120,50 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
     if state.get("errors"):
         return state
 
-    description = state.get("description", "")
-    discovered_socials = extract_social_profiles(description, source_label="YouTube video description")
-    
+    channel_links = state.get("channel_links", [])
+    channel_desc = state.get("channel_description", "")
+    video_desc = state.get("video_description", "")
+    full_desc = state.get("description", "")
+
+    all_socials: List[SocialProfile] = []
+    seen_keys = set()
+
+    # 1. Search channel links first (e.g. from YouTube Links section)
+    if channel_links:
+        links_text = "\n".join(channel_links)
+        for s in extract_social_profiles(links_text, source_label="YouTube Channel Links"):
+            key = (s.platform, s.url.lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_socials.append(s)
+
+    # 2. Search channel description
+    if channel_desc:
+        for s in extract_social_profiles(channel_desc, source_label="YouTube Channel Description"):
+            key = (s.platform, s.url.lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_socials.append(s)
+
+    # 3. Search video description
+    if video_desc:
+        for s in extract_social_profiles(video_desc, source_label="YouTube Video Description"):
+            key = (s.platform, s.url.lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_socials.append(s)
+
+    # 4. Search full description
+    if full_desc:
+        for s in extract_social_profiles(full_desc, source_label="YouTube Description"):
+            key = (s.platform, s.url.lower())
+            if key not in seen_keys:
+                seen_keys.add(key)
+                all_socials.append(s)
+
     # Strictly filter allowed platforms
     filtered_socials = [
-        s.model_dump() for s in discovered_socials 
+        s.model_dump() for s in all_socials 
         if s.platform in ALLOWED_PLATFORMS
     ]
     
@@ -126,35 +174,58 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
 
 
 async def discover_emails_node(state: CreatorResearchState) -> Dict[str, Any]:
-    """Node 5: Discover candidate public emails from description and personal website."""
+    """Node 5: Discover candidate public emails from channel description, video description, and website."""
     if state.get("errors"):
         return state
 
-    description = state.get("description", "")
-    email_candidates: List[EmailCandidate] = []
+    channel_desc = state.get("channel_description", "")
+    video_desc = state.get("video_description", "")
+    full_desc = state.get("description", "")
+    channel_links = state.get("channel_links", [])
     
-    # 1. Search description
-    desc_emails = extract_emails_from_text(description, source_label="YouTube video description")
-    email_candidates.extend(desc_emails)
+    email_candidates: List[EmailCandidate] = []
+    seen_emails = set()
 
-    # 2. Check if a personal website was found in description to crawl contact page
-    website_urls = extract_website_urls(description)
+    # 1. Search Channel Description (High priority for business contact)
+    if channel_desc:
+        c_emails = extract_emails_from_text(channel_desc, source_label="YouTube Channel Description")
+        for e in c_emails:
+            if e.email.lower() not in seen_emails:
+                seen_emails.add(e.email.lower())
+                email_candidates.append(e)
+
+    # 2. Search Video Description
+    if video_desc:
+        v_emails = extract_emails_from_text(video_desc, source_label="YouTube Video Description")
+        for e in v_emails:
+            if e.email.lower() not in seen_emails:
+                seen_emails.add(e.email.lower())
+                email_candidates.append(e)
+
+    # 3. Search Full Combined Description if needed
+    if full_desc:
+        f_emails = extract_emails_from_text(full_desc, source_label="YouTube Description")
+        for e in f_emails:
+            if e.email.lower() not in seen_emails:
+                seen_emails.add(e.email.lower())
+                email_candidates.append(e)
+
+    # 4. Check if personal website URLs exist to crawl contact pages
+    all_text_for_sites = f"{channel_desc}\n{video_desc}\n{full_desc}\n" + "\n".join(channel_links)
+    website_urls = extract_website_urls(all_text_for_sites)
     
     for site_url in website_urls[:2]:  # Limit to 2 websites max for speed
         if site_url:
             try:
                 site_emails = await crawl_website_for_emails(site_url)
-                email_candidates.extend(site_emails)
+                for e in site_emails:
+                    if e.email.lower() not in seen_emails:
+                        seen_emails.add(e.email.lower())
+                        email_candidates.append(e)
             except Exception as e:
                 logger.debug(f"Website crawl error for {site_url}: {e}")
 
-    # Deduplicate candidates by email address
-    unique_candidates = []
-    seen = set()
-    for cand in email_candidates:
-        if cand.email.lower() not in seen:
-            seen.add(cand.email.lower())
-            unique_candidates.append(cand.model_dump())
+    unique_candidates = [c.model_dump() for c in email_candidates]
 
     return {
         "email_candidates": unique_candidates,
@@ -171,6 +242,8 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
     channel_name = state.get("channel_name", "")
     video_title = state.get("video_title", "")
     description = state.get("description", "")
+    channel_description = state.get("channel_description", "")
+    video_description = state.get("video_description", "")
     
     raw_socials = [
         SocialProfile(**s) for s in state.get("social_profiles", [])
@@ -185,7 +258,9 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
         video_title=video_title,
         description=description,
         raw_socials=raw_socials,
-        raw_emails=raw_emails
+        raw_emails=raw_emails,
+        channel_description=channel_description,
+        video_description=video_description
     )
 
     selected_email = None
@@ -203,7 +278,7 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
                 email_source_type = c.source_type
                 break
         if not email_source:
-            email_source = "Verified via Gemini AI Analysis"
+            email_source = "YouTube Channel Description" if channel_description and selected_email.lower() in channel_description.lower() else "Verified via Gemini AI Analysis"
             email_confidence = "high"
             email_source_type = "publicly_published"
 
@@ -227,11 +302,31 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
                 email_confidence = chosen.confidence
                 email_source_type = chosen.source_type
 
+    # Merge Gemini verified socials with regex discovered socials
+    final_socials = list(state.get("social_profiles", []))
+    seen_social_urls = {s.get("url", "").lower() for s in final_socials}
+
+    if gemini_result and gemini_result.verified_socials:
+        for v_soc in gemini_result.verified_socials:
+            v_plat = v_soc.get("platform", "")
+            v_user = v_soc.get("username", "")
+            v_url = v_soc.get("url", "")
+            if v_plat in ALLOWED_PLATFORMS and v_url and v_url.lower() not in seen_social_urls:
+                seen_social_urls.add(v_url.lower())
+                final_socials.append({
+                    "platform": v_plat,
+                    "username": v_user,
+                    "url": v_url,
+                    "source": "Verified via Gemini AI Analysis",
+                    "confidence": v_soc.get("confidence", "high")
+                })
+
     return {
         "selected_email": selected_email,
         "email_source": email_source,
         "email_confidence": email_confidence,
         "email_source_type": email_source_type,
+        "social_profiles": final_socials,
         "current_step": "finalize"
     }
 
@@ -285,6 +380,9 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
         "video_title": None,
         "subscriber_count": None,
         "description": None,
+        "channel_description": None,
+        "video_description": None,
+        "channel_links": [],
         "published_at": None,
         "social_profiles": [],
         "email_candidates": [],
@@ -319,6 +417,9 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
         profile_image=final_state.get("profile_image"),
         subscriber_count=final_state.get("subscriber_count"),
         description=final_state.get("description"),
+        channel_description=final_state.get("channel_description"),
+        video_description=final_state.get("video_description"),
+        channel_links=final_state.get("channel_links", []),
         published_at=final_state.get("published_at"),
         social_profiles=social_models,
         email_candidates=email_models,
@@ -344,6 +445,9 @@ async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Di
         "video_title": None,
         "subscriber_count": None,
         "description": None,
+        "channel_description": None,
+        "video_description": None,
+        "channel_links": [],
         "published_at": None,
         "social_profiles": [],
         "email_candidates": [],
@@ -409,6 +513,9 @@ async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Di
         profile_image=state.get("profile_image"),
         subscriber_count=state.get("subscriber_count"),
         description=state.get("description"),
+        channel_description=state.get("channel_description"),
+        video_description=state.get("video_description"),
+        channel_links=state.get("channel_links", []),
         published_at=state.get("published_at"),
         social_profiles=social_models,
         email_candidates=email_models,

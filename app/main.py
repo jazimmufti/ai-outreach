@@ -66,6 +66,12 @@ if FRONTEND_DIR.exists():
         return {"status": "ok", "message": "Frontend index.html not found"}
 
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
+
+
 @app.get("/api/health")
 async def health_check():
     """Health check endpoint."""

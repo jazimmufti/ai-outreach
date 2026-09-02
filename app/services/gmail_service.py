@@ -1,6 +1,7 @@
 """Gmail OAuth 2.0 service and real email sending via Gmail API with PKCE protection."""
 
 import os
+import json
 import time
 import secrets
 import threading
@@ -26,22 +27,46 @@ SCOPES = [
     "openid"
 ]
 
-# Thread-safe in-memory store for ongoing OAuth transactions (state -> {code_verifier, created_at})
+# Persistent OAuth transaction store for ongoing OAuth transactions (survives uvicorn reloads)
 _oauth_transaction_store: Dict[str, Dict[str, Any]] = {}
 _store_lock = threading.Lock()
 OAUTH_SESSION_TTL_SECONDS = 900  # 15 minutes TTL
+OAUTH_SESSION_FILE = str(settings.BASE_DIR / ".oauth_sessions.json") if hasattr(settings, "BASE_DIR") else os.path.join(os.path.dirname(settings.TOKEN_FILE), ".oauth_sessions.json")
+
+
+def _load_oauth_sessions() -> None:
+    """Load persisted OAuth sessions from disk."""
+    global _oauth_transaction_store
+    if os.path.exists(OAUTH_SESSION_FILE):
+        try:
+            with open(OAUTH_SESSION_FILE, "r", encoding="utf-8") as f:
+                _oauth_transaction_store = json.load(f)
+        except Exception:
+            _oauth_transaction_store = {}
+
+
+def _save_oauth_sessions() -> None:
+    """Save OAuth sessions to disk."""
+    try:
+        with open(OAUTH_SESSION_FILE, "w", encoding="utf-8") as f:
+            json.dump(_oauth_transaction_store, f)
+    except Exception:
+        pass
 
 
 def _cleanup_expired_sessions() -> None:
     """Clean up expired OAuth states to prevent memory leaks."""
     now = time.time()
     with _store_lock:
+        _load_oauth_sessions()
         expired_keys = [
             k for k, v in _oauth_transaction_store.items()
             if now - v.get("created_at", 0) > OAUTH_SESSION_TTL_SECONDS
         ]
         for k in expired_keys:
             _oauth_transaction_store.pop(k, None)
+        if expired_keys:
+            _save_oauth_sessions()
 
 
 def store_oauth_session(state: str, code_verifier: str) -> None:
@@ -52,12 +77,14 @@ def store_oauth_session(state: str, code_verifier: str) -> None:
             "code_verifier": code_verifier,
             "created_at": time.time()
         }
+        _save_oauth_sessions()
 
 
 def get_oauth_code_verifier(state: str) -> Optional[str]:
     """Retrieve the PKCE code_verifier for a given OAuth state if still valid."""
     _cleanup_expired_sessions()
     with _store_lock:
+        _load_oauth_sessions()
         entry = _oauth_transaction_store.get(state)
         if entry:
             if time.time() - entry.get("created_at", 0) <= OAUTH_SESSION_TTL_SECONDS:
@@ -68,7 +95,9 @@ def get_oauth_code_verifier(state: str) -> Optional[str]:
 def remove_oauth_session(state: str) -> None:
     """Remove an OAuth session once the token exchange has completed."""
     with _store_lock:
+        _load_oauth_sessions()
         _oauth_transaction_store.pop(state, None)
+        _save_oauth_sessions()
 
 
 # Thread-safe in-memory cache for the authenticated email address
@@ -271,8 +300,17 @@ def disconnect_gmail() -> bool:
     return True
 
 
-def send_test_email(recipient: str, subject: str, body: str) -> Dict[str, Any]:
-    """Send an actual email via Gmail API using the connected user account."""
+from email.mime.multipart import MIMEMultipart
+
+
+def send_test_email(
+    recipient: str, 
+    subject: str, 
+    body: str, 
+    confirm_url: Optional[str] = None, 
+    reject_url: Optional[str] = None
+) -> Dict[str, Any]:
+    """Send an actual email via Gmail API using the connected user account with HTML Yes/No confirmation buttons."""
     creds = get_stored_credentials()
     if not creds:
         raise ValueError("Gmail account is not connected. Please connect your Gmail account via OAuth first.")
@@ -284,11 +322,62 @@ def send_test_email(recipient: str, subject: str, body: str) -> Dict[str, Any]:
 
         service = build("gmail", "v1", credentials=creds, cache_discovery=False)
 
-        # Create MIME email message
-        message = MIMEText(body, "plain", "utf-8")
+        # Build Plain Text Body
+        plain_body = body
+        if confirm_url and reject_url:
+            plain_body += (
+                f"\n\n--------------------------------------------------\n"
+                f"CONFIRM OR REJECT COLLABORATION:\n\n"
+                f"[Yes, I confirm this collaboration]:\n{confirm_url}\n\n"
+                f"[No, I do not confirm]:\n{reject_url}\n"
+                f"--------------------------------------------------"
+            )
+
+        # Build HTML Body with styled Yes/No buttons
+        html_buttons = ""
+        if confirm_url and reject_url:
+            html_buttons = f"""
+            <div style="margin: 24px 0; padding: 20px; background: #FAF7F0; border: 2px solid #111827; border-radius: 4px; text-align: center;">
+                <p style="margin: 0 0 16px 0; font-family: sans-serif; font-size: 14.5px; font-weight: bold; color: #111827;">Can you confirm this collaboration?</p>
+                <div style="display: block; margin-top: 12px;">
+                    <a href="{confirm_url}" style="display: inline-block; background: #00D26A; color: #000000; text-decoration: none; font-family: sans-serif; font-size: 14px; font-weight: bold; padding: 12px 24px; border: 2px solid #111827; border-radius: 2px; margin: 4px 6px;">
+                        ✓ Yes, I confirm this collaboration
+                    </a>
+                    &nbsp;
+                    <a href="{reject_url}" style="display: inline-block; background: #FFFFFF; color: #111827; text-decoration: none; font-family: sans-serif; font-size: 14px; font-weight: bold; padding: 12px 20px; border: 2px solid #111827; border-radius: 2px; margin: 4px 6px;">
+                        ✕ No, I do not confirm
+                    </a>
+                </div>
+            </div>
+            """
+
+        formatted_html_body = f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #FAF7F0; color: #111827; padding: 24px 12px; margin: 0;">
+    <div style="max-width: 600px; margin: 0 auto; background: #FFFFFF; border: 2px solid #111827; border-radius: 4px; padding: 32px 28px;">
+        <div style="margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1.5px solid #E5E7EB;">
+            <strong style="font-size: 20px; letter-spacing: -0.02em; color: #111827;">Arclent</strong>
+        </div>
+        <p style="font-size: 15px; line-height: 1.6; color: #111827; margin: 0 0 16px 0; white-space: pre-wrap;">{body}</p>
+        {html_buttons}
+        <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #E5E7EB; font-size: 12px; color: #6B7280; font-family: monospace;">
+            Sent securely via Arclent • Creator Collaboration & Credentials Verification
+        </div>
+    </div>
+</body>
+</html>"""
+
+        message = MIMEMultipart("alternative")
         message["to"] = recipient
         message["from"] = sender_email
         message["subject"] = subject
+
+        part_plain = MIMEText(plain_body, "plain", "utf-8")
+        part_html = MIMEText(formatted_html_body, "html", "utf-8")
+
+        message.attach(part_plain)
+        message.attach(part_html)
 
         # Base64url encode the raw message
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
@@ -302,7 +391,7 @@ def send_test_email(recipient: str, subject: str, body: str) -> Dict[str, Any]:
 
         return {
             "success": True,
-            "message": "Test email sent successfully via Gmail API",
+            "message": "Verification email sent successfully via Gmail API",
             "recipient": recipient,
             "sender": sender_email,
             "message_id": message_id,
