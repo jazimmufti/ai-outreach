@@ -317,12 +317,7 @@ async def generate_message_endpoint(payload: GenerateMessageRequest):
 
 
 import secrets
-from datetime import datetime
-
-
-class SimulateResponseRequest(BaseModel):
-    session_id: str
-    action: Literal["confirm", "reject"] = "confirm"
+from datetime import datetime, timezone
 
 
 @router.post("/send-email", response_model=SendEmailResponse)
@@ -404,7 +399,7 @@ async def handle_creator_verification_response(
     if action == "confirm":
         session.creator_response = "confirmed"
         session.stage = OutreachStage.VERIFIED
-        session.verified_at = datetime.utcnow().isoformat()
+        session.verified_at = datetime.now(timezone.utc).isoformat()
         save_session(session)
 
         return HTMLResponse(content=f"""<!DOCTYPE html>
@@ -518,23 +513,6 @@ async def handle_creator_verification_response(
 </html>""")
 
 
-@router.post("/simulate-creator-response")
-async def simulate_creator_response_endpoint(payload: SimulateResponseRequest):
-    """Demo/Testing endpoint: Simulate the creator clicking 'Yes, I confirm' or 'No'."""
-    session = get_session(payload.session_id)
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found.")
-
-    if payload.action == "confirm":
-        session.creator_response = "confirmed"
-        session.stage = OutreachStage.VERIFIED
-        session.verified_at = datetime.utcnow().isoformat()
-    else:
-        session.creator_response = "rejected"
-        session.stage = OutreachStage.REJECTED
-
-    save_session(session)
-    return session
 
 
 @router.get("/session-status")

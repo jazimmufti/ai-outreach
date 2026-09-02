@@ -11,8 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings(BaseSettings):
     """Application settings with environment variable loading."""
     
-    # AI / LLM
-    GEMINI_API_KEY: str = Field(default="", description="Google Gemini API key")
+    # AI / LLM (Mistral AI)
+    MISTRAL_API_KEY: str = Field(default="", description="Mistral AI API key")
+    GEMINI_API_KEY: str = Field(default="", description="Legacy Gemini API key fallback")
+
     
     # YouTube Data API
     YOUTUBE_API_KEY: str = Field(default="", description="YouTube Data API v3 key")

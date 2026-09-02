@@ -78,12 +78,13 @@ async def health_check():
     gmail_status = gmail.get_gmail_status()
     return {
         "status": "healthy",
-        "gemini_configured": bool(settings.GEMINI_API_KEY),
+        "mistral_configured": bool(settings.MISTRAL_API_KEY),
         "youtube_api_configured": bool(settings.YOUTUBE_API_KEY),
         "gmail_oauth_configured": bool(settings.GOOGLE_CLIENT_ID and settings.GOOGLE_CLIENT_SECRET),
         "gmail_connected": gmail_status.get("connected", False),
         "environment": settings.ENVIRONMENT
     }
+
 
 
 if __name__ == "__main__":

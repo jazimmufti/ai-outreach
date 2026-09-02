@@ -224,7 +224,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const vPendingRecipientSub = document.getElementById("v-pending-recipient-sub");
     const vSuccessRecipientSub = document.getElementById("v-success-recipient-sub");
     const vShieldAudienceText = document.getElementById("v-shield-audience-text");
-    const simulateCreatorConfirmBtn = document.getElementById("simulate-creator-confirm-btn");
 
     const toastContainer = document.getElementById("toast-container");
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
@@ -1155,31 +1154,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Background polling
             }
         }, 2500);
-    }
-
-    if (simulateCreatorConfirmBtn) {
-        simulateCreatorConfirmBtn.onclick = async () => {
-            try {
-                simulateCreatorConfirmBtn.disabled = true;
-                const res = await fetch("/api/outreach/simulate-creator-response", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        session_id: state.sessionId,
-                        action: "confirm"
-                    })
-                });
-                if (res.ok) {
-                    renderVerificationSuccess();
-                } else {
-                    showToast("Simulation failed", "error");
-                }
-            } catch (err) {
-                showToast("Simulation error", "error");
-            } finally {
-                simulateCreatorConfirmBtn.disabled = false;
-            }
-        };
     }
 
     if (workflowEmailForm) {

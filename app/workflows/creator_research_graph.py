@@ -8,7 +8,7 @@ from app.models.schemas import SocialProfile, EmailCandidate, RawCreatorResearch
 from app.services.youtube_service import parse_youtube_target, extract_video_id, get_youtube_metadata
 from app.services.social_discovery import extract_social_profiles, extract_website_urls
 from app.services.email_discovery import extract_emails_from_text, crawl_website_for_emails
-from app.services.gemini_service import classify_and_verify_with_gemini
+from app.services.mistral_service import classify_and_verify_with_mistral
 
 logger = logging.getLogger(__name__)
 
@@ -251,8 +251,8 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
     ]
     raw_emails = [EmailCandidate(**e) for e in state.get("email_candidates", [])]
 
-    # Try Gemini reasoning
-    gemini_result = await classify_and_verify_with_gemini(
+    # Try Mistral AI reasoning
+    mistral_result = await classify_and_verify_with_mistral(
         creator_name=creator_name,
         channel_name=channel_name,
         video_title=video_title,
@@ -268,9 +268,9 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
     email_confidence = None
     email_source_type = None
 
-    if gemini_result and gemini_result.selected_primary_email:
+    if mistral_result and mistral_result.selected_primary_email:
         # Match with classified email
-        selected_email = gemini_result.selected_primary_email
+        selected_email = mistral_result.selected_primary_email
         for c in raw_emails:
             if c.email.lower() == selected_email.lower():
                 email_source = c.source
@@ -278,11 +278,11 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
                 email_source_type = c.source_type
                 break
         if not email_source:
-            email_source = "YouTube Channel Description" if channel_description and selected_email.lower() in channel_description.lower() else "Verified via Gemini AI Analysis"
+            email_source = "YouTube Channel Description" if channel_description and selected_email.lower() in channel_description.lower() else "Verified via Mistral AI Analysis"
             email_confidence = "high"
             email_source_type = "publicly_published"
 
-    # Deterministic fallback if Gemini is not configured or returned no primary email
+    # Deterministic fallback if Mistral is not configured or returned no primary email
     if not selected_email and raw_emails:
         # Prioritize 'high' confidence publicly published emails
         public_high = [e for e in raw_emails if e.confidence == "high" and e.source_type == "publicly_published"]
@@ -302,12 +302,12 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
                 email_confidence = chosen.confidence
                 email_source_type = chosen.source_type
 
-    # Merge Gemini verified socials with regex discovered socials
+    # Merge Mistral verified socials with regex discovered socials
     final_socials = list(state.get("social_profiles", []))
     seen_social_urls = {s.get("url", "").lower() for s in final_socials}
 
-    if gemini_result and gemini_result.verified_socials:
-        for v_soc in gemini_result.verified_socials:
+    if mistral_result and mistral_result.verified_socials:
+        for v_soc in mistral_result.verified_socials:
             v_plat = v_soc.get("platform", "")
             v_user = v_soc.get("username", "")
             v_url = v_soc.get("url", "")
@@ -317,7 +317,7 @@ async def classify_and_finalize_node(state: CreatorResearchState) -> Dict[str, A
                     "platform": v_plat,
                     "username": v_user,
                     "url": v_url,
-                    "source": "Verified via Gemini AI Analysis",
+                    "source": "Verified via Mistral AI Analysis",
                     "confidence": v_soc.get("confidence", "high")
                 })
 
@@ -493,7 +493,7 @@ async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Di
     yield {"step": 5, "name": "discover_emails", "label": f"Found {email_count} candidate email(s)", "status": "completed"}
 
     # Step 6: Classify & Finalize
-    yield {"step": 6, "name": "classify_and_finalize", "label": "Classifying evidence with Gemini AI & finalizing profile", "status": "running"}
+    yield {"step": 6, "name": "classify_and_finalize", "label": "Classifying evidence with Mistral AI & finalizing profile", "status": "running"}
     state.update(await classify_and_finalize_node(state))
 
     social_models = [

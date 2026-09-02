@@ -1,6 +1,6 @@
 # Arclent — Creator Discovery & Outreach Platform ⚡
 
-A real, production-ready AI-powered **Creator Discovery and Outreach platform**. Enter any YouTube video URL to automatically identify the creator, discover their public social accounts (Instagram, X/Twitter, LinkedIn, TikTok, etc.), extract and classify public business contact emails via **LangGraph** and **Google Gemini**, and connect directly via social profiles or send emails through your connected **Gmail account** using Google OAuth 2.0.
+A real, production-ready AI-powered **Creator Discovery and Outreach platform**. Enter any YouTube video URL to automatically identify the creator, discover their public social accounts (Instagram, X/Twitter, LinkedIn, TikTok, etc.), extract and classify public business contact emails via **LangGraph** and **Mistral AI**, and connect directly via social profiles or send emails through your connected **Gmail account** using Google OAuth 2.0.
 
 ---
 
@@ -13,14 +13,17 @@ A real, production-ready AI-powered **Creator Discovery and Outreach platform**.
   - Handles obfuscated email patterns (`name [at] domain [dot] com`).
   - Strict evidence tagging: distinguishes `publicly_published` vs `inferred` emails.
   - Never hallucinates emails. If no public email exists, prompts for manual email entry with real-time RFC 5322 validation.
-- **AI Orchestration with LangGraph & Gemini**:
+- **AI Orchestration with LangGraph & Mistral AI**:
   - Multi-node pipeline (`validate_url` → `fetch_metadata` → `identify_creator` → `discover_socials` → `discover_emails` → `classify_and_finalize`).
-  - Google Gemini reasoning to evaluate email authenticity, eliminate false positives, and classify contact confidence.
+  - Mistral AI reasoning to evaluate email authenticity, eliminate false positives, and classify contact confidence.
   - Server-Sent Events (SSE) streaming real-time progress to the UI.
 - **Direct Gmail OAuth 2.0 Integration**:
   - Authenticates sender using secure OAuth 2.0 with minimal required scopes (`gmail.send`, `userinfo.email`).
   - Sends real MIME emails via the Gmail API (`users.messages.send`).
   - Secure token management in `token.json` (no passwords stored or transmitted).
+- **Official Recipient Verification**:
+  - When an outreach email is sent, the recipient receives secure confirmation links.
+  - Real-time status updates when the creator officially approves the collaboration inquiry.
 - **Retro-Editorial / Neo-Brutalist UI**:
   - Built with pure HTML5, CSS3, and Vanilla JavaScript (No npm or Node.js required).
   - Warm cream background, crisp black borders, vibrant green badges, and amber action buttons.
@@ -39,6 +42,7 @@ ai-outreach/
 │   ├── api/
 │   │   ├── __init__.py
 │   │   ├── research.py               # POST /api/research & SSE /api/research/stream
+│   │   ├── outreach.py               # Step-by-step outreach, email dispatch & verification
 │   │   ├── gmail.py                  # Gmail OAuth (connect, callback, status, disconnect)
 │   │   └── email.py                  # POST /api/email/send
 │   │
@@ -51,7 +55,7 @@ ai-outreach/
 │   │   ├── youtube_service.py        # YouTube Data API v3 + oEmbed/HTML fallback scraper
 │   │   ├── social_discovery.py       # Social media profile regex & normalization
 │   │   ├── email_discovery.py        # Multi-page email extraction & obfuscation parser
-│   │   ├── gemini_service.py         # Google Gemini LLM reasoning & evidence classifier
+│   │   ├── mistral_service.py        # Mistral AI reasoning & evidence classifier
 │   │   └── gmail_service.py          # Google OAuth 2.0 & Gmail API client
 │   │
 │   └── workflows/
@@ -78,7 +82,7 @@ Create or update your `.env` file in the project root:
 
 | Variable | Required | Description |
 | :--- | :---: | :--- |
-| `GEMINI_API_KEY` | Optional | Google Gemini API key for evidence reasoning. Get at [Google AI Studio](https://aistudio.google.com/app/apikey). |
+| `MISTRAL_API_KEY` | Optional | Mistral AI API key for evidence reasoning. Get at [Mistral AI Console](https://console.mistral.ai/api-keys/). |
 | `YOUTUBE_API_KEY` | Optional | YouTube Data API v3 key. If omitted, the system falls back to oEmbed + public scraper. |
 | `GOOGLE_CLIENT_ID` | Required for Gmail | Google OAuth 2.0 Web Client ID for sending email. |
 | `GOOGLE_CLIENT_SECRET` | Required for Gmail | Google OAuth 2.0 Web Client Secret. |
@@ -129,7 +133,7 @@ To enable real email sending via Gmail API:
 4. **Configure OAuth Consent Screen**:
    - Go to **APIs & Services > OAuth consent screen**.
    - Select User Type: **External** and click **Create**.
-   - Fill in App name (`Creator Outreach`), User support email, and Developer contact email.
+   - Fill in App name (`Arclent`), User support email, and Developer contact email.
    - Under **Scopes**, click **Add or Remove Scopes** and add:
      - `https://www.googleapis.com/auth/gmail.send`
      - `https://www.googleapis.com/auth/userinfo.email`
@@ -138,7 +142,7 @@ To enable real email sending via Gmail API:
 5. **Create OAuth 2.0 Credentials**:
    - Go to **APIs & Services > Credentials > Create Credentials > OAuth client ID**.
    - Application type: **Web application**.
-   - Name: `Creator Outreach Web Client`.
+   - Name: `Arclent Web Client`.
    - **Authorized redirect URIs**: Add `http://localhost:8000/api/gmail/callback`.
    - Click **Create**.
 6. Copy the **Client ID** and **Client Secret** into your `.env` file:
@@ -176,7 +180,7 @@ START
   ↓
 [discover_emails]
   ↓
-[classify_and_finalize] (Gemini reasoning)
+[classify_and_finalize] (Mistral AI reasoning)
   ↓
 END
 ```

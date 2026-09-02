@@ -33,13 +33,10 @@ async def generate_outreach_message(
     default_subject = f"Collaboration confirmation{subject_title}"
     default_body = f'Hi {target_name}, someone on Arclent claims they worked as {role_text}{title_context}. Can you confirm this collaboration?'
 
-    # If custom notes are provided or AI customization requested with Gemini
-    if settings.GEMINI_API_KEY and custom_notes:
+    # If custom notes are provided or AI customization requested with Mistral AI
+    if (settings.MISTRAL_API_KEY or settings.GEMINI_API_KEY) and custom_notes:
         try:
-            from google import genai
-            from google.genai import types
-
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            from app.services.mistral_service import call_mistral_chat_completion
 
             system_prompt = (
                 "You are an assistant for Arclent, a creator verification and collaboration platform. "
@@ -57,31 +54,31 @@ async def generate_outreach_message(
                 f"Return JSON object with 'subject' (string) and 'body' (string)."
             )
 
-            for model_name in ["gemini-3.6-flash", "gemini-flash-latest"]:
-                try:
-                    resp = client.models.generate_content(
-                        model=model_name,
-                        contents=user_prompt,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_prompt,
-                            temperature=0.2,
-                            response_mime_type="application/json"
-                        )
-                    )
-                    if resp and resp.text:
-                        parsed = json.loads(resp.text.strip())
-                        return OutreachMessage(
-                            recipient_name=target_name,
-                            subject=parsed.get("subject", default_subject) if channel != "instagram" else None,
-                            body=parsed.get("body", default_body).strip(),
-                            channel=channel
-                        )
-                except Exception as e:
-                    logger.warning(f"Model {model_name} failed: {e}")
-                    continue
+            resp_text = await call_mistral_chat_completion(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                temperature=0.2,
+                json_mode=True
+            )
+
+            if resp_text:
+                if resp_text.startswith("```json"):
+                    resp_text = resp_text[7:]
+                elif resp_text.startswith("```"):
+                    resp_text = resp_text[3:]
+                if resp_text.endswith("```"):
+                    resp_text = resp_text[:-3]
+
+                parsed = json.loads(resp_text.strip())
+                return OutreachMessage(
+                    recipient_name=target_name,
+                    subject=parsed.get("subject", default_subject) if channel != "instagram" else None,
+                    body=parsed.get("body", default_body).strip(),
+                    channel=channel
+                )
 
         except Exception as e:
-            logger.error(f"Error in Gemini message generation: {e}", exc_info=True)
+            logger.error(f"Error in Mistral message generation: {e}", exc_info=True)
 
     # Standard Arclent Collaboration Confirmation Template
     return OutreachMessage(
@@ -90,3 +87,4 @@ async def generate_outreach_message(
         body=default_body,
         channel=channel
     )
+
