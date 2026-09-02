@@ -1,0 +1,202 @@
+"""Pydantic schemas for API request and response validation."""
+
+from typing import List, Optional, Literal, Dict, Any
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator
+
+
+class OutreachStage(str, Enum):
+    """Explicit workflow stages for creator outreach."""
+    INPUT = "input"
+    DISCOVERING = "discovering"
+    CREATOR_FOUND = "creator_found"
+    NO_EMAIL_CHOICE = "no_email_choice"
+    MANUAL_EMAIL_INPUT = "manual_email_input"
+    MESSAGE_DRAFT = "message_draft"
+    INSTAGRAM_READY = "instagram_ready"
+    MANUAL_MESSAGE_READY = "manual_message_ready"
+    SENT = "sent"
+
+
+class ResearchRequest(BaseModel):
+    """Incoming request to discover creator details from a YouTube URL."""
+    youtube_url: str = Field(..., description="Full YouTube video URL or channel link")
+
+    @field_validator("youtube_url")
+    @classmethod
+    def validate_url(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("YouTube URL cannot be empty")
+        if "youtube.com" not in v and "youtu.be" not in v:
+            raise ValueError("Please enter a valid YouTube video or channel URL")
+        return v
+
+
+class SocialProfile(BaseModel):
+    """Discovered social media account."""
+    platform: str = Field(..., description="Social platform name (Instagram, X, Discord, Reddit, Facebook)")
+    username: str = Field(..., description="Handle or username")
+    url: str = Field(..., description="Full URL to public profile")
+    source: str = Field(default="YouTube description", description="Source where profile was identified")
+    confidence: Literal["high", "medium", "low"] = Field(default="medium", description="Confidence level")
+
+
+class EmailCandidate(BaseModel):
+    """Discovered or evaluated email candidate."""
+    email: str = Field(..., description="Email address")
+    source: str = Field(..., description="Source location (e.g. YouTube description, Creator Website → Contact)")
+    source_type: Literal["publicly_published", "inferred", "manual"] = Field(
+        default="publicly_published", 
+        description="Classification of email origin"
+    )
+    confidence: Literal["high", "medium", "low"] = Field(
+        default="high", 
+        description="Confidence score for authenticity"
+    )
+    context: Optional[str] = Field(default=None, description="Contextual snippet around the email")
+    verification_status: Optional[str] = Field(default="verified_evidence", description="Status description")
+
+
+class OutreachMessage(BaseModel):
+    """Structured outreach message object."""
+    recipient_name: str
+    subject: Optional[str] = None
+    body: str
+    channel: Literal["email", "instagram", "manual"] = "email"
+
+
+class CreatorProfile(BaseModel):
+    """Creator identity information."""
+    name: str
+    channel_name: str
+    channel_handle: Optional[str] = None
+    channel_url: Optional[str] = None
+    profile_image: Optional[str] = None
+    subscriber_count: Optional[str] = None
+    video_title: Optional[str] = None
+    video_url: Optional[str] = None
+    description: Optional[str] = None
+
+
+class OutreachSession(BaseModel):
+    """Complete state container for an outreach workflow session."""
+    session_id: str
+    youtube_url: str
+    stage: OutreachStage = OutreachStage.INPUT
+    creator: Optional[CreatorProfile] = None
+    discovered_email: Optional[EmailCandidate] = None
+    creator_confirmed: Optional[bool] = None
+    final_email: Optional[str] = None
+    email_source: Optional[str] = None
+    email_confidence: Optional[str] = None
+    email_verification_status: Optional[str] = None
+    social_profiles: List[SocialProfile] = Field(default_factory=list)
+    instagram_profile: Optional[SocialProfile] = None
+    message: Optional[OutreachMessage] = None
+    selected_channel: Optional[Literal["email", "instagram", "manual"]] = None
+    errors: List[str] = Field(default_factory=list)
+
+
+# ------------------------------------------------------------------------------
+# Raw Graph Pipeline Output Model
+# ------------------------------------------------------------------------------
+
+class RawCreatorResearchResult(BaseModel):
+    """Raw output of the LangGraph creator research pipeline."""
+    video_url: str
+    video_id: Optional[str] = None
+    video_title: Optional[str] = None
+    creator_name: str = "Creator"
+    channel_name: str = "Channel"
+    channel_handle: Optional[str] = None
+    channel_url: Optional[str] = None
+    profile_image: Optional[str] = None
+    subscriber_count: Optional[str] = None
+    description: Optional[str] = None
+    published_at: Optional[str] = None
+    social_profiles: List[SocialProfile] = Field(default_factory=list)
+    email_candidates: List[EmailCandidate] = Field(default_factory=list)
+    selected_email: Optional[str] = None
+    email_source: Optional[str] = None
+    email_confidence: Optional[str] = None
+    email_source_type: Optional[str] = None
+    errors: List[str] = Field(default_factory=list)
+
+
+# ------------------------------------------------------------------------------
+# Workflow Step Request / Response Models
+# ------------------------------------------------------------------------------
+
+class ConfirmCreatorRequest(BaseModel):
+    """User confirmation decision for discovered creator."""
+    session_id: str
+    creator_confirmed: bool
+
+
+class ManualEmailRequest(BaseModel):
+    """Manual email submission payload."""
+    session_id: str
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_manual_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not v or "@" not in v or "." not in v or len(v.split("@")) != 2:
+            raise ValueError("Please enter a valid email address.")
+        user, domain = v.split("@")
+        if not user or not domain or len(domain.split(".")) < 2:
+            raise ValueError("Please enter a valid email address.")
+        return v
+
+
+class GenerateMessageRequest(BaseModel):
+    """Request to generate/regenerate an outreach message."""
+    session_id: str
+    channel: Literal["email", "instagram", "manual"] = "email"
+    custom_notes: Optional[str] = None
+
+
+class SendEmailRequest(BaseModel):
+    """Request payload to send an email."""
+    recipient: str = Field(..., description="Recipient email address")
+    subject: str = Field(..., description="Email subject line")
+    body: str = Field(..., description="Plain text email body")
+
+
+class SendEmailWorkflowRequest(BaseModel):
+    """Request to send email via connected Gmail account."""
+    session_id: str
+    recipient: Optional[str] = None
+    subject: str = Field(default="Collaboration Opportunity")
+    body: str
+
+
+class CreatorDiscoveryResponse(BaseModel):
+    """Discovery response payload for workflow."""
+    session_id: str
+    stage: OutreachStage
+    creator: CreatorProfile
+    discovered_email: Optional[EmailCandidate] = None
+    has_reliable_email: bool
+    social_profiles: List[SocialProfile] = Field(default_factory=list)
+    instagram_profile: Optional[SocialProfile] = None
+    errors: List[str] = Field(default_factory=list)
+
+
+class GmailStatusResponse(BaseModel):
+    """Status of the Gmail OAuth integration."""
+    connected: bool
+    email: Optional[str] = None
+    scopes: Optional[List[str]] = None
+
+
+class SendEmailResponse(BaseModel):
+    """Response returned after sending an email via Gmail API."""
+    success: bool
+    message: str
+    recipient: str
+    message_id: Optional[str] = None
+    sender: Optional[str] = None
+    timestamp: Optional[str] = None
