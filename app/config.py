@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     PORT: int = Field(default=8000)
     HOST: str = Field(default="0.0.0.0")
     TOKEN_FILE: str = Field(default=str(BASE_DIR / "token.json"))
+    GMAIL_TOKEN_JSON: str = Field(default="", description="Optional JSON string of authorized Gmail tokens for serverless/Railway deployments")
+
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

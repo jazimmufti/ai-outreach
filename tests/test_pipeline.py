@@ -209,6 +209,88 @@ class TestCreatorOutreachPipeline(unittest.TestCase):
         manual_data = manual_res.json()
         self.assertEqual(manual_data["stage"], OutreachStage.MANUAL_MESSAGE_READY)
 
+    def test_oauth_state_generation_and_store(self):
+        """Test a) OAuth state generation and PKCE code_verifier generation."""
+        auth_url, state, code_verifier = generate_oauth_url()
+        self.assertTrue(auth_url.startswith("https://accounts.google.com/o/oauth2/auth"))
+        self.assertIn("response_type=code", auth_url)
+        self.assertIn("code_challenge=", auth_url)
+        self.assertIn("code_challenge_method=S256", auth_url)
+        self.assertGreaterEqual(len(state), 32)
+        self.assertGreaterEqual(len(code_verifier), 43)
+
+        # Verify b) PKCE verifier persistence
+        persisted_verifier = get_oauth_code_verifier(state)
+        self.assertEqual(persisted_verifier, code_verifier)
+
+        # Cleanup
+        remove_oauth_session(state)
+        self.assertIsNone(get_oauth_code_verifier(state))
+
+    def test_connect_endpoint_and_callback_exact_state(self):
+        """Test c) and f): /connect endpoint creates state, and callback using exact state succeeds without cookie dependency."""
+        from unittest.mock import patch
+
+        # 1. Call /api/gmail/connect (without setting cookies or in separate request context)
+        connect_res = self.client.get("/api/gmail/connect")
+        self.assertEqual(connect_res.status_code, 200)
+        connect_data = connect_res.json()
+        state = connect_data["state"]
+        self.assertTrue(state)
+
+        # Verify PKCE verifier is stored server-side
+        code_verifier = get_oauth_code_verifier(state)
+        self.assertIsNotNone(code_verifier)
+
+        # 2. Simulate Google redirecting back to /api/gmail/callback with exact state and code
+        with patch("app.api.gmail.exchange_code_for_tokens") as mock_exchange:
+            mock_exchange.return_value = {
+                "connected": True,
+                "email": "test-creator@gmail.com",
+                "scopes": ["https://www.googleapis.com/auth/gmail.send"]
+            }
+
+            # Callback in a fresh client / without session cookie to simulate cross-site popup
+            callback_res = self.client.get(f"/api/gmail/callback?code=mock_auth_code_12345&state={state}")
+            self.assertEqual(callback_res.status_code, 200)
+            self.assertIn("Gmail Account Linked!", callback_res.text)
+            self.assertIn("test-creator@gmail.com", callback_res.text)
+            mock_exchange.assert_called_once()
+            
+            # Verify the exact code and state were exchanged with the saved code_verifier
+            called_kwargs = mock_exchange.call_args.kwargs
+            self.assertEqual(called_kwargs["code"], "mock_auth_code_12345")
+            self.assertEqual(called_kwargs["state"], state)
+            self.assertEqual(called_kwargs["code_verifier"], code_verifier)
+
+    def test_callback_rejects_unknown_or_invalid_state(self):
+        """Test d) Invalid / unknown state is strictly rejected with 400 and expired/invalid message."""
+        res = self.client.get("/api/gmail/callback?code=some_code&state=completely_invalid_state_123")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("OAuth Session Timed Out", res.text)
+        self.assertIn("The verification token for this authorization attempt expired or was already used.", res.text)
+
+    def test_callback_rejects_expired_state(self):
+        """Test e) Expired OAuth state (older than TTL) is rejected."""
+        import time
+        from app.services.gmail_service import _oauth_transaction_store, _store_lock
+
+        expired_state = "expired_test_state_99999"
+        with _store_lock:
+            _oauth_transaction_store[expired_state] = {
+                "code_verifier": "test_verifier_content_12345",
+                "created_at": time.time() - 1000  # 1000 seconds ago (> 900s TTL)
+            }
+
+        # get_oauth_code_verifier should return None for expired state
+        self.assertIsNone(get_oauth_code_verifier(expired_state))
+
+        # Callback should reject expired state
+        res = self.client.get(f"/api/gmail/callback?code=valid_code&state={expired_state}")
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("OAuth Session Timed Out", res.text)
+
 
 if __name__ == "__main__":
     unittest.main()
+

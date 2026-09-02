@@ -334,6 +334,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function handleConnectGmail() {
+        if (state.isConnectingGmail) return;
+        state.isConnectingGmail = true;
         try {
             showToast("Opening Google Sign-In...", "warning");
             const res = await fetch("/api/gmail/connect");
@@ -368,14 +370,18 @@ document.addEventListener("DOMContentLoaded", () => {
                         await checkGmailStatus();
                         if (state.gmailConnected || isClosed || pollCount > 90) {
                             clearInterval(timer);
+                            state.isConnectingGmail = false;
                         }
                     }
                 }, 1200);
             }
         } catch (err) {
             showToast(err.message, "error");
+        } finally {
+            setTimeout(() => { state.isConnectingGmail = false; }, 2000);
         }
     }
+
 
     async function handleDisconnectGmail() {
         try {

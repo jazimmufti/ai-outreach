@@ -27,31 +27,41 @@ SCOPES = [
     "openid"
 ]
 
-# Persistent OAuth transaction store for ongoing OAuth transactions (survives uvicorn reloads)
+# Persistent OAuth transaction store for ongoing OAuth transactions (survives uvicorn reloads and separate HTTP requests)
 _oauth_transaction_store: Dict[str, Dict[str, Any]] = {}
-_store_lock = threading.Lock()
+_store_lock = threading.RLock()
 OAUTH_SESSION_TTL_SECONDS = 900  # 15 minutes TTL
 OAUTH_SESSION_FILE = str(settings.BASE_DIR / ".oauth_sessions.json") if hasattr(settings, "BASE_DIR") else os.path.join(os.path.dirname(settings.TOKEN_FILE), ".oauth_sessions.json")
 
 
 def _load_oauth_sessions() -> None:
-    """Load persisted OAuth sessions from disk."""
+    """Load persisted OAuth sessions from disk and merge non-destructively into memory."""
     global _oauth_transaction_store
-    if os.path.exists(OAUTH_SESSION_FILE):
-        try:
-            with open(OAUTH_SESSION_FILE, "r", encoding="utf-8") as f:
-                _oauth_transaction_store = json.load(f)
-        except Exception:
-            _oauth_transaction_store = {}
+    if not os.path.exists(OAUTH_SESSION_FILE):
+        return
+    try:
+        with open(OAUTH_SESSION_FILE, "r", encoding="utf-8") as f:
+            disk_data = json.load(f)
+        if isinstance(disk_data, dict):
+            now = time.time()
+            for k, v in disk_data.items():
+                if isinstance(v, dict) and k not in _oauth_transaction_store:
+                    if now - v.get("created_at", 0) <= OAUTH_SESSION_TTL_SECONDS:
+                        _oauth_transaction_store[k] = v
+    except Exception as e:
+        logger.debug(f"Could not load OAuth sessions from disk: {e}")
 
 
 def _save_oauth_sessions() -> None:
-    """Save OAuth sessions to disk."""
+    """Save active in-memory OAuth sessions to disk."""
     try:
+        dir_name = os.path.dirname(os.path.abspath(OAUTH_SESSION_FILE))
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         with open(OAUTH_SESSION_FILE, "w", encoding="utf-8") as f:
             json.dump(_oauth_transaction_store, f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Could not save OAuth sessions to disk: {e}")
 
 
 def _cleanup_expired_sessions() -> None:
@@ -71,8 +81,10 @@ def _cleanup_expired_sessions() -> None:
 
 def store_oauth_session(state: str, code_verifier: str) -> None:
     """Store the PKCE code_verifier associated with an OAuth state."""
-    _cleanup_expired_sessions()
+    if not state or not code_verifier:
+        return
     with _store_lock:
+        _cleanup_expired_sessions()
         _oauth_transaction_store[state] = {
             "code_verifier": code_verifier,
             "created_at": time.time()
@@ -82,30 +94,53 @@ def store_oauth_session(state: str, code_verifier: str) -> None:
 
 def get_oauth_code_verifier(state: str) -> Optional[str]:
     """Retrieve the PKCE code_verifier for a given OAuth state if still valid."""
-    _cleanup_expired_sessions()
+    if not state or not isinstance(state, str):
+        return None
     with _store_lock:
-        _load_oauth_sessions()
+        _cleanup_expired_sessions()
         entry = _oauth_transaction_store.get(state)
+        if not entry:
+            # Try reloading from disk in case another worker process wrote it
+            _load_oauth_sessions()
+            entry = _oauth_transaction_store.get(state)
         if entry:
             if time.time() - entry.get("created_at", 0) <= OAUTH_SESSION_TTL_SECONDS:
                 return entry.get("code_verifier")
+            else:
+                _oauth_transaction_store.pop(state, None)
+                _save_oauth_sessions()
     return None
 
 
 def remove_oauth_session(state: str) -> None:
     """Remove an OAuth session once the token exchange has completed."""
+    if not state:
+        return
     with _store_lock:
-        _load_oauth_sessions()
         _oauth_transaction_store.pop(state, None)
         _save_oauth_sessions()
+
 
 
 # Thread-safe in-memory cache for the authenticated email address
 _cached_user_email: Optional[str] = None
 
 def get_stored_credentials() -> Optional[Credentials]:
-    """Retrieve and refresh stored OAuth credentials from token file."""
+    """Retrieve and refresh stored OAuth credentials from GMAIL_TOKEN_JSON env var or token file."""
     global _cached_user_email
+
+    # 1. First check if GMAIL_TOKEN_JSON environment variable is configured
+    if settings.GMAIL_TOKEN_JSON and settings.GMAIL_TOKEN_JSON.strip():
+        try:
+            token_info = json.loads(settings.GMAIL_TOKEN_JSON.strip())
+            creds = Credentials.from_authorized_user_info(token_info, SCOPES)
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            return creds if creds and creds.valid else None
+        except Exception as e:
+            logger.warning(f"Error loading credentials from GMAIL_TOKEN_JSON: {e}")
+
+    # 2. Check token file on disk
     token_path = settings.TOKEN_FILE
     if not os.path.exists(token_path):
         _cached_user_email = None
@@ -116,12 +151,16 @@ def get_stored_credentials() -> Optional[Credentials]:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
             # Save refreshed credentials
-            with open(token_path, "w") as token_file:
-                token_file.write(creds.to_json())
+            try:
+                with open(token_path, "w") as token_file:
+                    token_file.write(creds.to_json())
+            except Exception:
+                pass
         return creds if creds and creds.valid else None
     except Exception as e:
         logger.error(f"Error loading stored credentials: {e}")
         return None
+
 
 
 def fetch_user_email_from_token(creds: Credentials) -> Optional[str]:
