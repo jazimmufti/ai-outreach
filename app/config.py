@@ -27,6 +27,17 @@ class Settings(BaseSettings):
         description="Google OAuth Redirect URI"
     )
     
+    def get_redirect_uri(self) -> str:
+        """Get sanitized Google Redirect URI prioritizing OS environment over .env file."""
+        raw = os.environ.get("GOOGLE_REDIRECT_URI") or self.GOOGLE_REDIRECT_URI
+        uri = str(raw).strip().strip("'\"")
+        if uri.startswith("os.getenv") or not uri.startswith("http"):
+            return "http://localhost:8000/api/gmail/callback"
+        if uri.endswith("/api/gmail/callback/"):
+            return uri[:-1]
+        return uri
+
+    
     # Session & Security
     SESSION_SECRET_KEY: str = Field(
         default="outreach_dev_secret_key_849204928173928172", 

@@ -308,13 +308,17 @@ def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, st
 
     from google_auth_oauthlib.flow import Flow
 
+    redirect_uri = settings.get_redirect_uri()
+    client_id_preview = f"{settings.GOOGLE_CLIENT_ID[:16]}..." if settings.GOOGLE_CLIENT_ID else "UNSET"
+    logger.info(f"Generating Google OAuth authorization URL with redirect_uri: {redirect_uri} (client_id: {client_id_preview})")
+
     client_config = {
         "web": {
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "client_id": settings.GOOGLE_CLIENT_ID.strip(),
+            "client_secret": settings.GOOGLE_CLIENT_SECRET.strip(),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [settings.GOOGLE_REDIRECT_URI]
+            "redirect_uris": [redirect_uri]
         }
     }
 
@@ -324,7 +328,7 @@ def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, st
     flow = Flow.from_client_config(
         client_config,
         scopes=SCOPES,
-        redirect_uri=settings.GOOGLE_REDIRECT_URI,
+        redirect_uri=redirect_uri,
         autogenerate_code_verifier=False
     )
     flow.code_verifier = code_verifier
@@ -356,13 +360,18 @@ def exchange_code_for_tokens(
     """Exchange authorization code for OAuth tokens using the original PKCE code_verifier."""
     from google_auth_oauthlib.flow import Flow
 
+    redirect_uri = settings.get_redirect_uri()
+    client_id_preview = f"{settings.GOOGLE_CLIENT_ID[:16]}..." if settings.GOOGLE_CLIENT_ID else "UNSET"
+    logger.info(f"Exchanging Google OAuth code with redirect_uri: {redirect_uri} (client_id: {client_id_preview})")
+
+
     client_config = {
         "web": {
-            "client_id": settings.GOOGLE_CLIENT_ID,
-            "client_secret": settings.GOOGLE_CLIENT_SECRET,
+            "client_id": settings.GOOGLE_CLIENT_ID.strip(),
+            "client_secret": settings.GOOGLE_CLIENT_SECRET.strip(),
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [settings.GOOGLE_REDIRECT_URI]
+            "redirect_uris": [redirect_uri]
         }
     }
 
@@ -378,7 +387,7 @@ def exchange_code_for_tokens(
     flow = Flow.from_client_config(
         client_config,
         scopes=SCOPES,
-        redirect_uri=settings.GOOGLE_REDIRECT_URI,
+        redirect_uri=redirect_uri,
         state=state,
         autogenerate_code_verifier=False
     )
@@ -406,6 +415,7 @@ def exchange_code_for_tokens(
     # Get sender profile email
     status = get_gmail_status()
     return status
+
 
 
 
