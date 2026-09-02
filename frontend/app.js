@@ -221,14 +221,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // Screen 5 Elements (Delivery & Verification Status)
     const verificationPendingBox = document.getElementById("verification-pending-box");
     const verificationSuccessBox = document.getElementById("verification-success-box");
+    const verificationRejectedBox = document.getElementById("verification-rejected-box");
     const vPendingRecipientSub = document.getElementById("v-pending-recipient-sub");
     const vSuccessRecipientSub = document.getElementById("v-success-recipient-sub");
+    const vRejectedRecipientSub = document.getElementById("v-rejected-recipient-sub");
     const vShieldAudienceText = document.getElementById("v-shield-audience-text");
+    const vRejectedDescText = document.getElementById("v-rejected-desc-text");
 
     const toastContainer = document.getElementById("toast-container");
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
 
     let verificationPollInterval = null;
+
 
     // --------------------------------------------------------------------------
     // Toast Utility
@@ -1123,7 +1127,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const c = state.creator || {};
-        const creatorName = c.name || c.channel_name || "MrBeast";
+        const creatorName = c.name || c.channel_name || "creator";
         const rawSubs = (c.subscriber_count || "").replace(/subscribers/i, "").trim();
         const audText = (rawSubs && rawSubs !== "Active Creator") 
             ? `${creatorName}'s ${rawSubs} YouTube audience.` 
@@ -1138,9 +1142,34 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.remove("hidden");
 
         showToast("✓ Response received! Confirmed by creator.");
+    }
+
+    function renderVerificationRejected() {
+        if (verificationPollInterval) {
+            clearInterval(verificationPollInterval);
+            verificationPollInterval = null;
+        }
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "creator";
+
+        if (vRejectedRecipientSub) {
+            vRejectedRecipientSub.textContent = `Message delivered to ${creatorName} via verified channel`;
+        }
+
+        if (vRejectedDescText) {
+            vRejectedDescText.textContent = `Collaboration not confirmed. ${creatorName} indicated they did not collaborate on this project.`;
+        }
+
+        if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.remove("hidden");
+
+        showToast("✕ Response received: Collaboration declined by creator.", "error");
     }
 
     function startVerificationPolling() {
@@ -1154,6 +1183,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const data = await res.json();
                     if (data.creator_response === "confirmed" || data.stage === "verified") {
                         renderVerificationSuccess();
+                    } else if (data.creator_response === "rejected" || data.stage === "rejected") {
+                        renderVerificationRejected();
                     }
                 }
             } catch (e) {
@@ -1212,6 +1243,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
                 if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
 
                 state.stage = "sent";
                 showScreen("deliverySuccess", 4);
@@ -1229,6 +1261,7 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+
     // --------------------------------------------------------------------------
     // Reset / New Search
     // --------------------------------------------------------------------------
@@ -1245,10 +1278,15 @@ document.addEventListener("DOMContentLoaded", () => {
         state.finalEmail = null;
         state.message = null;
 
+        if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
         if (youtubeUrlInput) youtubeUrlInput.value = "";
         showScreen("input", 1);
         if (youtubeUrlInput) youtubeUrlInput.focus();
     }
+
 
     resetButtons.forEach((btn) => {
         btn.addEventListener("click", resetWorkflow);

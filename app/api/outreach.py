@@ -496,21 +496,89 @@ async def handle_creator_verification_response(
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Response Recorded — Arclent</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaboration Declined — Arclent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
     <style>
-        body {{ background: #FAF7F0; font-family: -apple-system, sans-serif; color: #111827; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }}
-        .card {{ max-width: 480px; width: 100%; background: #FFF; border: 2px solid #111827; box-shadow: 6px 6px 0px #111827; border-radius: 4px; padding: 36px 28px; text-align: center; }}
-        .icon {{ width: 50px; height: 50px; border-radius: 50%; background: #EF4444; color: #fff; border: 2px solid #111827; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; margin: 0 auto 16px auto; }}
+        body {{
+            background: #FAF7F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }}
+        .card {{
+            max-width: 460px;
+            width: 100%;
+            background: #FFFFFF;
+            border: 2px solid #111827;
+            box-shadow: 6px 6px 0px #111827;
+            border-radius: 4px;
+            padding: 40px 32px;
+            text-align: center;
+        }}
+        .icon-circle {{
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #FEE2E2;
+            color: #DC2626;
+            border: 2px solid #DC2626;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            font-weight: 800;
+            margin: 0 auto 20px auto;
+        }}
+        h1 {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            color: #991B1B;
+            letter-spacing: -0.02em;
+        }}
+        p {{
+            font-size: 15px;
+            color: #4B5563;
+            line-height: 1.55;
+            margin: 0 0 24px 0;
+        }}
+        .declined-box {{
+            background: #FEF2F2;
+            border: 1.5px solid #FCA5A5;
+            border-radius: 2px;
+            padding: 14px 18px;
+            font-size: 13.5px;
+            color: #991B1B;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }}
     </style>
 </head>
 <body>
     <div class="card">
-        <div class="icon">✕</div>
-        <h2>Response Recorded</h2>
-        <p>You indicated you did not collaborate on this piece of content. Thank you for clarifying.</p>
+        <div class="icon-circle">✕</div>
+        <h1>Response Recorded</h1>
+        <p>Thank you <strong>{creator_name}</strong>. Your response has been recorded that you did not collaborate on <em>"{video_title}"</em>.</p>
+        <div class="declined-box">
+            <span>✕</span>
+            <span>Collaboration declined and marked unverified</span>
+        </div>
     </div>
 </body>
 </html>""")
+
 
 
 

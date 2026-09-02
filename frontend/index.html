@@ -522,7 +522,7 @@
                         <div class="v-step-icon">✓</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Outreach sent</h3>
-                            <p class="v-step-sub" id="v-success-recipient-sub">Message delivered to MrBeast via verified channel</p>
+                            <p class="v-step-sub" id="v-success-recipient-sub">Message delivered to creator via verified channel</p>
                         </div>
                     </div>
 
@@ -531,7 +531,7 @@
                         <div class="v-step-icon">✓</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Confirmed by creator</h3>
-                            <p class="v-step-sub">Response received</p>
+                            <p class="v-step-sub">Response received: Confirmed collaboration</p>
                         </div>
                     </div>
 
@@ -539,10 +539,40 @@
                     <div class="verification-shield-card">
                         <div class="v-shield-icon">🛡</div>
                         <div class="v-shield-text" id="v-shield-audience-text">
-                            Collaboration verified against MrBeast's 350M YouTube audience.
+                            Collaboration verified against audience.
                         </div>
                     </div>
                 </div>
+
+                <!-- State 3: Declined / Rejected by Creator -->
+                <div id="verification-rejected-box" class="verification-status-stack hidden">
+                    <!-- Step 1: Outreach sent -->
+                    <div class="verification-step-card">
+                        <div class="v-step-icon">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Outreach sent</h3>
+                            <p class="v-step-sub" id="v-rejected-recipient-sub">Message delivered to creator via verified channel</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Declined by creator -->
+                    <div class="verification-step-card" style="background: #FEF2F2; border-color: #EF4444;">
+                        <div class="v-step-icon reject-icon">✕</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title" style="color: #991B1B;">Collaboration Declined</h3>
+                            <p class="v-step-sub" style="color: #7F1D1D;">Response received: Recipient indicated they did not collaborate on this content</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Resolution Box -->
+                    <div class="verification-rejected-card">
+                        <div class="v-rejected-icon">✕</div>
+                        <div class="v-rejected-text" id="v-rejected-desc-text">
+                            Collaboration not verified. The recipient indicated they were not involved in this project.
+                        </div>
+                    </div>
+                </div>
+
 
                 <div class="result-actions" style="margin-top: 24px;">
                     <button type="button" class="btn-retro-outline reset-workflow-btn" style="width: 100%;">Verify Another Collaboration</button>
