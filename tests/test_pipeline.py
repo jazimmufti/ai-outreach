@@ -290,7 +290,22 @@ class TestCreatorOutreachPipeline(unittest.TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("OAuth Session Timed Out", res.text)
 
+    def test_stateless_oauth_state_recovery_across_server_restarts(self):
+        """Test that state and PKCE verifier are recoverable even if memory store is wiped (simulating a new worker/container on Railway)."""
+        from app.services.gmail_service import _oauth_transaction_store, _store_lock
+
+        auth_url, state, code_verifier = generate_oauth_url()
+
+        # Simulate Worker A shutting down or request routed to Worker B by wiping memory store
+        with _store_lock:
+            _oauth_transaction_store.clear()
+
+        # Worker B receives callback with state and successfully recovers code_verifier
+        recovered_verifier = get_oauth_code_verifier(state)
+        self.assertEqual(recovered_verifier, code_verifier)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

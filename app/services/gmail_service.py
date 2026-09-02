@@ -6,11 +6,13 @@ import time
 import secrets
 import threading
 import base64
+import hashlib
 import logging
 from email.mime.text import MIMEText
 from datetime import datetime
 from typing import Optional, Dict, Any, Tuple
 import httpx
+from cryptography.fernet import Fernet, InvalidToken
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -29,9 +31,63 @@ SCOPES = [
 
 # Persistent OAuth transaction store for ongoing OAuth transactions (survives uvicorn reloads and separate HTTP requests)
 _oauth_transaction_store: Dict[str, Dict[str, Any]] = {}
+_consumed_oauth_states: set = set()
 _store_lock = threading.RLock()
 OAUTH_SESSION_TTL_SECONDS = 900  # 15 minutes TTL
 OAUTH_SESSION_FILE = str(settings.BASE_DIR / ".oauth_sessions.json") if hasattr(settings, "BASE_DIR") else os.path.join(os.path.dirname(settings.TOKEN_FILE), ".oauth_sessions.json")
+
+
+def _get_state_fernet() -> Fernet:
+    """Derive a Fernet cipher instance from SESSION_SECRET_KEY for stateless tamper-proof OAuth state."""
+    secret = (settings.SESSION_SECRET_KEY or "default_outreach_secret_key_84920").encode("utf-8")
+    derived_key = base64.urlsafe_b64encode(hashlib.sha256(secret).digest())
+    return Fernet(derived_key)
+
+
+def encode_signed_oauth_state(code_verifier: str) -> str:
+    """Create a cryptographically signed, encrypted, URL-safe state parameter carrying PKCE verifier."""
+    fernet = _get_state_fernet()
+    payload = {
+        "v": code_verifier,
+        "n": secrets.token_urlsafe(16),
+        "t": time.time()
+    }
+    raw_json = json.dumps(payload)
+    return fernet.encrypt(raw_json.encode("utf-8")).decode("utf-8")
+
+
+def decode_signed_oauth_state(state: str) -> Optional[str]:
+    """Verify cryptographic signature, TTL, and replay status of an OAuth state, returning PKCE verifier."""
+    if not state or not isinstance(state, str):
+        return None
+
+    with _store_lock:
+        if state in _consumed_oauth_states:
+            logger.warning(f"OAuth state has already been consumed (replay prevention).")
+            return None
+
+    fernet = _get_state_fernet()
+    try:
+        decrypted_bytes = fernet.decrypt(state.encode("utf-8"))
+        payload = json.loads(decrypted_bytes.decode("utf-8"))
+        if not isinstance(payload, dict):
+            return None
+
+        created_at = payload.get("t", 0)
+        now = time.time()
+        if now - created_at > OAUTH_SESSION_TTL_SECONDS or created_at > now + 60:
+            logger.warning(f"OAuth signed state expired: created_at={created_at}, now={now}")
+            return None
+
+        code_verifier = payload.get("v")
+        if code_verifier and isinstance(code_verifier, str):
+            return code_verifier
+    except InvalidToken:
+        logger.debug("State is not a valid Fernet token or was tampered with.")
+    except Exception as e:
+        logger.warning(f"Error decoding OAuth signed state: {e}")
+
+    return None
 
 
 def _load_oauth_sessions() -> None:
@@ -96,29 +152,43 @@ def get_oauth_code_verifier(state: str) -> Optional[str]:
     """Retrieve the PKCE code_verifier for a given OAuth state if still valid."""
     if not state or not isinstance(state, str):
         return None
+
+    # 1. First check in-memory store
     with _store_lock:
         _cleanup_expired_sessions()
         entry = _oauth_transaction_store.get(state)
-        if not entry:
-            # Try reloading from disk in case another worker process wrote it
-            _load_oauth_sessions()
-            entry = _oauth_transaction_store.get(state)
         if entry:
             if time.time() - entry.get("created_at", 0) <= OAUTH_SESSION_TTL_SECONDS:
                 return entry.get("code_verifier")
             else:
                 _oauth_transaction_store.pop(state, None)
                 _save_oauth_sessions()
+
+    # 2. Cryptographic state token decoding (survives worker switch, server restart, multi-replica)
+    signed_verifier = decode_signed_oauth_state(state)
+    if signed_verifier:
+        return signed_verifier
+
+    # 3. Disk file fallback
+    with _store_lock:
+        _load_oauth_sessions()
+        entry = _oauth_transaction_store.get(state)
+        if entry:
+            if time.time() - entry.get("created_at", 0) <= OAUTH_SESSION_TTL_SECONDS:
+                return entry.get("code_verifier")
+
     return None
 
 
 def remove_oauth_session(state: str) -> None:
-    """Remove an OAuth session once the token exchange has completed."""
+    """Remove an OAuth session once the token exchange has completed and mark consumed."""
     if not state:
         return
     with _store_lock:
         _oauth_transaction_store.pop(state, None)
+        _consumed_oauth_states.add(state)
         _save_oauth_sessions()
+
 
 
 
@@ -226,7 +296,7 @@ def get_gmail_status() -> Dict[str, Any]:
 
 
 def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, str]:
-    """Generate the Google OAuth2 authorization URL with PKCE and cryptographically random state.
+    """Generate the Google OAuth2 authorization URL with PKCE and cryptographically signed state.
     
     Returns:
         Tuple of (auth_url, state, code_verifier)
@@ -248,14 +318,22 @@ def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, st
         }
     }
 
+    # Generate high-entropy PKCE code verifier (64 bytes URL-safe)
+    code_verifier = secrets.token_urlsafe(64)
+
     flow = Flow.from_client_config(
         client_config,
         scopes=SCOPES,
-        redirect_uri=settings.GOOGLE_REDIRECT_URI
+        redirect_uri=settings.GOOGLE_REDIRECT_URI,
+        autogenerate_code_verifier=False
     )
+    flow.code_verifier = code_verifier
 
-    # Use cryptographically random 32-byte URL-safe state
-    state = custom_state or secrets.token_urlsafe(32)
+    # Create signed & encrypted state carrying code_verifier or custom state
+    if custom_state:
+        state = custom_state
+    else:
+        state = encode_signed_oauth_state(code_verifier)
 
     auth_url, auth_state = flow.authorization_url(
         access_type="offline",
@@ -264,11 +342,7 @@ def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, st
         state=state
     )
 
-    code_verifier = flow.code_verifier
-    if not code_verifier:
-        raise RuntimeError("Failed to generate PKCE code_verifier in OAuth flow.")
-
-    # Persist the code_verifier associated with this state
+    # Persist in memory store as well
     store_oauth_session(auth_state, code_verifier)
 
     return auth_url, auth_state, code_verifier
@@ -292,7 +366,7 @@ def exchange_code_for_tokens(
         }
     }
 
-    # If code_verifier was not supplied explicitly, retrieve from store using state
+    # If code_verifier was not supplied explicitly, retrieve from store / signed state using state
     if not code_verifier and state:
         code_verifier = get_oauth_code_verifier(state)
 
@@ -305,24 +379,34 @@ def exchange_code_for_tokens(
         client_config,
         scopes=SCOPES,
         redirect_uri=settings.GOOGLE_REDIRECT_URI,
-        state=state
+        state=state,
+        autogenerate_code_verifier=False
     )
+    flow.code_verifier = code_verifier
 
     # Pass the original PKCE code_verifier into fetch_token
     flow.fetch_token(code=code, code_verifier=code_verifier)
     credentials = flow.credentials
 
     # Save credentials securely to token file
-    with open(settings.TOKEN_FILE, "w") as token_file:
-        token_file.write(credentials.to_json())
+    try:
+        with open(settings.TOKEN_FILE, "w") as token_file:
+            token_file.write(credentials.to_json())
+    except Exception as e:
+        logger.warning(f"Could not write token.json to disk: {e}")
 
     # Clean up one-time OAuth state
     if state:
         remove_oauth_session(state)
 
+    # Invalidate email cache
+    global _cached_user_email
+    _cached_user_email = None
+
     # Get sender profile email
     status = get_gmail_status()
     return status
+
 
 
 def disconnect_gmail() -> bool:
