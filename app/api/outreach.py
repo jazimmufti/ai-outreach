@@ -16,6 +16,9 @@ from app.models.schemas import (
     OutreachSession,
     CreatorDiscoveryResponse,
     ConfirmCreatorRequest,
+    ConfirmEmailRequest,
+    ConfirmInstagramRequest,
+    ManualInstagramRequest,
     ManualEmailRequest,
     GenerateMessageRequest,
     SendEmailWorkflowRequest,
@@ -186,6 +189,86 @@ async def stream_discovery_endpoint(youtube_url: str = Query(..., description="Y
     )
 
 
+@router.post("/confirm-email")
+async def confirm_email_endpoint(payload: ConfirmEmailRequest):
+    """Step 1: Confirm whether the discovered email is the correct recipient."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    if payload.user_role:
+        session.user_role = payload.user_role
+
+    session.email_confirmed = payload.email_confirmed
+
+    if payload.email_confirmed and session.discovered_email:
+        session.final_email = session.discovered_email.email
+        session.email_source = session.discovered_email.source
+        session.email_confidence = session.discovered_email.confidence
+        session.email_verification_status = "verified_evidence"
+    else:
+        # User indicated "No, not them" or email rejected
+        session.email_confirmed = False
+        session.final_email = None
+
+    session.stage = OutreachStage.VERIFY_INSTAGRAM
+    save_session(session)
+    return session
+
+
+@router.post("/confirm-instagram")
+async def confirm_instagram_endpoint(payload: ConfirmInstagramRequest):
+    """Step 2: Confirm whether the discovered Instagram profile is correct."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    if payload.user_role:
+        session.user_role = payload.user_role
+
+    session.instagram_confirmed = payload.instagram_confirmed
+
+    if payload.instagram_confirmed and session.instagram_profile:
+        session.final_instagram_handle = session.instagram_profile.username
+        session.final_instagram_url = session.instagram_profile.url
+    else:
+        session.instagram_confirmed = False
+        session.final_instagram_handle = None
+        session.final_instagram_url = None
+
+    session.stage = OutreachStage.OUTREACH_HUB
+    save_session(session)
+    return session
+
+
+@router.post("/manual-instagram")
+async def submit_manual_instagram_endpoint(payload: ManualInstagramRequest):
+    """Step 2 Fallback: Set user-provided Instagram handle."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    if payload.user_role:
+        session.user_role = payload.user_role
+
+    clean_handle = payload.handle.lstrip("@").strip()
+    session.instagram_confirmed = True
+    session.final_instagram_handle = f"@{clean_handle}"
+    session.final_instagram_url = f"https://instagram.com/{clean_handle}"
+    
+    # Create or update instagram profile entry
+    session.instagram_profile = SocialProfile(
+        platform="Instagram",
+        username=f"@{clean_handle}",
+        url=f"https://instagram.com/{clean_handle}",
+        source="User manually entered",
+        confidence="high"
+    )
+    session.stage = OutreachStage.OUTREACH_HUB
+    save_session(session)
+    return session
+
+
 @router.post("/confirm")
 async def confirm_creator_endpoint(payload: ConfirmCreatorRequest):
     """Step 2 Decision: Confirm whether the discovered creator is the correct target."""
@@ -251,7 +334,8 @@ async def submit_manual_email_endpoint(payload: ManualEmailRequest):
     session.email_source = "User manually entered"
     session.email_confidence = "high"
     session.email_verification_status = "user_provided"
-    session.stage = OutreachStage.MESSAGE_DRAFT
+    session.email_confirmed = True
+    session.stage = OutreachStage.VERIFY_INSTAGRAM
     session.selected_channel = "email"
 
     # Pre-generate email message
@@ -376,26 +460,45 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
 @router.get("/verify", response_class=HTMLResponse)
 async def handle_creator_verification_response(
     session_id: str,
-    action: str,
+    action: Optional[str] = None,
     token: Optional[str] = None
 ):
-    """Public recipient endpoint: Handles Yes/No response from the sent email."""
+    """Public recipient endpoint: Handles Yes/No response or interactive review page."""
     session = get_session(session_id)
     if not session:
         return HTMLResponse(
-            content="""<!DOCTYPE html><html><body style="font-family:sans-serif;background:#FAF7F0;padding:40px;text-align:center;">
-            <div style="max-width:400px;margin:0 auto;background:#fff;border:2px solid #111827;padding:30px;border-radius:4px;">
-            <h2>Link Expired</h2><p>This verification link is no longer valid or has expired.</p>
-            </div></body></html>""", 
+            content="""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Expired — Arclent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #FAF7F0; font-family: 'Plus Jakarta Sans', sans-serif; color: #111827; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { max-width: 440px; width: 100%; background: #FFFFFF; border: 2px solid #111827; box-shadow: 6px 6px 0px #111827; border-radius: 4px; padding: 36px 28px; text-align: center; }
+        h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin: 0 0 10px; }
+        p { font-size: 14.5px; color: #4B5563; line-height: 1.5; margin: 0; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Verification Link Expired</h2>
+        <p>This verification link is no longer valid or the collaboration session was not found.</p>
+    </div>
+</body>
+</html>""", 
             status_code=404
         )
 
     creator_name = session.creator.name if session.creator else "Creator"
+    channel_name = session.creator.channel_name if session.creator else creator_name
     video_title = session.creator.video_title if session.creator else "the video"
     role = session.user_role or "Video editor"
     sub_count = (session.creator.subscriber_count or "").replace("subscribers", "").strip() if session.creator else ""
     audience_text = f"{creator_name}'s {sub_count} YouTube audience." if sub_count and sub_count != "Active Creator" else f"{creator_name}'s YouTube audience."
 
+    # Direct Confirmation Action
     if action == "confirm":
         session.creator_response = "confirmed"
         session.stage = OutreachStage.VERIFIED
@@ -410,7 +513,7 @@ async def handle_creator_verification_response(
     <title>Collaboration Confirmed — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
     <style>
         body {{
             background-color: #FAF7F0;
@@ -425,7 +528,7 @@ async def handle_creator_verification_response(
             box-sizing: border-box;
         }}
         .card {{
-            max-width: 500px;
+            max-width: 520px;
             width: 100%;
             background: #FFFFFF;
             border: 2px solid #111827;
@@ -433,6 +536,21 @@ async def handle_creator_verification_response(
             border-radius: 4px;
             padding: 40px 32px;
             text-align: center;
+        }}
+        .brand-row {{
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 1.5px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }}
+        .brand-text {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
         }}
         .icon-circle {{
             width: 54px;
@@ -477,6 +595,9 @@ async def handle_creator_verification_response(
 </head>
 <body>
     <div class="card">
+        <div class="brand-row">
+            <span class="brand-text">Arclent</span>
+        </div>
         <div class="icon-circle">✓</div>
         <h1>Collaboration Confirmed!</h1>
         <p>Thank you <strong>{creator_name}</strong>! You have verified this collaboration for <strong>{role}</strong> on <em>"{video_title}"</em>.</p>
@@ -487,7 +608,9 @@ async def handle_creator_verification_response(
     </div>
 </body>
 </html>""")
-    else:
+
+    # Direct Rejection Action
+    elif action == "reject":
         session.creator_response = "rejected"
         session.stage = OutreachStage.REJECTED
         save_session(session)
@@ -500,11 +623,11 @@ async def handle_creator_verification_response(
     <title>Collaboration Declined — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
     <style>
         body {{
             background: #FAF7F0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
             color: #111827;
             display: flex;
             align-items: center;
@@ -514,7 +637,7 @@ async def handle_creator_verification_response(
             padding: 20px;
         }}
         .card {{
-            max-width: 460px;
+            max-width: 480px;
             width: 100%;
             background: #FFFFFF;
             border: 2px solid #111827;
@@ -522,6 +645,19 @@ async def handle_creator_verification_response(
             border-radius: 4px;
             padding: 40px 32px;
             text-align: center;
+        }}
+        .brand-row {{
+            margin-bottom: 24px;
+            padding-bottom: 14px;
+            border-bottom: 1.5px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }}
+        .brand-text {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
         }}
         .icon-circle {{
             width: 54px;
@@ -568,12 +704,263 @@ async def handle_creator_verification_response(
 </head>
 <body>
     <div class="card">
+        <div class="brand-row">
+            <span class="brand-text">Arclent</span>
+        </div>
         <div class="icon-circle">✕</div>
         <h1>Response Recorded</h1>
         <p>Thank you <strong>{creator_name}</strong>. Your response has been recorded that you did not collaborate on <em>"{video_title}"</em>.</p>
         <div class="declined-box">
             <span>✕</span>
             <span>Collaboration declined and marked unverified</span>
+        </div>
+    </div>
+</body>
+</html>""")
+
+    # Interactive Review & Verification Page (Matches email buttons: Yes / No)
+    else:
+        token_param = f"&token={token}" if token else ""
+        confirm_href = f"/verify?session_id={session.session_id}&action=confirm{token_param}"
+        reject_href = f"/verify?session_id={session.session_id}&action=reject{token_param}"
+
+        status_notice = ""
+        if session.creator_response == "confirmed":
+            status_notice = """<div style="margin-bottom: 20px; padding: 10px 14px; background: #E8FDF0; border: 1.5px solid #00D26A; border-radius: 2px; color: #065F46; font-size: 13px; font-weight: 700;">
+                ✓ You previously confirmed this collaboration.
+            </div>"""
+        elif session.creator_response == "rejected":
+            status_notice = """<div style="margin-bottom: 20px; padding: 10px 14px; background: #FEF2F2; border: 1.5px solid #EF4444; border-radius: 2px; color: #991B1B; font-size: 13px; font-weight: 700;">
+                ✕ You previously declined this collaboration.
+            </div>"""
+
+        return HTMLResponse(content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaboration Confirmation — Arclent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            background-color: #FAF7F0;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px 16px;
+        }}
+        .card {{
+            max-width: 540px;
+            width: 100%;
+            background: #FFFFFF;
+            border: 2px solid #111827;
+            box-shadow: 6px 6px 0px #111827;
+            border-radius: 4px;
+            padding: 36px 30px;
+            text-align: center;
+        }}
+        .brand-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+            border-bottom: 1.5px solid #E5E7EB;
+        }}
+        .brand-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }}
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border: 1.5px solid #111827;
+            background: #FBF0D9;
+            border-radius: 2px;
+        }}
+        .status-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #F59E0B;
+        }}
+        .main-heading {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.3;
+            letter-spacing: -0.02em;
+            margin-bottom: 10px;
+        }}
+        .body-desc {{
+            font-size: 15px;
+            color: #4B5563;
+            line-height: 1.55;
+            margin-bottom: 22px;
+        }}
+        .collab-meta-box {{
+            background: #FAF8F2;
+            border: 1.5px solid #111827;
+            border-radius: 3px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            text-align: left;
+        }}
+        .meta-row {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #D1D5DB;
+            font-size: 13.5px;
+        }}
+        .meta-row:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+        .meta-row:first-child {{
+            padding-top: 0;
+        }}
+        .meta-label {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #6B7280;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }}
+        .meta-value {{
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+            word-break: break-word;
+        }}
+        .btn-stack {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+            margin-bottom: 22px;
+        }}
+        .btn-confirm {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #00D26A;
+            color: #000000;
+            text-decoration: none;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 14px 24px;
+            border: 2px solid #111827;
+            border-radius: 2px;
+            box-shadow: 3px 3px 0px #111827;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+        }}
+        .btn-confirm:hover {{
+            background: #00B359;
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px #111827;
+        }}
+        .btn-confirm:active {{
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #111827;
+        }}
+        .btn-reject {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #FFFFFF;
+            color: #111827;
+            text-decoration: none;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14.5px;
+            font-weight: 700;
+            padding: 12px 20px;
+            border: 2px solid #111827;
+            border-radius: 2px;
+            box-shadow: 3px 3px 0px #111827;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+        }}
+        .btn-reject:hover {{
+            background: #FEF2F2;
+            color: #DC2626;
+            border-color: #DC2626;
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px #DC2626;
+        }}
+        .btn-reject:active {{
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #111827;
+        }}
+        .footer-note {{
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #6B7280;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 14px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand-header">
+            <span class="brand-title">Arclent</span>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>COLLABORATION VERIFICATION</span>
+            </div>
+        </div>
+
+        {status_notice}
+
+        <h1 class="main-heading">Can you confirm this collaboration?</h1>
+        <p class="body-desc">
+            Someone on Arclent claims they worked as <strong>{role}</strong> on <em>"{video_title}"</em>.
+        </p>
+
+        <div class="collab-meta-box">
+            <div class="meta-row">
+                <span class="meta-label">CREATOR / CHANNEL</span>
+                <span class="meta-value">{creator_name}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">CLAIMED ROLE</span>
+                <span class="meta-value">{role}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">PROJECT CONTENT</span>
+                <span class="meta-value">"{video_title}"</span>
+            </div>
+        </div>
+
+        <div class="btn-stack">
+            <a href="{confirm_href}" class="btn-confirm">
+                <span>✓ Yes, I confirm this collaboration</span>
+            </a>
+            <a href="{reject_href}" class="btn-reject">
+                <span>✕ No, I do not confirm</span>
+            </a>
+        </div>
+
+        <div class="footer-note">
+            Sent securely via Arclent • Creator Collaboration & Credentials Verification
         </div>
     </div>
 </body>

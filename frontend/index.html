@@ -143,350 +143,416 @@
 
 
             <!-- ================================================================
-                 SCREEN 3A: Is this who you worked with? (Matches Screenshot)
+                 SCREEN 3: STEP 1 · EMAIL VERIFICATION
                  ================================================================ -->
-            <section id="screen-creator-found" class="retro-card hidden">
-                <h1 class="card-main-heading">Is this who you worked with?</h1>
-                <p class="card-main-subtext">
-                    We matched your link to this public profile. Confirm it's correct before we reach out.
-                </p>
-
-                <!-- Creator Inset Match Card -->
-                <div class="creator-inset-card">
-                    <div class="creator-avatar-container" id="found-creator-avatar-container">
-                        <span id="found-creator-initial" class="avatar-initial-text">M</span>
-                        <img id="found-creator-avatar" src="" alt="Avatar" class="avatar-img-round hidden">
-                    </div>
-                    <div class="creator-details-col">
-                        <div class="creator-name-title" id="found-creator-name">MrBeast</div>
-                        <div class="creator-handle-text font-mono" id="found-channel-handle">@MrBeast</div>
-                        <div class="creator-subs-pill">
-                            <span class="tag-label">YouTube</span>
-                            <span id="found-subscriber-badge" class="tag-val font-mono">350M subscribers</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Video Context Quote Line -->
-                <div class="video-quote-line font-mono">
-                    <span class="quote-pipe">|</span> On: <span id="found-video-title">"I Survived 50 Hours In Antarctica"</span>
-                </div>
-
-                <!-- Confirmation Action Buttons -->
-                <div class="retro-btn-row">
-                    <button type="button" id="confirm-yes-btn" class="btn-retro-green">
-                        <span>Yes, that's them</span>
+            <section id="screen-verify-email" class="retro-card hidden">
+                <!-- Step Navigation Indicator with Integrated Back button -->
+                <div class="card-top-nav">
+                    <button type="button" class="btn-retro-back" id="btn-back-email" title="Back to Link your work">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span>Back</span>
                     </button>
-                    <button type="button" id="confirm-no-btn" class="btn-retro-outline">
-                        <span>Not the right creator</span>
-                    </button>
-                </div>
-            </section>
-
-
-            <!-- ================================================================
-                 SCREEN 3B: No Email Published on YouTube (Manual & Social Fallbacks)
-                 ================================================================ -->
-            <section id="screen-no-email-choice" class="retro-card hidden">
-                <h1 class="card-main-heading">Is this who you worked with?</h1>
-                <p class="card-main-subtext">
-                    We matched your link to this public profile. Confirm it's correct before we reach out.
-                </p>
-
-                <!-- Creator Inset Match Card -->
-                <div class="creator-inset-card">
-                    <div class="creator-avatar-container" id="noemail-creator-avatar-container">
-                        <span id="noemail-creator-initial" class="avatar-initial-text">C</span>
-                        <img id="noemail-creator-avatar" src="" alt="Avatar" class="avatar-img-round hidden">
+                    <div class="steps-nav">
+                        <div class="step-pill active" id="email-step-pill">1 · EMAIL</div>
+                        <div class="step-pill" id="ig-step-pill-from-email">2 · INSTAGRAM</div>
                     </div>
-                    <div class="creator-details-col">
-                        <div class="creator-name-title" id="noemail-creator-name">Creator Name</div>
-                        <div class="creator-handle-text font-mono" id="noemail-channel-handle">@creator</div>
-                        <div class="creator-subs-pill">
-                            <span class="tag-label">YouTube</span>
-                            <span id="noemail-subscriber-badge" class="tag-val font-mono">Active Creator</span>
+                </div>
+
+                <!-- Dynamic Creator Meta Inset -->
+                <div class="content-card" id="email-step-content-card">
+                    <div class="content-thumb" id="email-creator-thumb">
+                        <span id="email-creator-initial">M</span>
+                        <img id="email-creator-avatar" src="" alt="Avatar" class="hidden">
+                    </div>
+                    <div class="content-meta">
+                        <div class="role" id="email-step-creator-role">Video Editor — MrBeast</div>
+                        <div class="platform" id="email-step-creator-platform">YouTube · Added from your work link</div>
+                    </div>
+                </div>
+
+                <!-- State A: Real Email Discovered -->
+                <div id="email-found-view">
+                    <h1 class="card-main-heading">Confirm Contact Email</h1>
+                    <p class="body-copy">
+                        We found a contact email for <strong id="email-found-creator-name">Creator</strong>.
+                    </p>
+
+                    <div class="lookup-row">
+                        <div class="lookup-icon">@</div>
+                        <div class="lookup-value-col">
+                            <div class="lookup-value" id="email-found-address">contact@domain.com</div>
+                            <span class="lookup-subtext" id="email-found-source-tag">Source: Publicly Published</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- Video Context Quote Line -->
-                <div class="video-quote-line font-mono">
-                    <span class="quote-pipe">|</span> On: <span id="noemail-video-title">"Creator Video"</span>
-                </div>
+                    <p class="body-copy" style="margin-bottom: 14px; font-weight: 600;">
+                        Is this the right person to confirm the collaboration?
+                    </p>
 
-                <!-- Explicit "No worries, we've got other ways" Reassurance Alert Box -->
-                <div class="no-email-alert-box">
-                    <div class="no-email-alert-content">
-                        <span class="no-email-alert-icon">💡</span>
-                        <div class="no-email-alert-text-group">
-                            <div class="no-email-alert-title">
-                                No public email listed on this YouTube channel? No worries!
-                            </div>
-                            <div class="no-email-alert-desc">
-                                We've got other ways to get your collaboration verified: you can enter their direct email address below to reach out via Gmail, or connect directly through their verified social profiles (Instagram, X/Twitter, Discord, etc.).
-                            </div>
-                        </div>
+                    <div class="btn-row">
+                        <button type="button" id="btn-email-confirm-yes" class="btn-primary">
+                            <span>Yes, that's them</span>
+                        </button>
+                        <button type="button" id="btn-email-confirm-no" class="btn-secondary">
+                            <span>No, not them</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- 1. PRIMARY ACTION: Direct Email Input -->
-                <div class="manual-email-block">
-                    <div class="block-title-group">
-                        <span class="field-label-tag font-mono">PRIMARY OUTREACH METHOD</span>
-                        <h2 class="sub-heading">Enter Creator's Email Address</h2>
-                        <p class="card-main-subtext" style="margin-bottom: 14px;">
-                            Enter their direct email below to send this collaboration verification inquiry via Gmail:
-                        </p>
+                <!-- State B: Fallback / Manual Email Input -->
+                <div id="email-fallback-view" class="hidden">
+                    <h1 class="card-main-heading">Enter the correct email address</h1>
+                    <p class="body-copy" id="email-fallback-desc">
+                        Add the correct email and we'll send the verification request there directly.
+                    </p>
+
+                    <!-- Discovered Candidate suggestions if any -->
+                    <div id="email-candidate-chips-wrapper" class="helper-chips-group hidden">
+                        <span class="helper-label">Discovered candidate emails on channel:</span>
+                        <div id="email-candidate-chips-row" class="helper-chips-row"></div>
                     </div>
 
-                    <form id="noemail-manual-email-form" class="manual-email-inline-form">
-                        <div class="form-group" style="margin-bottom: 12px;">
-                            <label for="noemail-manual-email-input" class="retro-label font-mono">CREATOR EMAIL ADDRESS</label>
+                    <form id="email-manual-entry-form">
+                        <div class="form-group">
+                            <label for="email-manual-entry-input" class="retro-label font-mono">Creator's email</label>
                             <div class="input-wrapper">
                                 <input 
                                     type="email" 
-                                    id="noemail-manual-email-input" 
+                                    id="email-manual-entry-input" 
                                     class="retro-input font-mono" 
-                                    placeholder="creator@domain.com"
+                                    placeholder="name@example.com"
                                     autocomplete="off"
-                                    required
                                 >
-                                <span id="noemail-manual-status-icon" class="validation-icon"></span>
+                                <span id="email-manual-entry-status-icon" class="validation-icon"></span>
                             </div>
-                            <span id="noemail-manual-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
+                            <span id="email-manual-entry-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
                         </div>
 
-                        <button type="submit" id="noemail-manual-submit-btn" class="btn-retro-green" style="width: 100%;" disabled>
-                            <span>Continue to Verification Outreach →</span>
+                        <div class="btn-row">
+                            <button type="submit" id="btn-email-manual-submit" class="btn-primary" disabled>
+                                <span>Send Email</span>
+                            </button>
+                            <button type="button" id="btn-email-fallback-back" class="btn-secondary">
+                                <span>← Back to detected email</span>
+                            </button>
+                        </div>
+                        <button type="button" id="btn-email-skip-to-ig" class="btn-ghost">
+                            I don't have their email →
                         </button>
                     </form>
                 </div>
-
-                <!-- 2. SECONDARY ACTION: Social Media Profiles Drawer -->
-                <div class="socials-drawer-container">
-                    <details class="socials-expandable-drawer" id="socials-accordion">
-                        <summary class="socials-drawer-summary" id="socials-drawer-trigger">
-                            <div class="drawer-summary-left">
-                                <span class="drawer-icon-bubble">🔗</span>
-                                <div class="drawer-title-group">
-                                    <span class="drawer-title">Click here to connect through social media profiles</span>
-                                    <span class="drawer-subtitle">Discovered social accounts & ready-to-use DM message</span>
-                                </div>
-                            </div>
-                            <div class="drawer-summary-right">
-                                <span id="socials-count-badge" class="badge badge-high">0 profiles found</span>
-                                <span class="drawer-arrow">▼</span>
-                            </div>
-                        </summary>
-
-                        <div class="socials-drawer-expanded-content">
-                            <div class="drawer-section-header">
-                                <h3 class="section-title" style="font-size: 16px;">Verified Social Media Profiles</h3>
-                                <p class="section-subtitle" style="font-size: 13px; margin-bottom: 12px;">
-                                    Open any verified profile to connect with the creator directly:
-                                </p>
-                            </div>
-
-                            <div id="noemail-socials-grid" class="social-cards-grid"></div>
-
-                            <div id="noemail-socials-empty" class="empty-socials-card hidden">
-                                <div class="empty-icon">🔍</div>
-                                <div class="empty-content">
-                                    <strong>No public social profiles found</strong>
-                                    <p>We searched for this creator, but no linked social profiles were found on their channel. You can enter an email address above to reach out via Gmail.</p>
-                                </div>
-                            </div>
-
-                            <div class="pitch-drawer-block">
-                                <div class="drawer-section-header" style="margin-top: 18px;">
-                                    <div class="section-pill-tag secondary font-mono">COLLABORATION VERIFICATION DM</div>
-                                    <h3 class="section-title" style="font-size: 16px;">Direct Message Draft</h3>
-                                    <p class="section-subtitle" style="font-size: 13px; margin-bottom: 10px;">
-                                        Copy this verification message and send it directly via Instagram/X DMs:
-                                    </p>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 12px;">
-                                    <textarea id="noemail-copy-pitch-body" class="retro-textarea font-mono" rows="4"></textarea>
-                                </div>
-
-                                <div class="composer-actions">
-                                    <button type="button" id="noemail-pitch-regen-btn" class="btn-retro-outline" style="padding: 8px 14px;">
-                                        <span>🔄 Reset</span>
-                                    </button>
-                                    <button type="button" id="noemail-pitch-copy-btn" class="btn-retro-green" style="padding: 8px 18px;">
-                                        <span id="noemail-pitch-btn-text">📋 Copy Message</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 4A: Enter Correct / Manual Email (When user clicked "Not right creator")
+                 SCREEN 4: STEP 2 · INSTAGRAM VERIFICATION
                  ================================================================ -->
-            <section id="screen-manual-email" class="retro-card hidden">
-                <div class="card-header-bar">
-                    <button type="button" id="back-from-manual-email-btn" class="btn-retro-outline" style="padding: 6px 14px;">← Back</button>
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
+            <section id="screen-verify-instagram" class="retro-card hidden">
+                <!-- Step Navigation Indicator with Integrated Back button -->
+                <div class="card-top-nav">
+                    <button type="button" class="btn-retro-back" id="btn-back-ig" title="Back to Step 1 · Email">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span>Back</span>
+                    </button>
+                    <div class="steps-nav">
+                        <div class="step-pill done" id="email-step-pill-from-ig" style="cursor: pointer;" title="Back to Step 1 · Email">1 · EMAIL</div>
+                        <div class="step-pill active" id="ig-step-pill">2 · INSTAGRAM</div>
+                    </div>
                 </div>
 
-                <h1 class="card-main-heading">Enter the correct email address you want to contact.</h1>
-                <p class="card-main-subtext">
-                    If you know the creator's email address, enter it below to generate the collaboration verification message and send it directly via Gmail.
-                </p>
-
-                <form id="manual-email-form" class="manual-email-form">
-                    <div class="form-group">
-                        <label for="manual-email-input-field" class="retro-label font-mono">RECIPIENT EMAIL ADDRESS</label>
-                        <div class="input-wrapper">
-                            <input 
-                                type="email" 
-                                id="manual-email-input-field" 
-                                class="retro-input font-mono" 
-                                placeholder="creator@customdomain.com"
-                                required
-                                autocomplete="off"
-                            >
-                            <span id="manual-email-status-icon" class="validation-icon"></span>
-                        </div>
-                        <span id="manual-email-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
+                <!-- Dynamic Creator Meta Inset -->
+                <div class="content-card" id="ig-step-content-card">
+                    <div class="content-thumb" id="ig-creator-thumb">
+                        <span id="ig-creator-initial">M</span>
+                        <img id="ig-creator-avatar" src="" alt="Avatar" class="hidden">
                     </div>
-
-                    <div class="actions-row">
-                        <button type="submit" id="submit-manual-email-btn" class="btn-retro-green" disabled>
-                            <span>Continue to Outreach →</span>
-                        </button>
+                    <div class="content-meta">
+                        <div class="role" id="ig-step-creator-role">Video Editor — MrBeast</div>
+                        <div class="platform" id="ig-step-creator-platform">YouTube · Added from your work link</div>
                     </div>
-                </form>
-
-                <div class="flow-or-divider">
-                    <span class="divider-line"></span>
-                    <span class="divider-label font-mono">OR</span>
-                    <span class="divider-line"></span>
                 </div>
 
-                <div class="fallback-section-block">
-                    <h3 class="section-title">Copy the verification message and send it yourself</h3>
-                    <p class="card-main-subtext" style="margin-bottom: 12px;">
-                        You can copy this verification inquiry and send it to the creator through any channel you prefer.
+                <!-- State A: Real Instagram / Social Discovered -->
+                <div id="ig-found-view">
+                    <h1 class="card-main-heading" id="ig-step-heading">Confirm Instagram Profile</h1>
+                    <p class="body-copy" id="ig-step-subheading">
+                        We found an Instagram profile for <strong id="ig-found-creator-name">Creator</strong>.
                     </p>
 
-                    <div class="form-group">
-                        <textarea id="manual-copy-message-body" class="retro-textarea font-mono" rows="5"></textarea>
-                    </div>
-
-                    <div class="composer-actions">
-                        <button type="button" id="manual-copy-regen-btn" class="btn-retro-outline" style="padding: 8px 14px;">
-                            <span>🔄 Reset</span>
-                        </button>
-                        <button type="button" id="manual-copy-message-btn" class="btn-retro-green" style="padding: 8px 18px;">
-                            <span id="manual-copy-btn-text">📋 Copy Message</span>
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-
-            <!-- ================================================================
-                 SCREEN 4B: Outreach Email Draft (After "Yes, that's them")
-                 ================================================================ -->
-            <section id="screen-message-email" class="retro-card hidden">
-                <div class="card-header-bar">
-                    <div class="header-flow-info">
-                        <h1 class="card-main-heading" id="email-flow-heading" style="margin-bottom: 2px;">Reaching out to MrBeast</h1>
-                        <span class="auto-sent-badge font-mono" id="email-flow-badge">Auto-sent by Arclent → @MrBeast</span>
-                    </div>
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
-                </div>
-
-                <!-- Gmail Sender Status Box -->
-                <div class="sender-status-box">
-                    <div class="sender-info">
-                        <span class="retro-label font-mono" style="font-size: 11px;">SENDER ACCOUNT (Connected Gmail):</span>
-                        <div id="composer-sender-badge" class="font-mono font-bold" style="color: var(--color-accent-amber);">Not connected (OAuth required)</div>
-                    </div>
-                    <div id="composer-gmail-actions">
-                        <button type="button" id="composer-connect-gmail-btn" class="btn-retro-outline" style="padding: 6px 14px;">Connect Gmail</button>
-                        <button type="button" id="composer-disconnect-gmail-btn" class="btn-retro-outline btn-micro-danger" style="display: none; padding: 6px 14px;">Switch Account</button>
-                    </div>
-                </div>
-
-                <!-- Email Composer Form -->
-                <form id="workflow-email-form" class="email-composer-form">
-                    <div class="form-group">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                            <label for="workflow-email-recipient" class="retro-label font-mono" style="margin-bottom: 0;">RECIPIENT EMAIL (Editable)</label>
-                            <span id="composer-recipient-source-tag" class="badge badge-high" style="font-size: 10px;">Publicly Found</span>
+                    <div class="lookup-row lookup-row-ig" id="ig-discovered-card">
+                        <div class="lookup-icon lookup-icon-ig" id="ig-discovered-icon" title="Instagram">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                            </svg>
                         </div>
-                        <input type="email" id="workflow-email-recipient" class="retro-input font-mono" required placeholder="creator@domain.com">
+                        <div class="lookup-value-col">
+                            <div class="lookup-header-meta">
+                                <span class="lookup-badge font-mono">DETECTED PROFILE</span>
+                            </div>
+                            <div class="lookup-value font-mono" id="ig-found-handle">@handle</div>
+                            <div class="lookup-actions-row">
+                                <a href="#" target="_blank" rel="noopener noreferrer" class="lookup-link-btn font-mono" id="ig-found-link">
+                                    <span>Open Profile ↗</span>
+                                </a>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="workflow-email-subject" class="retro-label font-mono">SUBJECT</label>
-                        <input type="text" id="workflow-email-subject" class="retro-input" required value="Collaboration confirmation for video">
-                    </div>
+                    <p class="body-copy" style="margin-bottom: 14px; font-weight: 600;">
+                        Is this the right person?
+                    </p>
 
-                    <div class="form-group">
-                        <label for="workflow-email-body" class="retro-label font-mono">MESSAGE DRAFT (Editable)</label>
-                        <textarea id="workflow-email-body" class="retro-textarea font-mono" rows="6" required></textarea>
-                    </div>
-
-                    <div class="composer-actions">
-                        <button type="button" id="regenerate-email-btn" class="btn-retro-outline">
-                            <span>🔄 Reset Draft</span>
+                    <div class="btn-row">
+                        <button type="button" id="btn-ig-confirm-yes" class="btn-primary">
+                            <span>Yes, that's them</span>
                         </button>
-                        
-                        <div class="send-action-group">
-                            <button type="submit" id="workflow-send-email-btn" class="btn-retro-green" disabled>
-                                <span>Send Email</span>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <button type="button" id="btn-ig-confirm-no" class="btn-secondary">
+                            <span>No, not them</span>
+                        </button>
+                    </div>
+
+                    <!-- Option: Other Social Media Profiles Fetched -->
+                    <div id="ig-other-socials-section" class="other-socials-accordion">
+                        <button type="button" id="btn-toggle-other-socials" class="other-socials-toggle-btn" aria-expanded="false">
+                            <div class="toggle-btn-left">
+                                <span class="toggle-icon-wrap">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                </span>
+                                <span class="toggle-btn-title">Other social media profiles fetched</span>
+                                <span class="social-count-pill" id="ig-other-socials-count">0</span>
+                            </div>
+                            <div class="toggle-btn-right">
+                                <span class="toggle-chevron" id="ig-other-socials-chevron">▼</span>
+                            </div>
+                        </button>
+                        <div id="ig-other-socials-content" class="other-socials-content hidden">
+                            <div class="other-socials-intro">
+                                <span>Discovered from creator's YouTube links & description. Click any to select or view:</span>
+                            </div>
+                            <div id="ig-other-socials-list" class="other-socials-list">
+                                <!-- Dynamically populated other profiles -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- State B: Fallback / Manual Instagram Input -->
+                <div id="ig-fallback-view" class="hidden">
+                    <h1 class="card-main-heading" id="ig-fallback-heading">Enter the correct Instagram profile</h1>
+                    <p class="body-copy" id="ig-fallback-desc">
+                        Enter their Instagram handle or profile URL to continue.
+                    </p>
+
+                    <!-- Discovered Socials helper chips if any other platforms were found -->
+                    <div id="ig-social-chips-wrapper" class="helper-chips-group hidden">
+                        <span class="helper-label">Other channels found on YouTube:</span>
+                        <div id="ig-social-chips-row" class="helper-chips-row"></div>
+                    </div>
+
+                    <form id="ig-manual-entry-form">
+                        <div class="form-group">
+                            <div class="input-wrapper">
+                                <input 
+                                    type="text" 
+                                    id="ig-manual-entry-input" 
+                                    class="retro-input font-mono" 
+                                    placeholder="@handle or instagram.com/handle"
+                                    autocomplete="off"
+                                >
+                            </div>
+                        </div>
+
+                        <div class="btn-row">
+                            <button type="submit" id="btn-ig-manual-submit" class="btn-primary" disabled>
+                                <span>Continue</span>
+                            </button>
+                            <button type="button" id="btn-ig-fallback-back" class="btn-secondary">
+                                <span>← Back to detected profile</span>
                             </button>
                         </div>
+                    </form>
+                </div>
+
+                <!-- State C: Confirmed Instagram Profile & Direct Action -->
+                <div id="ig-confirmed-view" class="hidden">
+                    <div class="status-badge" id="ig-confirmed-status-badge" style="margin-bottom: 14px;"><span class="dot"></span>INSTAGRAM PROFILE CONFIRMED</div>
+                    <h1 class="card-main-heading" id="ig-confirmed-heading">Instagram profile confirmed</h1>
+                    <p class="body-copy" id="ig-confirmed-subheading">
+                        Ready to contact <strong id="ig-confirmed-creator-name">Creator</strong> on Instagram.
+                    </p>
+
+                    <div class="lookup-row lookup-row-confirmed" style="background: #F0FDF4; border-color: #22C55E;">
+                        <div class="lookup-icon lookup-icon-ig" id="ig-confirmed-icon" title="Instagram">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                            </svg>
+                        </div>
+                        <div class="lookup-value-col">
+                            <div class="lookup-value font-mono" id="ig-confirmed-handle">@handle</div>
+                            <span class="lookup-subtext" style="color: #166534; font-weight: 600;">✓ Confirmed Profile</span>
+                        </div>
                     </div>
-                </form>
+
+                    <div class="form-group" style="margin-top: 18px; margin-bottom: 18px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <label for="ig-confirmed-message-draft" class="retro-label font-mono" style="margin-bottom: 0;">DIRECT MESSAGE DRAFT</label>
+                            <span class="badge badge-high font-mono" style="font-size: 10px;">Ready to Send</span>
+                        </div>
+                        <textarea id="ig-confirmed-message-draft" class="retro-textarea font-mono" rows="4"></textarea>
+                    </div>
+
+                    <!-- Two primary action options: Open Instagram & Send, and Copy Message -->
+                    <div class="btn-row" style="display: flex; gap: 10px;">
+                        <button type="button" id="btn-ig-open-send" class="btn-primary" style="flex: 1; justify-content: center;">
+                            <span>Open Instagram & Send ↗</span>
+                        </button>
+                        <button type="button" id="btn-ig-copy-draft-main" class="btn-secondary" style="flex: 1; justify-content: center;">
+                            <span id="btn-ig-copy-text">📋 Copy Message</span>
+                        </button>
+                    </div>
+
+                    <!-- Other Discovered Profiles section directly below -->
+                    <div id="ig-confirmed-other-socials-box" class="discovered-profiles-footer-box" style="margin-top: 24px; padding-top: 18px; border-top: 1.5px dashed rgba(51, 71, 91, 0.25);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span class="field-label-tag font-mono" style="font-size: 10px; margin: 0;">CHANNELS</span>
+                                <span class="retro-label font-mono" style="margin-bottom: 0; font-size: 12px; font-weight: 700; color: var(--black);">OTHER DISCOVERED PROFILES</span>
+                            </div>
+                            <span class="social-count-pill" id="ig-confirmed-other-count">0</span>
+                        </div>
+                        <p class="body-copy" style="font-size: 12.5px; margin-bottom: 12px; color: var(--slate);">
+                            Other channels discovered for this creator:
+                        </p>
+                        <div id="ig-confirmed-other-socials-list" class="other-socials-list" style="margin-bottom: 14px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                        <button type="button" id="btn-ig-to-hub" class="btn-retro-outline" style="width: 100%; justify-content: center; padding: 9px 16px; font-size: 12px;">
+                            <span>View All Discovered Channels & Full Outreach Hub →</span>
+                        </button>
+                    </div>
+                </div>
             </section>
 
 
             <!-- ================================================================
-                 SCREEN 4C: Instagram Fallback
+                 SCREEN 5: OUTREACH & DISPATCH HUB
                  ================================================================ -->
-            <section id="screen-message-instagram" class="retro-card hidden">
-                <div class="card-header-bar">
-                    <button type="button" id="back-from-instagram-btn" class="btn-retro-outline" style="padding: 6px 14px;">← Back</button>
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 6px 14px;">New Search</button>
-                </div>
-
-                <h1 class="card-main-heading">Instagram Profile Found</h1>
-                <p class="card-main-subtext">
-                    We located the creator's matched Instagram account. Review your verification message and open Instagram to connect.
-                </p>
-
-                <div class="instagram-matched-card">
-                    <div class="insta-icon-badge">📸</div>
-                    <div class="insta-details">
-                        <span class="social-platform font-mono">INSTAGRAM</span>
-                        <h3 id="insta-username" class="insta-handle font-mono">@creatorusername</h3>
-                        <span id="insta-creator-name" class="creator-name-sub">Creator Name</span>
+            <section id="screen-outreach-hub" class="retro-card hidden">
+                <div class="card-header-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 14px;">
+                        <button type="button" class="btn-retro-back" id="btn-back-hub" title="Back">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <span>Back</span>
+                        </button>
+                        <div class="header-flow-info">
+                            <div class="status-badge" style="margin-bottom: 4px;"><span class="dot"></span>READY · OUTREACH CHANNELS VERIFIED</div>
+                            <h1 class="card-main-heading" id="hub-creator-heading" style="margin-bottom: 0;">Reaching out to Creator</h1>
+                        </div>
                     </div>
-                    <span class="badge badge-high">✓ Matched</span>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 7px 16px; font-size: 12.5px;">New Search</button>
                 </div>
 
-                <div class="form-group" style="margin-top: 18px;">
-                    <label for="insta-message-body" class="retro-label font-mono">VERIFICATION MESSAGE (Editable)</label>
-                    <textarea id="insta-message-body" class="retro-textarea font-mono" rows="5"></textarea>
+                <!-- Verified Channels Summary Box -->
+                <div class="outreach-summary-card">
+                    <div class="outreach-channel-item" id="hub-summary-email-row">
+                        <div class="outreach-channel-label">
+                            <span class="channel-type-badge font-mono">✉ EMAIL</span>
+                            <span id="hub-summary-email-val" class="outreach-channel-value font-mono">name@domain.com</span>
+                        </div>
+                        <button type="button" id="hub-edit-email-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                    </div>
+                    <div class="outreach-channel-item" id="hub-summary-ig-row">
+                        <div class="outreach-channel-label">
+                            <span class="channel-type-badge font-mono" id="hub-summary-social-label">📸 SOCIAL</span>
+                            <span id="hub-summary-ig-val" class="outreach-channel-value font-mono">@handle</span>
+                        </div>
+                        <button type="button" id="hub-edit-ig-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                    </div>
                 </div>
 
-                <div class="insta-actions-bar">
-                    <button type="button" id="copy-insta-msg-btn" class="btn-retro-outline">
-                        <span>📋 Copy Message</span>
-                    </button>
-                    <button type="button" id="open-instagram-btn" class="btn-retro-green">
-                        <span>Open Instagram & Send ↗</span>
-                    </button>
+                <!-- 1. Email Outreach Block (if email verified) -->
+                <div id="hub-email-block" class="hub-action-section">
+                    <div class="block-title-group" style="margin-bottom: 14px;">
+                        <span class="field-label-tag font-mono">CHANNEL 1 · GMAIL OUTREACH</span>
+                        <h2 class="sub-heading" style="font-size: 17px; margin-top: 4px; font-weight: 800;">Send Collaboration Confirmation Email</h2>
+                    </div>
+
+                    <!-- Email Composer Form -->
+                    <form id="workflow-email-form" class="email-composer-form">
+                        <div class="form-group">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <label for="workflow-email-recipient" class="retro-label font-mono" style="margin-bottom: 0;">RECIPIENT EMAIL</label>
+                                <span id="composer-recipient-source-tag" class="badge badge-high" style="font-size: 10px; background: #00D26A; color: #000; border: 1.5px solid #111827; font-weight: 700;">Verified Contact</span>
+                            </div>
+                            <input type="email" id="workflow-email-recipient" class="retro-input font-mono" required placeholder="creator@domain.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="workflow-email-subject" class="retro-label font-mono">SUBJECT</label>
+                            <input type="text" id="workflow-email-subject" class="retro-input" required value="Collaboration confirmation for video">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="workflow-email-body" class="retro-label font-mono">MESSAGE DRAFT (With Yes/No Confirmation Buttons)</label>
+                            <textarea id="workflow-email-body" class="retro-textarea font-mono" rows="5" required></textarea>
+                        </div>
+
+                        <div class="composer-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px;">
+                            <button type="button" id="regenerate-email-btn" class="btn-secondary" style="flex: 0 0 auto; padding: 10px 18px;">
+                                <span>🔄 Reset Draft</span>
+                            </button>
+                            
+                            <div class="send-action-group" style="flex: 1;">
+                                <button type="submit" id="workflow-send-email-btn" class="btn-primary" style="width: 100%; justify-content: center;" disabled>
+                                    <span>Send Verification Email</span>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 2. Instagram Direct Message Block (if IG verified) -->
+                <div id="hub-instagram-block" class="hub-action-section" style="margin-top: 24px;">
+                    <div class="block-title-group" style="margin-bottom: 12px;">
+                        <span class="field-label-tag font-mono">CHANNEL 2 · INSTAGRAM DIRECT MESSAGE</span>
+                        <h2 class="sub-heading" style="font-size: 17px;">Send DM to Creator</h2>
+                    </div>
+
+                    <div class="dm-preview">
+                        <div class="dm-head">
+                            <span id="hub-dm-head-handle">Direct message to @creator</span>
+                            <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.2); color: #FFF;">Instagram DM</span>
+                        </div>
+                        <div class="dm-body">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label for="insta-message-body" class="retro-label font-mono">VERIFICATION MESSAGE DRAFT</label>
+                                <textarea id="insta-message-body" class="retro-textarea font-mono" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="button" id="copy-insta-msg-btn" class="btn-secondary">
+                            <span id="copy-insta-btn-text">📋 Copy Message</span>
+                        </button>
+                        <button type="button" id="open-instagram-btn" class="btn-primary">
+                            <span>Open Instagram & Send ↗</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Other Social Profiles Grid (if found) -->
+                <div id="hub-other-socials-block" class="hub-action-section hidden" style="margin-top: 24px;">
+                    <div class="block-title-group" style="margin-bottom: 12px;">
+                        <span class="field-label-tag font-mono">ADDITIONAL SOCIAL PROFILES</span>
+                        <h2 class="sub-heading" style="font-size: 16px;">Other Discovered Accounts</h2>
+                    </div>
+                    <div id="hub-socials-grid" class="social-cards-grid"></div>
                 </div>
             </section>
 
@@ -495,6 +561,14 @@
                  SCREEN 5: Delivery & Creator Verification Status
                  ================================================================ -->
             <section id="screen-delivery-success" class="retro-card result-success-card hidden">
+                <div class="delivery-header-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <button type="button" class="btn-retro-back" id="btn-back-delivery" title="Back to Outreach Hub">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <span>Back to Hub</span>
+                    </button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 5px 12px; font-size: 12px;">New Search</button>
+                </div>
+
                 <!-- State 1: Awaiting Creator Response -->
                 <div id="verification-pending-box" class="verification-status-stack">
                     <div class="verification-step-card">

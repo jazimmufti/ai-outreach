@@ -9,6 +9,9 @@ class OutreachStage(str, Enum):
     """Explicit workflow stages for creator outreach."""
     INPUT = "input"
     DISCOVERING = "discovering"
+    VERIFY_EMAIL = "verify_email"
+    VERIFY_INSTAGRAM = "verify_instagram"
+    OUTREACH_HUB = "outreach_hub"
     CREATOR_FOUND = "creator_found"
     NO_EMAIL_CHOICE = "no_email_choice"
     MANUAL_EMAIL_INPUT = "manual_email_input"
@@ -95,12 +98,16 @@ class OutreachSession(BaseModel):
     creator: Optional[CreatorProfile] = None
     discovered_email: Optional[EmailCandidate] = None
     creator_confirmed: Optional[bool] = None
+    email_confirmed: Optional[bool] = None
     final_email: Optional[str] = None
     email_source: Optional[str] = None
     email_confidence: Optional[str] = None
     email_verification_status: Optional[str] = None
     social_profiles: List[SocialProfile] = Field(default_factory=list)
     instagram_profile: Optional[SocialProfile] = None
+    instagram_confirmed: Optional[bool] = None
+    final_instagram_handle: Optional[str] = None
+    final_instagram_url: Optional[str] = None
     message: Optional[OutreachMessage] = None
     selected_channel: Optional[Literal["email", "instagram", "manual"]] = None
     creator_response: Optional[Literal["pending", "confirmed", "rejected"]] = "pending"
@@ -147,6 +154,42 @@ class ConfirmCreatorRequest(BaseModel):
     session_id: str
     creator_confirmed: bool
     user_role: Optional[str] = None
+
+
+class ConfirmEmailRequest(BaseModel):
+    """Step 1: User confirmation decision for discovered email."""
+    session_id: str
+    email_confirmed: bool
+    user_role: Optional[str] = None
+
+
+class ConfirmInstagramRequest(BaseModel):
+    """Step 2: User confirmation decision for discovered Instagram."""
+    session_id: str
+    instagram_confirmed: bool
+    user_role: Optional[str] = None
+
+
+class ManualInstagramRequest(BaseModel):
+    """Manual Instagram handle submission payload."""
+    session_id: str
+    handle: str
+    user_role: Optional[str] = None
+
+    @field_validator("handle")
+    @classmethod
+    def validate_handle(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Instagram handle cannot be empty.")
+        if v.startswith("https://") or v.startswith("http://"):
+            # Extract handle from URL if user pasted a link
+            parts = v.rstrip("/").split("/")
+            v = parts[-1]
+        v = v.lstrip("@").strip()
+        if not v:
+            raise ValueError("Please enter a valid Instagram handle.")
+        return f"@{v}"
 
 
 class ManualEmailRequest(BaseModel):

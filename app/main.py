@@ -1,15 +1,17 @@
 """Main FastAPI application entrypoint."""
 
 import logging
+from typing import Optional
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 
 from app.config import settings
 from app.api import research, gmail, email, outreach
+from app.services.session_manager import get_most_recent_session
 
 # Configure logging
 logging.basicConfig(
@@ -64,6 +66,49 @@ if FRONTEND_DIR.exists():
                 headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
             )
         return {"status": "ok", "message": "Frontend index.html not found"}
+
+
+@app.get("/verify", response_class=HTMLResponse)
+async def verify_collaboration_root(
+    session_id: Optional[str] = None,
+    action: Optional[str] = None,
+    token: Optional[str] = None
+):
+    """Top-level public verification endpoint for collaboration confirmation & rejection."""
+    if not session_id:
+        recent = get_most_recent_session()
+        if recent:
+            session_id = recent.session_id
+
+    if not session_id:
+        return HTMLResponse(
+            content="""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Collaboration — Arclent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #FAF7F0; font-family: 'Plus Jakarta Sans', sans-serif; color: #111827; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { max-width: 440px; width: 100%; background: #FFFFFF; border: 2px solid #111827; box-shadow: 6px 6px 0px #111827; border-radius: 4px; padding: 36px 28px; text-align: center; }
+        h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin: 0 0 10px; }
+        p { font-size: 14.5px; color: #4B5563; line-height: 1.5; margin: 0 0 20px; }
+        a { display: inline-block; background: #00D26A; color: #000; text-decoration: none; font-weight: 700; padding: 10px 18px; border: 2px solid #111827; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Arclent Collaboration Verification</h2>
+        <p>Please open the direct verification link provided in your collaboration confirmation message.</p>
+        <a href="/">Go to Arclent Home</a>
+    </div>
+</body>
+</html>""",
+            status_code=400
+        )
+    return await outreach.handle_creator_verification_response(session_id=session_id, action=action, token=token)
+
 
 
 @app.get("/favicon.ico", include_in_schema=False)

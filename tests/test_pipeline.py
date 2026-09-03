@@ -168,7 +168,7 @@ class TestCreatorOutreachPipeline(unittest.TestCase):
         data = good_res.json()
         self.assertEqual(data["final_email"], "correct-contact@astleystudio.com")
         self.assertEqual(data["email_verification_status"], "user_provided")
-        self.assertEqual(data["stage"], OutreachStage.MESSAGE_DRAFT)
+        self.assertEqual(data["stage"], OutreachStage.VERIFY_INSTAGRAM)
 
     def test_workflow_message_generation_channels(self):
         """Test multi-channel message generation for Email, Instagram, and Manual copy."""

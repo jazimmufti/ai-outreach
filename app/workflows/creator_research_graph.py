@@ -6,7 +6,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.models.schemas import SocialProfile, EmailCandidate, RawCreatorResearchResult
 from app.services.youtube_service import parse_youtube_target, extract_video_id, get_youtube_metadata
-from app.services.social_discovery import extract_social_profiles, extract_website_urls
+from app.services.social_discovery import extract_social_profiles, extract_website_urls, rank_social_profiles
 from app.services.email_discovery import extract_emails_from_text, crawl_website_for_emails
 from app.services.mistral_service import classify_and_verify_with_mistral
 
@@ -161,9 +161,16 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
                 seen_keys.add(key)
                 all_socials.append(s)
 
-    # Strictly filter allowed platforms
+    # Strictly filter allowed platforms and rank by authenticity
+    ranked_socials = rank_social_profiles(
+        all_socials,
+        creator_name=state.get("creator_name", ""),
+        channel_name=state.get("channel_name", ""),
+        channel_handle=state.get("channel_handle", "")
+    )
+
     filtered_socials = [
-        s.model_dump() for s in all_socials 
+        s.model_dump() for s in ranked_socials 
         if s.platform in ALLOWED_PLATFORMS
     ]
     

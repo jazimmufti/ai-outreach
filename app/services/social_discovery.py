@@ -29,43 +29,50 @@ EXCLUDED_USERNAMES = {
     "https", "http", "www", "follow", "like", "comment", "enquiries", "business", "contact"
 }
 
+KNOWN_SPONSORS_AND_BRANDS = {
+    "anthropic", "openai", "claude", "chatgpt", "gemini", "google", "microsoft", "apple",
+    "nordvpn", "expressvpn", "surfshark", "squarespace", "wix", "shopify",
+    "betterhelp", "audible", "skillshare", "grammarly", "honey", "cashapp",
+    "patreon", "subscribestar", "buymeacoffee", "kofi", "amazon", "merch"
+}
+
 # 1. Direct and redirect URL patterns
 URL_PATTERNS = [
     {
         "platform": "Instagram",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([a-zA-Z0-9_\.]{1,30})", re.I),
         "format_url": lambda u: f"https://instagram.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].lstrip("@")
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
     },
     {
         "platform": "X",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]{1,20})", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].lstrip("@")
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
     },
     {
         "platform": "Discord",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9_-]{2,32})", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0]
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
     },
     {
         "platform": "Reddit",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?reddit\.com\/(?:r|user|u)\/([a-zA-Z0-9_\-]{2,32})", re.I),
         "format_url": lambda u: f"https://reddit.com/r/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0]
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
     },
     {
         "platform": "Facebook",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:facebook\.com|fb\.com)\/([a-zA-Z0-9_\.]{1,50})", re.I),
         "format_url": lambda u: f"https://facebook.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0]
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
     },
     {
         "platform": "LinkedIn",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_\-\.]{1,50})", re.I),
         "format_url": lambda u: f"https://linkedin.com/in/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0]
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
     },
 ]
 
@@ -75,37 +82,37 @@ TEXT_HANDLE_PATTERNS = [
         "platform": "Instagram",
         "pattern": re.compile(r"\b(?:instagram|insta|ig)\b(?!\.com|\.am|\.org)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,30})\b", re.I),
         "format_url": lambda u: f"https://instagram.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "X",
         "pattern": re.compile(r"\b(?:twitter|x(?:\s*\(twitter\))?)\b(?!\.com|\.org|\.ai)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{2,20})\b", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "Discord",
         "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_-]{2,32})\b", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "Reddit",
         "pattern": re.compile(r"\breddit\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)(?:u\/|r\/)?([a-zA-Z0-9_\-]{2,32})\b", re.I),
         "format_url": lambda u: f"https://reddit.com/r/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "Facebook",
         "pattern": re.compile(r"\b(?:facebook|fb)\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,50})\b", re.I),
         "format_url": lambda u: f"https://facebook.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "LinkedIn",
         "pattern": re.compile(r"\blinkedin\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.-]{2,50})\b", re.I),
         "format_url": lambda u: f"https://linkedin.com/in/{u.rstrip('/')}",
-        "clean_user": lambda u: u.lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
 ]
 
@@ -133,10 +140,15 @@ def clean_social_text(text: str) -> str:
 
 
 def is_valid_username(user: str) -> bool:
-    """Validate that extracted handle is a legitimate username and not metadata or domain artifact."""
+    """Validate that extracted handle is a legitimate username and not metadata, sponsor, or truncated artifact."""
     if not user:
         return False
-    user_lower = user.lower().strip()
+    user_clean = user.strip().lstrip("@").rstrip("./_…-")
+    user_lower = user_clean.lower()
+
+    # Reject truncated strings from YouTube text (e.g. siliconvall... or siliconvall… or text ending with dots)
+    if ".." in user or "..." in user or "…" in user or user.endswith((".", "…")):
+        return False
     if len(user_lower) < 2 or user_lower in EXCLUDED_USERNAMES:
         return False
     if any(user_lower.endswith(ext) for ext in [".com", ".net", ".org", ".am", ".ai", ".io", ".png", ".jpg", ".html", ".php"]):
@@ -159,6 +171,10 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
     for item in URL_PATTERNS:
         for match in item["pattern"].finditer(cleaned_text):
             raw_user = match.group(1)
+            # Check raw_user BEFORE cleaning to immediately reject truncated links ending in dots/ellipsis
+            if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…", "-", "_")):
+                continue
+
             cleaned_user = item["clean_user"](raw_user)
             
             if not is_valid_username(cleaned_user):
@@ -189,6 +205,10 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
         for item in TEXT_HANDLE_PATTERNS:
             for match in item["pattern"].finditer(line):
                 raw_user = match.group(1)
+                # Check raw_user BEFORE cleaning
+                if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…", "-", "_")):
+                    continue
+
                 cleaned_user = item["clean_user"](raw_user)
                 
                 if not is_valid_username(cleaned_user):
@@ -211,6 +231,76 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
                 )
 
     return discovered
+
+
+def rank_social_profiles(
+    profiles: List[SocialProfile],
+    creator_name: str = "",
+    channel_name: str = "",
+    channel_handle: str = ""
+) -> List[SocialProfile]:
+    """Score and rank social profiles so the true creator handle is ranked first, discarding sponsors and truncated duplicates."""
+    if not profiles:
+        return []
+
+    c_name = re.sub(r'[^a-zA-Z0-9]', '', (creator_name or '').lower())
+    c_chan = re.sub(r'[^a-zA-Z0-9]', '', (channel_name or '').lower())
+    c_hdl = re.sub(r'[^a-zA-Z0-9]', '', (channel_handle or '').lower()).lstrip('@')
+
+    target_tokens = {t for t in [c_name, c_chan, c_hdl] if len(t) >= 3}
+
+    # Remove truncated prefix duplicates on the same platform (e.g. 'siliconvall' when 'siliconvalleygirl' exists)
+    cleaned_candidates: List[SocialProfile] = []
+    platform_usernames = {}
+    for p in profiles:
+        u = re.sub(r'[^a-zA-Z0-9]', '', (p.username or '').lower())
+        platform_usernames.setdefault(p.platform, []).append(u)
+
+    for p in profiles:
+        p_user = re.sub(r'[^a-zA-Z0-9]', '', (p.username or '').lower())
+        
+        # Check if this user is a strict prefix/substring of another longer username on the same platform
+        is_truncated_duplicate = False
+        for other_u in platform_usernames.get(p.platform, []):
+            if len(other_u) > len(p_user) and other_u.startswith(p_user):
+                is_truncated_duplicate = True
+                break
+        if is_truncated_duplicate:
+            continue
+
+        # Discard known sponsor/company names if not matching creator name
+        if p_user in KNOWN_SPONSORS_AND_BRANDS and not any(t == p_user for t in target_tokens):
+            continue
+
+        cleaned_candidates.append(p)
+
+    def score_profile(profile: SocialProfile) -> float:
+        score = 0.0
+        p_user = re.sub(r'[^a-zA-Z0-9]', '', (profile.username or '').lower())
+        
+        # Exact match with creator name, channel name, or handle
+        if any(p_user == t for t in target_tokens):
+            score += 200.0
+        # Substring / partial match
+        elif any(t in p_user or p_user in t for t in target_tokens if len(p_user) >= 3):
+            score += 100.0
+            
+        # Source authority boost
+        src = (profile.source or "").lower()
+        if "links" in src:
+            score += 50.0
+        elif "channel description" in src:
+            score += 30.0
+        elif "video description" in src:
+            score += 10.0
+
+        # Platform priority (Instagram first for 2-step verification)
+        if profile.platform == "Instagram":
+            score += 15.0
+
+        return score
+
+    return sorted(cleaned_candidates, key=score_profile, reverse=True)
 
 
 def extract_website_urls(text: str) -> List[str]:

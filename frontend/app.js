@@ -1,5 +1,6 @@
 /**
  * Arclent Creator Collaboration Verification & Outreach Controller
+ * Integrates 2-step verification (1 · EMAIL, 2 · INSTAGRAM) with real discovered backend intelligence.
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -18,6 +19,16 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/'/g, "&#039;");
     }
 
+    function formatHandle(v) {
+        if (!v) return "";
+        v = v.trim();
+        if (v.startsWith("http://") || v.startsWith("https://")) {
+            const parts = v.replace(/\/$/, "").split("/");
+            v = parts[parts.length - 1];
+        }
+        return v.startsWith("@") ? v : `@${v}`;
+    }
+
     // --------------------------------------------------------------------------
     // Social Media Icons & Metadata Helper
     // --------------------------------------------------------------------------
@@ -27,73 +38,73 @@ document.addEventListener("DOMContentLoaded", () => {
         if (p.includes("instagram")) {
             return {
                 name: "Instagram",
-                color: "#E1306C",
-                bgColor: "#FDF2F8",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E1306C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`
+                color: "#FFFFFF",
+                bgColor: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`
             };
         }
         if (p.includes("twitter") || p === "x" || p.includes("x/")) {
             return {
                 name: "X (Twitter)",
-                color: "#111827",
-                bgColor: "#F3F4F6",
-                icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="#111827"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#000000",
+                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`
             };
         }
         if (p.includes("discord")) {
             return {
                 name: "Discord",
-                color: "#5865F2",
-                bgColor: "#EEF2FF",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#5865F2",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.929 1.793 8.18 1.793 12.061 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.894.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.028zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`
             };
         }
         if (p.includes("reddit")) {
             return {
                 name: "Reddit",
-                color: "#FF4500",
-                bgColor: "#FFF7ED",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FF4500"><circle cx="12" cy="12" r="10" fill="#FF4500"/><path fill="#FFF" d="M12 7.2a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm6.2 4.4a1.8 1.8 0 0 0-1.4.7c-1.3-.9-3-1.4-4.8-1.5l.8-3.8 2.7.6a1.3 1.3 0 1 0 .3-1.2l-3.2-.7a.4.4 0 0 0-.4.3l-1 4.8c-1.9.1-3.6.6-4.9 1.5a1.8 1.8 0 0 0-2.4 2c-.1.4-.1.8-.1 1.2 0 3 3.4 5.3 7.6 5.3s7.6-2.4 7.6-5.3c0-.4 0-.8-.1-1.2a1.8 1.8 0 0 0-.8-2.6zM9 13.5a1.2 1.2 0 1 1 2.4 0 1.2 1.2 0 0 1-2.4 0zm6 3.3c-.9.9-2.3.9-3 0a.4.4 0 0 1 .5-.5c.5.5 1.5.5 2 0a.4.4 0 1 1 .5.5zm-.1-2.1a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#FF4500",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><circle cx="12" cy="12" r="10" fill="#FF4500"/><path fill="#FFF" d="M12 7.2a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm6.2 4.4a1.8 1.8 0 0 0-1.4.7c-1.3-.9-3-1.4-4.8-1.5l.8-3.8 2.7.6a1.3 1.3 0 1 0 .3-1.2l-3.2-.7a.4.4 0 0 0-.4.3l-1 4.8c-1.9.1-3.6.6-4.9 1.5a1.8 1.8 0 0 0-2.4 2c-.1.4-.1.8-.1 1.2 0 3 3.4 5.3 7.6 5.3s7.6-2.4 7.6-5.3c0-.4 0-.8-.1-1.2a1.8 1.8 0 0 0-.8-2.6zM9 13.5a1.2 1.2 0 1 1 2.4 0 1.2 1.2 0 0 1-2.4 0zm6 3.3c-.9.9-2.3.9-3 0a.4.4 0 0 1 .5-.5c.5.5 1.5.5 2 0a.4.4 0 1 1 .5.5zm-.1-2.1a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4z"/></svg>`
             };
         }
         if (p.includes("facebook")) {
             return {
                 name: "Facebook",
-                color: "#1877F2",
-                bgColor: "#EFF6FF",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#1877F2",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`
             };
         }
         if (p.includes("linkedin")) {
             return {
                 name: "LinkedIn",
-                color: "#0A66C2",
-                bgColor: "#F0F9FF",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#0A66C2"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#0A66C2",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/></svg>`
             };
         }
         if (p.includes("tiktok")) {
             return {
                 name: "TikTok",
-                color: "#000000",
-                bgColor: "#F3F4F6",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#000000"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#000000",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg>`
             };
         }
         if (p.includes("youtube")) {
             return {
                 name: "YouTube",
-                color: "#FF0000",
-                bgColor: "#FEF2F2",
-                icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
+                color: "#FFFFFF",
+                bgColor: "#FF0000",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`
             };
         }
 
         return {
             name: platform || "Profile",
-            color: "#4B5563",
-            bgColor: "#F3F4F6",
-            icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
+            color: "#FFFFFF",
+            bgColor: "#374151",
+            icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
         };
     }
 
@@ -106,10 +117,16 @@ document.addEventListener("DOMContentLoaded", () => {
         userRole: "Video editor",
         creator: null,
         discoveredEmail: null,
+        emailCandidates: [],
         finalEmail: null,
+        emailConfirmed: false,
         emailSource: null,
         emailConfidence: null,
         instagramProfile: null,
+        selectedSocialProfile: null,
+        finalInstagramHandle: null,
+        finalInstagramUrl: null,
+        instagramConfirmed: false,
         socialProfiles: [],
         message: null,
         gmailConnected: false,
@@ -134,11 +151,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const screens = {
         input: document.getElementById("screen-input"),
         analyzing: document.getElementById("screen-analyzing"),
-        creatorFound: document.getElementById("screen-creator-found"),
-        noEmailChoice: document.getElementById("screen-no-email-choice"),
-        manualEmail: document.getElementById("screen-manual-email"),
-        messageEmail: document.getElementById("screen-message-email"),
-        messageInstagram: document.getElementById("screen-message-instagram"),
+        verifyEmail: document.getElementById("screen-verify-email"),
+        verifyInstagram: document.getElementById("screen-verify-instagram"),
+        outreachHub: document.getElementById("screen-outreach-hub"),
         deliverySuccess: document.getElementById("screen-delivery-success")
     };
 
@@ -154,52 +169,101 @@ document.addEventListener("DOMContentLoaded", () => {
     const progStep3 = document.getElementById("prog-step-3");
     const progStep4 = document.getElementById("prog-step-4");
 
-    // Screen 3A Elements (Creator Match Confirmation Card)
-    const foundCreatorAvatar = document.getElementById("found-creator-avatar");
-    const foundCreatorInitial = document.getElementById("found-creator-initial");
-    const foundCreatorName = document.getElementById("found-creator-name");
-    const foundSubscriberBadge = document.getElementById("found-subscriber-badge");
-    const foundChannelHandle = document.getElementById("found-channel-handle");
-    const foundVideoTitle = document.getElementById("found-video-title");
-    const confirmYesBtn = document.getElementById("confirm-yes-btn");
-    const confirmNoBtn = document.getElementById("confirm-no-btn");
+    // Screen 3: Step 1 (EMAIL) Elements
+    const btnBackEmail = document.getElementById("btn-back-email");
+    const igStepPillFromEmail = document.getElementById("ig-step-pill-from-email");
+    const emailCreatorThumb = document.getElementById("email-creator-thumb");
+    const emailCreatorInitial = document.getElementById("email-creator-initial");
+    const emailCreatorAvatar = document.getElementById("email-creator-avatar");
+    const emailStepCreatorRole = document.getElementById("email-step-creator-role");
+    const emailStepCreatorPlatform = document.getElementById("email-step-creator-platform");
 
-    // Screen 3B Elements (No Email Choice & Socials Drawer)
-    const noemailCreatorAvatar = document.getElementById("noemail-creator-avatar");
-    const noemailCreatorInitial = document.getElementById("noemail-creator-initial");
-    const noemailCreatorName = document.getElementById("noemail-creator-name");
-    const noemailSubscriberBadge = document.getElementById("noemail-subscriber-badge");
-    const noemailChannelHandle = document.getElementById("noemail-channel-handle");
-    const noemailVideoTitle = document.getElementById("noemail-video-title");
-    const noemailSocialsGrid = document.getElementById("noemail-socials-grid");
-    const noemailSocialsEmpty = document.getElementById("noemail-socials-empty");
-    const noemailCopyPitchBody = document.getElementById("noemail-copy-pitch-body");
-    const noemailPitchRegenBtn = document.getElementById("noemail-pitch-regen-btn");
-    const noemailPitchCopyBtn = document.getElementById("noemail-pitch-copy-btn");
-    const noemailPitchBtnText = document.getElementById("noemail-pitch-btn-text");
-    const noemailManualEmailForm = document.getElementById("noemail-manual-email-form");
-    const noemailManualEmailInput = document.getElementById("noemail-manual-email-input");
-    const noemailManualStatusIcon = document.getElementById("noemail-manual-status-icon");
-    const noemailManualErrMsg = document.getElementById("noemail-manual-err-msg");
-    const noemailManualSubmitBtn = document.getElementById("noemail-manual-submit-btn");
-    const socialsAccordion = document.getElementById("socials-accordion");
-    const socialsCountBadge = document.getElementById("socials-count-badge");
+    const emailFoundView = document.getElementById("email-found-view");
+    const emailFoundCreatorName = document.getElementById("email-found-creator-name");
+    const emailFoundAddress = document.getElementById("email-found-address");
+    const emailFoundSourceTag = document.getElementById("email-found-source-tag");
+    const btnEmailConfirmYes = document.getElementById("btn-email-confirm-yes");
+    const btnEmailConfirmNo = document.getElementById("btn-email-confirm-no");
 
-    // Screen 4A Elements (Manual Email Alternative)
-    const manualEmailForm = document.getElementById("manual-email-form");
-    const manualEmailInputField = document.getElementById("manual-email-input-field");
-    const manualEmailStatusIcon = document.getElementById("manual-email-status-icon");
-    const manualEmailErrMsg = document.getElementById("manual-email-err-msg");
-    const submitManualEmailBtn = document.getElementById("submit-manual-email-btn");
-    const backFromManualEmailBtn = document.getElementById("back-from-manual-email-btn");
-    const manualCopyMessageBody = document.getElementById("manual-copy-message-body");
-    const manualCopyRegenBtn = document.getElementById("manual-copy-regen-btn");
-    const manualCopyMessageBtn = document.getElementById("manual-copy-message-btn");
-    const manualCopyBtnText = document.getElementById("manual-copy-btn-text");
+    const emailFallbackView = document.getElementById("email-fallback-view");
+    const emailFallbackDesc = document.getElementById("email-fallback-desc");
+    const emailCandidateChipsWrapper = document.getElementById("email-candidate-chips-wrapper");
+    const emailCandidateChipsRow = document.getElementById("email-candidate-chips-row");
+    const emailManualEntryForm = document.getElementById("email-manual-entry-form");
+    const emailManualEntryInput = document.getElementById("email-manual-entry-input");
+    const emailManualEntryStatusIcon = document.getElementById("email-manual-entry-status-icon");
+    const emailManualEntryErrMsg = document.getElementById("email-manual-entry-err-msg");
+    const btnEmailManualSubmit = document.getElementById("btn-email-manual-submit");
+    const btnEmailFallbackBack = document.getElementById("btn-email-fallback-back");
+    const btnEmailSkipToIg = document.getElementById("btn-email-skip-to-ig");
 
-    // Screen 4B Elements (Email Draft Composer)
-    const emailFlowHeading = document.getElementById("email-flow-heading");
-    const emailFlowBadge = document.getElementById("email-flow-badge");
+    // Screen 4: Step 2 (SOCIAL / INSTAGRAM) Elements
+    const btnBackIg = document.getElementById("btn-back-ig");
+    const igStepPill = document.getElementById("ig-step-pill");
+    const emailStepPillFromIg = document.getElementById("email-step-pill-from-ig");
+    const igCreatorThumb = document.getElementById("ig-creator-thumb");
+    const igCreatorInitial = document.getElementById("ig-creator-initial");
+    const igCreatorAvatar = document.getElementById("ig-creator-avatar");
+    const igStepCreatorRole = document.getElementById("ig-step-creator-role");
+    const igStepCreatorPlatform = document.getElementById("ig-step-creator-platform");
+
+    const igStepHeading = document.getElementById("ig-step-heading");
+    const igStepSubheading = document.getElementById("ig-step-subheading");
+    const igFoundView = document.getElementById("ig-found-view");
+    const igDiscoveredCard = document.getElementById("ig-discovered-card");
+    const igDiscoveredIcon = document.getElementById("ig-discovered-icon");
+    const igFoundCreatorName = document.getElementById("ig-found-creator-name");
+    const igFoundHandle = document.getElementById("ig-found-handle");
+    const igFoundLink = document.getElementById("ig-found-link");
+    const btnIgConfirmYes = document.getElementById("btn-ig-confirm-yes");
+    const btnIgConfirmNo = document.getElementById("btn-ig-confirm-no");
+
+    // Other Socials Accordion Option in Step 2
+    const igOtherSocialsSection = document.getElementById("ig-other-socials-section");
+    const btnToggleOtherSocials = document.getElementById("btn-toggle-other-socials");
+    const igOtherSocialsCount = document.getElementById("ig-other-socials-count");
+    const igOtherSocialsContent = document.getElementById("ig-other-socials-content");
+    const igOtherSocialsList = document.getElementById("ig-other-socials-list");
+
+    const igFallbackView = document.getElementById("ig-fallback-view");
+    const igFallbackHeading = document.getElementById("ig-fallback-heading");
+    const igFallbackDesc = document.getElementById("ig-fallback-desc");
+    const igSocialChipsWrapper = document.getElementById("ig-social-chips-wrapper");
+    const igSocialChipsRow = document.getElementById("ig-social-chips-row");
+    const igManualEntryForm = document.getElementById("ig-manual-entry-form");
+    const igManualEntryInput = document.getElementById("ig-manual-entry-input");
+    const btnIgManualSubmit = document.getElementById("btn-ig-manual-submit");
+    const btnIgFallbackBack = document.getElementById("btn-ig-fallback-back");
+
+    // Confirmed View Elements
+    const igConfirmedView = document.getElementById("ig-confirmed-view");
+    const igConfirmedStatusBadge = document.getElementById("ig-confirmed-status-badge");
+    const igConfirmedHeading = document.getElementById("ig-confirmed-heading");
+    const igConfirmedSubheading = document.getElementById("ig-confirmed-subheading");
+    const igConfirmedIcon = document.getElementById("ig-confirmed-icon");
+    const igConfirmedCreatorName = document.getElementById("ig-confirmed-creator-name");
+    const igConfirmedHandle = document.getElementById("ig-confirmed-handle");
+    const igConfirmedMessageDraft = document.getElementById("ig-confirmed-message-draft");
+    const btnIgCopyDraft = document.getElementById("btn-ig-copy-draft");
+    const btnIgCopyDraftMain = document.getElementById("btn-ig-copy-draft-main");
+    const btnIgCopyText = document.getElementById("btn-ig-copy-text");
+    const btnIgOpenSend = document.getElementById("btn-ig-open-send");
+    const btnIgToHub = document.getElementById("btn-ig-to-hub");
+    const igConfirmedOtherSocialsBox = document.getElementById("ig-confirmed-other-socials-box");
+    const igConfirmedOtherSocialsList = document.getElementById("ig-confirmed-other-socials-list");
+    const igConfirmedOtherCount = document.getElementById("ig-confirmed-other-count");
+
+    // Screen 5: Outreach Hub Elements
+    const btnBackHub = document.getElementById("btn-back-hub");
+    const hubCreatorHeading = document.getElementById("hub-creator-heading");
+    const hubSummaryEmailRow = document.getElementById("hub-summary-email-row");
+    const hubSummaryEmailVal = document.getElementById("hub-summary-email-val");
+    const hubEditEmailBtn = document.getElementById("hub-edit-email-btn");
+    const hubSummaryIgRow = document.getElementById("hub-summary-ig-row");
+    const hubSummaryIgVal = document.getElementById("hub-summary-ig-val");
+    const hubEditIgBtn = document.getElementById("hub-edit-ig-btn");
+
+    const hubEmailBlock = document.getElementById("hub-email-block");
     const workflowEmailRecipient = document.getElementById("workflow-email-recipient");
     const composerRecipientSourceTag = document.getElementById("composer-recipient-source-tag");
     const composerSenderBadge = document.getElementById("composer-sender-badge");
@@ -210,15 +274,18 @@ document.addEventListener("DOMContentLoaded", () => {
     const regenerateEmailBtn = document.getElementById("regenerate-email-btn");
     const workflowSendEmailBtn = document.getElementById("workflow-send-email-btn");
 
-    // Screen 4C Elements (Instagram)
-    const instaUsername = document.getElementById("insta-username");
-    const instaCreatorName = document.getElementById("insta-creator-name");
+    const hubInstagramBlock = document.getElementById("hub-instagram-block");
+    const hubDmHeadHandle = document.getElementById("hub-dm-head-handle");
     const instaMessageBody = document.getElementById("insta-message-body");
     const copyInstaMsgBtn = document.getElementById("copy-insta-msg-btn");
+    const copyInstaBtnText = document.getElementById("copy-insta-btn-text");
     const openInstagramBtn = document.getElementById("open-instagram-btn");
-    const backFromInstagramBtn = document.getElementById("back-from-instagram-btn");
 
-    // Screen 5 Elements (Delivery & Verification Status)
+    const hubOtherSocialsBlock = document.getElementById("hub-other-socials-block");
+    const hubSocialsGrid = document.getElementById("hub-socials-grid");
+
+    // Screen 6: Delivery & Status Polling Elements
+    const btnBackDelivery = document.getElementById("btn-back-delivery");
     const verificationPendingBox = document.getElementById("verification-pending-box");
     const verificationSuccessBox = document.getElementById("verification-success-box");
     const verificationRejectedBox = document.getElementById("verification-rejected-box");
@@ -232,7 +299,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
 
     let verificationPollInterval = null;
-
 
     // --------------------------------------------------------------------------
     // Toast Utility
@@ -386,7 +452,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-
     async function handleDisconnectGmail() {
         try {
             const res = await fetch("/api/gmail/disconnect", { method: "POST" });
@@ -491,7 +556,14 @@ document.addEventListener("DOMContentLoaded", () => {
         state.sessionId = null;
         state.creator = null;
         state.discoveredEmail = null;
+        state.emailCandidates = [];
         state.finalEmail = null;
+        state.emailConfirmed = false;
+        state.instagramProfile = null;
+        state.finalInstagramHandle = null;
+        state.finalInstagramUrl = null;
+        state.instagramConfirmed = false;
+        state.socialProfiles = [];
         state.userRole = role || (userRoleInput ? userRoleInput.value.trim() : "Video editor") || "Video editor";
 
         showScreen("analyzing", 2);
@@ -594,6 +666,8 @@ document.addEventListener("DOMContentLoaded", () => {
             source_type: data.email_source_type || "publicly_published"
         } : null);
 
+        state.emailCandidates = data.email_candidates || [];
+
         if (state.discoveredEmail && state.discoveredEmail.email) {
             state.finalEmail = state.discoveredEmail.email;
             state.emailSource = state.discoveredEmail.source;
@@ -605,17 +679,31 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         state.socialProfiles = data.social_profiles || [];
-        state.instagramProfile = data.instagram_profile || state.socialProfiles.find(s => s.platform === "Instagram");
+        state.instagramProfile = data.instagram_profile || state.socialProfiles.find(s => (s.platform || "").toLowerCase() === "instagram") || null;
+        state.selectedSocialProfile = state.instagramProfile || null;
 
-        // ALWAYS SHOW THE CREATOR MATCH SCREEN (Screen 3A) FIRST!
-        state.stage = "creator_found";
-        renderCreatorFoundScreen();
-        showScreen("creatorFound", 3);
+        if (state.instagramProfile) {
+            state.finalInstagramHandle = formatHandle(state.instagramProfile.username);
+            state.finalInstagramUrl = state.instagramProfile.url;
+        } else {
+            state.finalInstagramHandle = null;
+            state.finalInstagramUrl = null;
+        }
+
+        // START SPECIFICALLY FROM 1 · EMAIL
+        state.stage = "verify_email";
+        renderVerifyEmailStep();
+        showScreen("verifyEmail", 3);
     }
 
     // --------------------------------------------------------------------------
-    // Format Arclent Collaboration Confirmation Draft Message
+    // Format Confirmation Draft Messages
     // --------------------------------------------------------------------------
+    function getVerificationLink() {
+        const origin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "http://127.0.0.1:8000";
+        return `${origin}/verify`;
+    }
+
     function generateConfirmationDraft(creatorName, videoTitle, role) {
         const target = creatorName || "there";
         const roleStr = (role || state.userRole || "Video editor").trim();
@@ -623,157 +711,1045 @@ document.addEventListener("DOMContentLoaded", () => {
         return `Hi ${target}, someone on Arclent claims they worked as ${roleStr} on "${vTitle}". Can you confirm this collaboration?`;
     }
 
+    function generateInstagramDmDraft(creatorName, videoTitle, role) {
+        const target = creatorName || "there";
+        const roleStr = (role || state.userRole || "Video editor").trim();
+        const vTitle = (videoTitle || "your video").trim();
+        const verifyUrl = getVerificationLink();
+        return `Hey ${target}! I added our work together (${roleStr} on "${vTitle}") to my Arclent portfolio. Could you confirm it here so it shows as verified?\n\nConfirm at: ${verifyUrl}`;
+    }
+
     // --------------------------------------------------------------------------
-    // SCREEN 3A: Render "Is this who you worked with?" (Screenshot Match)
+    // Helper: Update Creator Meta Card Inset
     // --------------------------------------------------------------------------
-    function renderCreatorFoundScreen() {
+    function updateCreatorMetaCard(prefix) {
         const c = state.creator || {};
+        const name = c.name || c.channel_name || "Creator";
+        const roleStr = state.userRole || "Video editor";
+        const videoTitle = c.video_title || "YouTube Video";
 
-        if (foundCreatorName) foundCreatorName.textContent = c.name || c.channel_name || "Creator";
-        if (foundChannelHandle) foundChannelHandle.textContent = c.channel_handle || "@creator";
-        if (foundSubscriberBadge) foundSubscriberBadge.textContent = c.subscriber_count || "Active Creator";
-        if (foundVideoTitle) foundVideoTitle.textContent = `"${c.video_title || 'YouTube Video'}"`;
+        const initialEl = document.getElementById(`${prefix}-creator-initial`);
+        const avatarEl = document.getElementById(`${prefix}-creator-avatar`);
+        const roleEl = document.getElementById(`${prefix}-step-creator-role`);
+        const platformEl = document.getElementById(`${prefix}-step-creator-platform`);
 
-        const initialChar = (c.name || c.channel_name || 'M')[0].toUpperCase();
-        if (foundCreatorInitial) foundCreatorInitial.textContent = initialChar;
+        if (roleEl) roleEl.textContent = `${roleStr} — ${name}`;
+        if (platformEl) platformEl.textContent = `YouTube · "${videoTitle}"`;
 
-        if (c.profile_image) {
-            if (foundCreatorAvatar) {
-                foundCreatorAvatar.src = c.profile_image;
-                foundCreatorAvatar.classList.remove("hidden");
-            }
-            if (foundCreatorInitial) foundCreatorInitial.classList.add("hidden");
+        const initialChar = name[0] ? name[0].toUpperCase() : "C";
+        if (initialEl) initialEl.textContent = initialChar;
+
+        if (c.profile_image && avatarEl) {
+            avatarEl.src = c.profile_image;
+            avatarEl.classList.remove("hidden");
+            if (initialEl) initialEl.classList.add("hidden");
         } else {
-            if (foundCreatorAvatar) foundCreatorAvatar.classList.add("hidden");
-            if (foundCreatorInitial) foundCreatorInitial.classList.remove("hidden");
+            if (avatarEl) avatarEl.classList.add("hidden");
+            if (initialEl) initialEl.classList.remove("hidden");
         }
     }
 
     // --------------------------------------------------------------------------
-    // Confirmation Decision Handlers ("Yes, that's them" vs "Not the right creator")
+    // STEP 1: 1 · EMAIL VERIFICATION
     // --------------------------------------------------------------------------
-    if (confirmYesBtn) {
-        confirmYesBtn.onclick = async () => {
-            try {
-                confirmYesBtn.disabled = true;
-                const res = await fetch("/api/outreach/confirm", {
+    function renderVerifyEmailStep() {
+        updateCreatorMetaCard("email");
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+
+        if (state.discoveredEmail && state.discoveredEmail.email) {
+            // Real email found
+            if (emailFoundView) emailFoundView.classList.remove("hidden");
+            if (emailFallbackView) emailFallbackView.classList.add("hidden");
+
+            if (emailFoundCreatorName) emailFoundCreatorName.textContent = creatorName;
+            if (emailFoundAddress) emailFoundAddress.textContent = state.discoveredEmail.email;
+            if (emailFoundSourceTag) {
+                emailFoundSourceTag.textContent = `Source: ${state.discoveredEmail.source || 'Publicly Published'}`;
+            }
+        } else {
+            // No public email found -> go directly to fallback input
+            showEmailFallback(true);
+        }
+    }
+
+    function showEmailFallback(isInitialNotFound = false) {
+        if (emailFoundView) emailFoundView.classList.add("hidden");
+        if (emailFallbackView) emailFallbackView.classList.remove("hidden");
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+
+        if (emailFallbackDesc) {
+            emailFallbackDesc.textContent = isInitialNotFound
+                ? `We couldn't find a public email for ${creatorName}. Add it yourself and we'll send the verification request.`
+                : `Add the correct email for ${creatorName} and we'll send the verification request there instead.`;
+        }
+
+        if (emailManualEntryInput) {
+            emailManualEntryInput.value = state.finalEmail || "";
+            validateManualEmailInput();
+        }
+
+        if (btnEmailFallbackBack) {
+            btnEmailFallbackBack.classList.remove("hidden");
+            const span = btnEmailFallbackBack.querySelector("span");
+            if (span) {
+                span.textContent = (state.discoveredEmail && state.discoveredEmail.email)
+                    ? "← Back to detected email"
+                    : "← Back to Link input";
+            }
+        }
+
+        // Render any alternative email candidates found
+        if (emailCandidateChipsRow && emailCandidateChipsWrapper) {
+            emailCandidateChipsRow.innerHTML = "";
+            const validCandidates = (state.emailCandidates || []).filter(cand => cand.email && emailRegex.test(cand.email));
+            
+            if (validCandidates.length > 0) {
+                emailCandidateChipsWrapper.classList.remove("hidden");
+                validCandidates.forEach(cand => {
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "helper-chip-btn";
+                    btn.innerHTML = `<span>✉</span><span>${escapeHtml(cand.email)}</span>`;
+                    btn.onclick = () => {
+                        if (emailManualEntryInput) {
+                            emailManualEntryInput.value = cand.email;
+                            validateManualEmailInput();
+                        }
+                    };
+                    emailCandidateChipsRow.appendChild(btn);
+                });
+            } else {
+                emailCandidateChipsWrapper.classList.add("hidden");
+            }
+        }
+    }
+
+    function validateManualEmailInput() {
+        if (!emailManualEntryInput) return;
+        const val = emailManualEntryInput.value.trim();
+        const isValid = emailRegex.test(val);
+
+        if (btnEmailManualSubmit) btnEmailManualSubmit.disabled = !isValid;
+
+        if (emailManualEntryStatusIcon) {
+            if (val.length === 0) {
+                emailManualEntryStatusIcon.innerHTML = "";
+            } else if (isValid) {
+                emailManualEntryStatusIcon.innerHTML = `<span style="color: var(--green); font-weight: bold;">✓</span>`;
+            } else {
+                emailManualEntryStatusIcon.innerHTML = `<span style="color: #EF4444; font-weight: bold;">✕</span>`;
+            }
+        }
+
+        if (emailManualEntryErrMsg) {
+            if (val.length > 0 && !isValid) {
+                emailManualEntryErrMsg.classList.remove("hidden");
+            } else {
+                emailManualEntryErrMsg.classList.add("hidden");
+            }
+        }
+    }
+
+    if (emailManualEntryInput) {
+        emailManualEntryInput.addEventListener("input", validateManualEmailInput);
+    }
+
+    // --------------------------------------------------------------------------
+    // Helper: Dispatch Email Verification & Transition to Delivery Screen
+    // --------------------------------------------------------------------------
+    async function dispatchEmailVerification(recipient) {
+        if (!recipient) {
+            showToast("No recipient email specified.", "error");
+            return;
+        }
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "your video";
+        const subject = `Collaboration confirmation for "${videoTitle}"`;
+        const body = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
+
+        state.isSending = true;
+        state.finalEmail = recipient;
+        state.emailConfirmed = true;
+
+        try {
+            // Confirm email on backend session
+            if (state.sessionId) {
+                await fetch("/api/outreach/confirm-email", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         session_id: state.sessionId,
-                        creator_confirmed: true,
+                        email_confirmed: true,
                         user_role: state.userRole
+                    })
+                }).catch(() => {});
+            }
+
+            // Attempt sending email via Gmail API
+            let sendSucceeded = false;
+            let sendErrorMsg = null;
+
+            if (state.sessionId) {
+                const sendRes = await fetch("/api/outreach/send-email", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: state.sessionId,
+                        recipient: recipient,
+                        subject: subject,
+                        body: body
                     })
                 });
 
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Confirmation failed");
-                }
-
-                const updatedSession = await res.json();
-                
-                if (updatedSession.final_email) {
-                    state.finalEmail = updatedSession.final_email;
-                    state.emailSource = updatedSession.email_source;
-                    state.emailConfidence = updatedSession.email_confidence;
-                    state.message = updatedSession.message;
-                    state.stage = "message_draft";
-
-                    renderEmailComposerScreen();
-                    showScreen("messageEmail", 4);
+                if (sendRes.ok) {
+                    sendSucceeded = true;
                 } else {
-                    // No email found -> Go to Screen 3B (Manual email + Socials Drawer)
-                    state.stage = "no_email_choice";
-                    renderNoEmailChoiceScreen();
-                    showScreen("noEmailChoice", 3);
+                    const errData = await sendRes.json().catch(() => ({}));
+                    sendErrorMsg = errData.detail || "Failed to send email via connected Gmail.";
                 }
-            } catch (err) {
-                showToast(err.message, "error");
+            }
+
+            if (!sendSucceeded && !state.gmailConnected) {
+                // If Gmail is not connected, inform user and open Hub
+                showToast("Please connect Gmail to send verification emails directly.", "error");
+                state.stage = "outreach_hub";
+                renderOutreachHub();
+                showScreen("outreachHub", 4);
+                return;
+            }
+
+            if (!sendSucceeded) {
+                throw new Error(sendErrorMsg || "Failed to dispatch email.");
+            }
+
+            // Successfully sent -> show delivery status screen
+            if (vPendingRecipientSub) {
+                vPendingRecipientSub.textContent = `Message delivered to ${creatorName} (${recipient}) via verified channel`;
+            }
+
+            if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+            if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+            if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+            state.stage = "sent";
+            showScreen("deliverySuccess", 4);
+            showToast("✓ Email inquiry sent with Yes / No verification options!");
+
+            startVerificationPolling();
+
+        } catch (err) {
+            showToast(err.message, "error");
+        } finally {
+            state.isSending = false;
+        }
+    }
+
+    // Step 1: "Yes, that's them" -> Confirm discovered email and send immediately
+    if (btnEmailConfirmYes) {
+        btnEmailConfirmYes.onclick = async () => {
+            try {
+                btnEmailConfirmYes.disabled = true;
+                btnEmailConfirmYes.innerHTML = `<span>Sending Email...</span>`;
+                const recipient = state.discoveredEmail ? state.discoveredEmail.email : state.finalEmail;
+                await dispatchEmailVerification(recipient);
             } finally {
-                confirmYesBtn.disabled = false;
+                if (btnEmailConfirmYes) {
+                    btnEmailConfirmYes.disabled = false;
+                    btnEmailConfirmYes.innerHTML = `<span>Yes, that's them</span>`;
+                }
             }
         };
     }
 
-    if (confirmNoBtn) {
-        confirmNoBtn.onclick = async () => {
+    // Step 1: "No, not them" -> Show Fallback manual input
+    if (btnEmailConfirmNo) {
+        btnEmailConfirmNo.onclick = () => {
+            showEmailFallback(false);
+        };
+    }
+
+    // Step 1: Fallback Manual Submit -> Confirm custom email and send immediately
+    if (emailManualEntryForm) {
+        emailManualEntryForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const manualEmail = emailManualEntryInput ? emailManualEntryInput.value.trim() : "";
+            if (!manualEmail || !emailRegex.test(manualEmail)) {
+                showToast("Please enter a valid email address.", "error");
+                return;
+            }
+
             try {
-                confirmNoBtn.disabled = true;
-                const res = await fetch("/api/outreach/confirm", {
+                if (btnEmailManualSubmit) {
+                    btnEmailManualSubmit.disabled = true;
+                    btnEmailManualSubmit.innerHTML = `<span>Sending Email...</span>`;
+                }
+                await dispatchEmailVerification(manualEmail);
+            } finally {
+                if (btnEmailManualSubmit) {
+                    btnEmailManualSubmit.disabled = false;
+                    btnEmailManualSubmit.innerHTML = `<span>Send Email</span>`;
+                }
+            }
+        });
+    }
+
+    // Step 1: "I don't have their email →" (Moves to Instagram Step 2)
+    if (btnEmailSkipToIg) {
+        btnEmailSkipToIg.onclick = async () => {
+            state.finalEmail = null;
+            state.emailConfirmed = false;
+
+            if (state.sessionId) {
+                await fetch("/api/outreach/confirm-email", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         session_id: state.sessionId,
-                        creator_confirmed: false,
+                        email_confirmed: false,
                         user_role: state.userRole
                     })
-                });
+                }).catch(() => {});
+            }
 
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Failed to register choice");
-                }
+            // Advance to Step 2 · INSTAGRAM
+            state.stage = "verify_instagram";
+            renderVerifyInstagramStep();
+            showScreen("verifyInstagram", 3);
+        };
+    }
 
-                state.discoveredEmail = null;
-                state.finalEmail = null;
-                state.stage = "manual_email_input";
+    // Step 1: Back to "Link your work"
+    if (btnBackEmail) {
+        btnBackEmail.onclick = (e) => {
+            if (e) e.preventDefault();
+            if (emailFallbackView && !emailFallbackView.classList.contains("hidden") && state.discoveredEmail && state.discoveredEmail.email) {
+                if (emailFoundView) emailFoundView.classList.remove("hidden");
+                if (emailFallbackView) emailFallbackView.classList.add("hidden");
+                return;
+            }
+            state.stage = "input";
+            showScreen("input", 1);
+        };
+    }
 
-                renderManualEmailScreen();
-                showScreen("manualEmail", 3);
-            } catch (err) {
-                showToast(err.message, "error");
-            } finally {
-                confirmNoBtn.disabled = false;
+    if (igStepPillFromEmail) {
+        igStepPillFromEmail.onclick = () => {
+            state.stage = "verify_instagram";
+            renderVerifyInstagramStep();
+            showScreen("verifyInstagram", 3);
+        };
+    }
+
+    // Step 1 Fallback: Back to detected email or Input
+    if (btnEmailFallbackBack) {
+        btnEmailFallbackBack.onclick = (e) => {
+            if (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            if (state.discoveredEmail && state.discoveredEmail.email) {
+                if (emailFoundView) emailFoundView.classList.remove("hidden");
+                if (emailFallbackView) emailFallbackView.classList.add("hidden");
+            } else {
+                state.stage = "input";
+                showScreen("input", 1);
             }
         };
     }
 
     // --------------------------------------------------------------------------
-    // SCREEN 3B: Render "Is this who you worked with?" (No Email Found)
+    // Helper: Filter Clean Social Profiles (Removes truncated URLs & sponsors)
     // --------------------------------------------------------------------------
-    function renderNoEmailChoiceScreen() {
+    function filterCleanSocials(socials) {
+        if (!socials || !Array.isArray(socials)) return [];
         const c = state.creator || {};
+        const cName = (c.name || c.channel_name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const cHdl = (c.channel_handle || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const knownSponsors = new Set([
+            "anthropic", "openai", "claude", "chatgpt", "gemini", "google", "microsoft", "apple",
+            "nordvpn", "expressvpn", "surfshark", "squarespace", "wix", "shopify",
+            "betterhelp", "audible", "skillshare", "grammarly", "honey", "cashapp",
+            "patreon", "subscribestar", "buymeacoffee", "kofi", "amazon", "merch"
+        ]);
 
-        if (noemailCreatorName) noemailCreatorName.textContent = c.name || c.channel_name || "Creator";
-        if (noemailChannelHandle) noemailChannelHandle.textContent = c.channel_handle || "@creator";
-        if (noemailSubscriberBadge) noemailSubscriberBadge.textContent = c.subscriber_count || "Active Creator";
-        if (noemailVideoTitle) noemailVideoTitle.textContent = `"${c.video_title || 'Creator Video'}"`;
+        const platformUsers = {};
+        socials.forEach(s => {
+            const u = (s.username || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            platformUsers[s.platform] = platformUsers[s.platform] || [];
+            platformUsers[s.platform].push(u);
+        });
 
-        const initialChar = (c.name || c.channel_name || 'C')[0].toUpperCase();
-        if (noemailCreatorInitial) noemailCreatorInitial.textContent = initialChar;
-
-        if (c.profile_image) {
-            if (noemailCreatorAvatar) {
-                noemailCreatorAvatar.src = c.profile_image;
-                noemailCreatorAvatar.classList.remove("hidden");
+        return socials.filter(s => {
+            const raw = s.username || "";
+            if (raw.includes("..") || raw.includes("...") || raw.includes("…") || raw.endsWith(".") || raw.endsWith("…")) {
+                return false;
             }
-            if (noemailCreatorInitial) noemailCreatorInitial.classList.add("hidden");
+            const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (clean.length < 2) return false;
+
+            // Reject prefix duplicate on same platform (e.g. siliconvall vs siliconvalleygirl)
+            const others = platformUsers[s.platform] || [];
+            if (others.some(otherU => otherU.length > clean.length && otherU.startsWith(clean))) {
+                return false;
+            }
+
+            // Reject non-creator sponsor handles
+            if (knownSponsors.has(clean) && clean !== cName && clean !== cHdl) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    // --------------------------------------------------------------------------
+    // Helper: Dynamic Platform UI Updater for Step 2 & Confirmed View
+    // --------------------------------------------------------------------------
+    function updateStep2PlatformUI(profile) {
+        const p = profile || state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram", username: "@creator" };
+        const platformKey = p.platform || "Instagram";
+        const meta = getSocialMediaMeta(platformKey);
+        const handle = formatHandle(p.username || platformKey);
+        const defaultBase = platformKey.toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+        const url = p.url || `${defaultBase}/${handle.replace('@', '')}`;
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+
+        // 1. Top Navigation Step Pills
+        if (igStepPill) {
+            igStepPill.textContent = `2 · ${meta.name.toUpperCase()}`;
+        }
+        if (igStepPillFromEmail) {
+            igStepPillFromEmail.textContent = `2 · ${meta.name.toUpperCase()}`;
+        }
+
+        // 2. Step 2 Main Detected View
+        if (igStepHeading) {
+            igStepHeading.textContent = `Confirm ${meta.name} Profile`;
+        }
+        if (igStepSubheading) {
+            igStepSubheading.innerHTML = `We found a ${meta.name} profile for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+        }
+        if (igFoundCreatorName) {
+            igFoundCreatorName.textContent = creatorName;
+        }
+        if (igDiscoveredIcon) {
+            igDiscoveredIcon.style.background = meta.bgColor;
+            igDiscoveredIcon.innerHTML = meta.icon;
+            igDiscoveredIcon.title = meta.name;
+        }
+        if (igFoundHandle) {
+            igFoundHandle.textContent = handle;
+        }
+        if (igFoundLink) {
+            igFoundLink.href = url;
+            igFoundLink.innerHTML = `<span>Open Profile ↗</span>`;
+        }
+
+        // 3. Step 2 Fallback View
+        if (igFallbackHeading) {
+            igFallbackHeading.textContent = `Enter the correct ${meta.name} profile`;
+        }
+        if (igFallbackDesc) {
+            igFallbackDesc.textContent = `Enter their ${meta.name} handle or profile URL to continue.`;
+        }
+        if (igManualEntryInput) {
+            igManualEntryInput.placeholder = `@handle or ${meta.name.toLowerCase()}.com/handle`;
+        }
+
+        // 4. Step 2 Confirmed View
+        if (igConfirmedStatusBadge) {
+            igConfirmedStatusBadge.innerHTML = `<span class="dot"></span>${meta.name.toUpperCase()} PROFILE CONFIRMED`;
+        }
+        if (igConfirmedHeading) {
+            igConfirmedHeading.textContent = `${meta.name} profile confirmed`;
+        }
+        if (igConfirmedSubheading) {
+            igConfirmedSubheading.innerHTML = `Ready to contact <strong id="ig-confirmed-creator-name">${escapeHtml(creatorName)}</strong> on ${meta.name}.`;
+        }
+        if (igConfirmedIcon) {
+            igConfirmedIcon.style.background = meta.bgColor;
+            igConfirmedIcon.innerHTML = meta.icon;
+            igConfirmedIcon.title = meta.name;
+        }
+        if (btnIgOpenSend) {
+            btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
+        }
+    }
+
+    // --------------------------------------------------------------------------
+    // STEP 2: 2 · SOCIAL / INSTAGRAM VERIFICATION
+    // --------------------------------------------------------------------------
+    function renderDiscoveredOtherSocials() {
+        if (!igOtherSocialsList) return;
+        igOtherSocialsList.innerHTML = "";
+
+        const allSocials = filterCleanSocials(state.socialProfiles || []);
+        const activeProfile = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile;
+        const activePlatform = (activeProfile ? activeProfile.platform : "Instagram").toLowerCase();
+        const activeHandle = (state.finalInstagramHandle || (activeProfile ? formatHandle(activeProfile.username) : "")).toLowerCase();
+        
+        if (igOtherSocialsCount) {
+            igOtherSocialsCount.textContent = allSocials.length;
+        }
+
+        if (allSocials.length === 0) {
+            igOtherSocialsList.innerHTML = `<div class="other-socials-empty">No additional social media profiles found in channel metadata.</div>`;
+            return;
+        }
+
+        allSocials.forEach(s => {
+            const meta = getSocialMediaMeta(s.platform);
+            const formatted = formatHandle(s.username || s.platform);
+            const sPlatform = (s.platform || "").toLowerCase();
+            
+            // Mark selected if matching active social profile
+            let isSelected = false;
+            if (state.selectedSocialProfile) {
+                isSelected = (s === state.selectedSocialProfile) || 
+                             (s.url && state.selectedSocialProfile.url && s.url === state.selectedSocialProfile.url) ||
+                             (sPlatform === (state.selectedSocialProfile.platform || "").toLowerCase() && formatted.toLowerCase() === formatHandle(state.selectedSocialProfile.username || state.selectedSocialProfile.platform).toLowerCase());
+            } else {
+                isSelected = (sPlatform === activePlatform) && (formatted.toLowerCase() === activeHandle);
+            }
+            
+            const item = document.createElement("div");
+            item.className = "other-social-item font-mono";
+            item.innerHTML = `
+                <div class="other-social-left">
+                    <div class="other-social-icon" style="background: ${meta.bgColor};">
+                        ${meta.icon}
+                    </div>
+                    <div class="other-social-meta">
+                        <span class="other-social-platform-name">${escapeHtml(meta.name)}</span>
+                        <span class="other-social-handle" title="${escapeHtml(formatted)}">${escapeHtml(formatted)}</span>
+                    </div>
+                </div>
+                <div class="other-social-actions">
+                    ${s.url ? `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="other-social-open-link" title="Open profile in new tab">Open ↗</a>` : ''}
+                    <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
+                        ${isSelected ? '✓ Selected' : 'Select'}
+                    </button>
+                </div>
+            `;
+
+            const selectBtn = item.querySelector(".other-social-select-btn");
+            if (selectBtn) {
+                selectBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    selectActiveSocialProfile(s);
+                };
+            }
+
+            igOtherSocialsList.appendChild(item);
+        });
+    }
+
+    function selectActiveSocialProfile(social) {
+        if (!social) return;
+        state.selectedSocialProfile = social;
+        state.activeSocialProfile = social;
+        const meta = getSocialMediaMeta(social.platform);
+        const cleanHandle = formatHandle(social.username || social.platform);
+        const defaultBase = (social.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+        const url = social.url || `${defaultBase}/${cleanHandle.replace('@', '')}`;
+
+        state.instagramProfile = {
+            platform: social.platform || "Instagram",
+            username: cleanHandle,
+            url: url
+        };
+        state.finalInstagramHandle = cleanHandle;
+        state.finalInstagramUrl = url;
+
+        updateStep2PlatformUI(social);
+
+        if (igManualEntryInput) {
+            igManualEntryInput.value = cleanHandle;
+            validateManualIgInput();
+        }
+
+        if (igDiscoveredCard) {
+            igDiscoveredCard.classList.remove("highlight-pulse");
+            void igDiscoveredCard.offsetWidth;
+            igDiscoveredCard.classList.add("highlight-pulse");
+        }
+
+        renderDiscoveredOtherSocials();
+        showToast(`✓ Switched to ${meta.name} (${cleanHandle})`);
+    }
+
+    // Toggle button for other social media profiles
+    if (btnToggleOtherSocials) {
+        btnToggleOtherSocials.onclick = () => {
+            const isExpanded = btnToggleOtherSocials.getAttribute("aria-expanded") === "true";
+            const nextState = !isExpanded;
+            btnToggleOtherSocials.setAttribute("aria-expanded", String(nextState));
+            if (igOtherSocialsSection) {
+                igOtherSocialsSection.classList.toggle("open", nextState);
+            }
+            if (igOtherSocialsContent) {
+                igOtherSocialsContent.classList.toggle("hidden", !nextState);
+            }
+        };
+    }
+
+    function renderVerifyInstagramStep() {
+        updateCreatorMetaCard("ig");
+
+        // Set default active social profile if not set yet
+        if (!state.activeSocialProfile && state.instagramProfile) {
+            state.activeSocialProfile = state.instagramProfile;
+        }
+
+        const active = state.activeSocialProfile || state.instagramProfile;
+
+        if (active && active.username) {
+            if (igFoundView) igFoundView.classList.remove("hidden");
+            if (igFallbackView) igFallbackView.classList.add("hidden");
+            if (igConfirmedView) igConfirmedView.classList.add("hidden");
+
+            const handle = formatHandle(active.username);
+            state.finalInstagramHandle = handle;
+            const defaultBase = (active.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+            state.finalInstagramUrl = active.url || `${defaultBase}/${handle.replace("@", "")}`;
+
+            updateStep2PlatformUI(active);
         } else {
-            if (noemailCreatorAvatar) noemailCreatorAvatar.classList.add("hidden");
-            if (noemailCreatorInitial) noemailCreatorInitial.classList.remove("hidden");
+            showInstagramFallback(true);
         }
 
-        if (noemailManualEmailInput) {
-            noemailManualEmailInput.value = "";
-            if (noemailManualStatusIcon) noemailManualStatusIcon.textContent = "";
-            if (noemailManualErrMsg) noemailManualErrMsg.classList.add("hidden");
-            if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = true;
+        renderDiscoveredOtherSocials();
+    }
+
+    function showInstagramFallback(isInitialNotFound = false) {
+        if (igFoundView) igFoundView.classList.add("hidden");
+        if (igFallbackView) igFallbackView.classList.remove("hidden");
+        if (igConfirmedView) igConfirmedView.classList.add("hidden");
+
+        const active = state.activeSocialProfile || state.instagramProfile || { platform: "Instagram" };
+        const meta = getSocialMediaMeta(active.platform);
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+
+        if (igFallbackHeading) {
+            igFallbackHeading.textContent = `Enter the correct ${meta.name} profile`;
         }
 
-        // Populate Socials Drawer with Brand Icons
-        const allowed = new Set(["Instagram", "X", "X/Twitter", "Facebook", "LinkedIn", "Discord", "Reddit", "TikTok", "YouTube"]);
-        const validSocials = (state.socialProfiles || []).filter(s => allowed.has(s.platform));
-
-        if (socialsCountBadge) {
-            socialsCountBadge.textContent = `${validSocials.length} ${validSocials.length === 1 ? 'profile' : 'profiles'} found`;
+        if (igFallbackDesc) {
+            igFallbackDesc.textContent = isInitialNotFound
+                ? `We couldn't locate a verified ${meta.name} profile on ${creatorName}'s channel. Enter their handle or link to continue.`
+                : `Enter their ${meta.name} handle or profile URL to continue.`;
         }
 
-        if (noemailSocialsGrid) {
-            noemailSocialsGrid.innerHTML = "";
-            if (validSocials.length > 0) {
-                if (noemailSocialsEmpty) noemailSocialsEmpty.classList.add("hidden");
-                validSocials.forEach(s => {
+        if (igManualEntryInput) {
+            igManualEntryInput.placeholder = `@handle or ${meta.name.toLowerCase()}.com/handle`;
+            igManualEntryInput.value = state.finalInstagramHandle || "";
+            validateManualIgInput();
+        }
+
+        // Render other discovered social platforms as suggestions
+        if (igSocialChipsRow && igSocialChipsWrapper) {
+            igSocialChipsRow.innerHTML = "";
+            const otherSocials = (state.socialProfiles || []).filter(s => s.platform && (s.platform || "").toLowerCase() !== (active.platform || "").toLowerCase());
+
+            if (otherSocials.length > 0) {
+                igSocialChipsWrapper.classList.remove("hidden");
+                otherSocials.forEach(s => {
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "helper-chip-btn";
+                    btn.innerHTML = `<span>🔗</span><span>${escapeHtml(s.platform)}: ${escapeHtml(s.username || s.platform)}</span>`;
+                    btn.onclick = () => {
+                        selectActiveSocialProfile(s);
+                    };
+                    igSocialChipsRow.appendChild(btn);
+                });
+            } else {
+                igSocialChipsWrapper.classList.add("hidden");
+            }
+        }
+    }
+
+    function showInstagramConfirmed(handle, url) {
+        if (igFoundView) igFoundView.classList.add("hidden");
+        if (igFallbackView) igFallbackView.classList.add("hidden");
+        if (igConfirmedView) igConfirmedView.classList.remove("hidden");
+
+        const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram", username: handle, url: url };
+        const meta = getSocialMediaMeta(active.platform || "Instagram");
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "your video";
+
+        state.finalInstagramHandle = handle;
+        state.finalInstagramUrl = url || active.url || `https://instagram.com/${handle.replace('@', '')}`;
+
+        updateStep2PlatformUI(active);
+
+        if (igConfirmedCreatorName) igConfirmedCreatorName.textContent = creatorName;
+        if (igConfirmedHandle) igConfirmedHandle.textContent = handle;
+
+        const draftMsg = generateInstagramDmDraft(creatorName, videoTitle, state.userRole);
+        if (igConfirmedMessageDraft) {
+            igConfirmedMessageDraft.value = draftMsg;
+        }
+
+        // Render other discovered profiles below the action buttons
+        renderConfirmedOtherProfiles();
+    }
+
+    function renderConfirmedOtherProfiles() {
+        if (!igConfirmedOtherSocialsList) return;
+        igConfirmedOtherSocialsList.innerHTML = "";
+
+        const allSocials = filterCleanSocials(state.socialProfiles || []);
+        const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+        const activePlatform = (active.platform || "Instagram").toLowerCase();
+        const currentCleanHandle = (state.finalInstagramHandle || (active ? active.username : "") || "").toLowerCase().replace('@', '');
+
+        const itemsToDisplay = [];
+
+        // 1. Add discovered email if available
+        if (state.discoveredEmail && state.discoveredEmail.email) {
+            itemsToDisplay.push({
+                platform: "Email",
+                name: "Email Contact",
+                username: state.discoveredEmail.email,
+                url: `mailto:${state.discoveredEmail.email}`
+            });
+        }
+
+        // 2. Add all other social accounts except the currently active profile
+        allSocials.forEach(s => {
+            const sUser = (s.username || s.platform || "").toLowerCase().replace('@', '');
+            const sPlatform = (s.platform || "").toLowerCase();
+            const isCurrentActive = sPlatform === activePlatform && sUser === currentCleanHandle;
+            
+            if (!isCurrentActive) {
+                const meta = getSocialMediaMeta(s.platform);
+                itemsToDisplay.push({
+                    platform: s.platform,
+                    name: meta.name,
+                    username: formatHandle(s.username || s.platform),
+                    url: s.url,
+                    meta: meta,
+                    raw: s
+                });
+            }
+        });
+
+        if (igConfirmedOtherCount) {
+            igConfirmedOtherCount.textContent = `${itemsToDisplay.length}`;
+        }
+
+        if (itemsToDisplay.length === 0) {
+            igConfirmedOtherSocialsList.innerHTML = `<div class="other-socials-empty font-mono" style="padding: 10px; font-size: 12px; color: var(--slate); background: #F4EFE6; border: 1px dashed var(--slate);">No additional public profiles discovered.</div>`;
+            return;
+        }
+
+        itemsToDisplay.forEach(item => {
+            const meta = item.meta || getSocialMediaMeta(item.platform);
+            const row = document.createElement("div");
+            row.className = "other-social-item font-mono";
+            row.style.marginBottom = "8px";
+            row.innerHTML = `
+                <div class="other-social-left">
+                    <div class="other-social-icon" style="background: ${meta.bgColor};">
+                        ${meta.icon}
+                    </div>
+                    <div class="other-social-meta">
+                        <span class="other-social-platform-name">${escapeHtml(item.name)}</span>
+                        <span class="other-social-handle" title="${escapeHtml(item.username)}">${escapeHtml(item.username)}</span>
+                    </div>
+                </div>
+                <div class="other-social-actions">
+                    ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="other-social-open-link" style="padding: 5px 12px; font-size: 11px;">Open ↗</a>` : ''}
+                    ${item.raw ? `<button type="button" class="other-social-select-btn" style="padding: 4px 10px; font-size: 11px;">Switch to this</button>` : ''}
+                </div>
+            `;
+
+            const selectBtn = row.querySelector(".other-social-select-btn");
+            if (selectBtn && item.raw) {
+                selectBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    selectActiveSocialProfile(item.raw);
+                    showInstagramConfirmed(formatHandle(item.raw.username), item.raw.url);
+                };
+            }
+
+            igConfirmedOtherSocialsList.appendChild(row);
+        });
+    }
+
+    function validateManualIgInput() {
+        if (!igManualEntryInput) return;
+        const val = igManualEntryInput.value.trim();
+        const isValid = val.length > 1;
+        if (btnIgManualSubmit) btnIgManualSubmit.disabled = !isValid;
+    }
+
+    if (igManualEntryInput) {
+        igManualEntryInput.addEventListener("input", validateManualIgInput);
+    }
+
+    // Step 2: "Yes, that's them" -> Confirm discovered social profile & reveal confirmed action
+    if (btnIgConfirmYes) {
+        btnIgConfirmYes.onclick = async () => {
+            try {
+                btnIgConfirmYes.disabled = true;
+                state.instagramConfirmed = true;
+                const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile;
+                const handle = active ? formatHandle(active.username) : "@creator";
+                const meta = getSocialMediaMeta(active ? active.platform : "Instagram");
+                const defaultBase = (active && (active.platform || "").toLowerCase() === "x") ? "https://x.com" : "https://instagram.com";
+                const url = active ? (active.url || `${defaultBase}/${handle.replace('@', '')}`) : `${defaultBase}/${handle.replace('@', '')}`;
+
+                state.finalInstagramHandle = handle;
+                state.finalInstagramUrl = url;
+
+                if (state.sessionId) {
+                    await fetch("/api/outreach/confirm-instagram", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            instagram_confirmed: true,
+                            user_role: state.userRole,
+                            platform: active ? active.platform : "Instagram"
+                        })
+                    }).catch(() => {});
+                }
+
+                showInstagramConfirmed(handle, url);
+                showToast(`✓ ${meta.name} profile confirmed`);
+            } finally {
+                btnIgConfirmYes.disabled = false;
+            }
+        };
+    }
+
+    // Step 2: "No, not them"
+    if (btnIgConfirmNo) {
+        btnIgConfirmNo.onclick = () => {
+            showInstagramFallback(false);
+        };
+    }
+
+    // Step 2: Fallback Manual Submit -> Reveal confirmed action
+    if (igManualEntryForm) {
+        igManualEntryForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const handle = igManualEntryInput ? igManualEntryInput.value.trim() : "";
+            if (!handle || handle.length < 2) {
+                showToast("Please enter a handle or profile URL.", "error");
+                return;
+            }
+
+            try {
+                if (btnIgManualSubmit) btnIgManualSubmit.disabled = true;
+                const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+                const meta = getSocialMediaMeta(active.platform);
+                const formatted = formatHandle(handle);
+                const defaultBase = (active.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+                const url = `${defaultBase}/${formatted.replace('@', '')}`;
+                
+                state.finalInstagramHandle = formatted;
+                state.finalInstagramUrl = url;
+                state.instagramConfirmed = true;
+
+                if (state.sessionId) {
+                    await fetch("/api/outreach/manual-instagram", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            handle: formatted,
+                            user_role: state.userRole,
+                            platform: active.platform
+                        })
+                    }).catch(() => {});
+                }
+
+                showInstagramConfirmed(formatted, url);
+                showToast(`✓ ${meta.name} profile confirmed`);
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                if (btnIgManualSubmit) btnIgManualSubmit.disabled = false;
+            }
+        });
+    }
+
+    // Actions on Confirmed View: Copy Message Handler
+    async function handleCopyConfirmedDraft() {
+        const text = igConfirmedMessageDraft ? igConfirmedMessageDraft.value.trim() : "";
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            if (igConfirmedMessageDraft) {
+                igConfirmedMessageDraft.select();
+                document.execCommand("copy");
+            }
+        }
+        if (btnIgCopyText) btnIgCopyText.textContent = "✓ Copied!";
+        if (btnIgCopyDraft) btnIgCopyDraft.textContent = "✓ Copied!";
+        setTimeout(() => {
+            if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message";
+            if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text";
+        }, 2500);
+        showToast("✓ Message copied to clipboard!");
+    }
+
+    if (btnIgCopyDraftMain) {
+        btnIgCopyDraftMain.onclick = handleCopyConfirmedDraft;
+    }
+    if (btnIgCopyDraft) {
+        btnIgCopyDraft.onclick = handleCopyConfirmedDraft;
+    }
+
+    if (btnIgOpenSend) {
+        btnIgOpenSend.onclick = () => {
+            const text = igConfirmedMessageDraft ? igConfirmedMessageDraft.value.trim() : "";
+            if (text) {
+                navigator.clipboard.writeText(text).catch(() => {});
+            }
+            const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+            const meta = getSocialMediaMeta(active.platform);
+            const handle = state.finalInstagramHandle ? state.finalInstagramHandle.replace("@", "") : "";
+            const defaultBase = (active.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+            const url = state.finalInstagramUrl || (handle ? `${defaultBase}/${handle}` : defaultBase);
+            showToast(`✓ Message copied! Opening ${meta.name} profile...`);
+            window.open(url, "_blank", "noopener,noreferrer");
+        };
+    }
+
+    // Step 2 Back navigation to Step 1 or Previous Sub-view
+    if (btnBackIg) {
+        btnBackIg.onclick = () => {
+            // If on confirmed view, return to Step 2 detected selection view
+            if (igConfirmedView && !igConfirmedView.classList.contains("hidden")) {
+                if (igFoundView) igFoundView.classList.remove("hidden");
+                if (igConfirmedView) igConfirmedView.classList.add("hidden");
+                if (igFallbackView) igFallbackView.classList.add("hidden");
+                renderDiscoveredOtherSocials();
+                return;
+            }
+            // If on fallback view and we have a discovered profile, return to detected view
+            if (igFallbackView && !igFallbackView.classList.contains("hidden") && state.instagramProfile && state.instagramProfile.username) {
+                if (igFoundView) igFoundView.classList.remove("hidden");
+                if (igFallbackView) igFallbackView.classList.add("hidden");
+                if (igConfirmedView) igConfirmedView.classList.add("hidden");
+                renderDiscoveredOtherSocials();
+                return;
+            }
+            // Otherwise go back to Step 1 (Email)
+            state.stage = "verify_email";
+            renderVerifyEmailStep();
+            showScreen("verifyEmail", 3);
+        };
+    }
+
+    if (emailStepPillFromIg) {
+        emailStepPillFromIg.onclick = () => {
+            state.stage = "verify_email";
+            renderVerifyEmailStep();
+            showScreen("verifyEmail", 3);
+        };
+    }
+
+    if (btnIgFallbackBack) {
+        btnIgFallbackBack.onclick = () => {
+            if (state.instagramProfile && state.instagramProfile.username) {
+                if (igFoundView) igFoundView.classList.remove("hidden");
+                if (igFallbackView) igFallbackView.classList.add("hidden");
+                if (igConfirmedView) igConfirmedView.classList.add("hidden");
+                renderDiscoveredOtherSocials();
+            } else {
+                state.stage = "verify_email";
+                renderVerifyEmailStep();
+                showScreen("verifyEmail", 3);
+            }
+        };
+    }
+
+    if (btnIgToHub) {
+        btnIgToHub.onclick = () => {
+            state.stage = "outreach_hub";
+            renderOutreachHub();
+            showScreen("outreachHub", 4);
+        };
+    }
+
+    // --------------------------------------------------------------------------
+    // STEP 3: OUTREACH & DISPATCH HUB
+    // --------------------------------------------------------------------------
+    function renderOutreachHub() {
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "your video";
+
+        if (hubCreatorHeading) hubCreatorHeading.textContent = `Reaching out to ${creatorName}`;
+
+        // Update summary items
+        if (hubSummaryEmailVal) {
+            hubSummaryEmailVal.textContent = state.finalEmail || "Not provided (Skipped)";
+            hubSummaryEmailVal.style.color = state.finalEmail ? "var(--green)" : "var(--text-muted)";
+        }
+        if (hubSummaryIgVal) {
+            hubSummaryIgVal.textContent = state.finalInstagramHandle || "Not provided (Skipped)";
+            hubSummaryIgVal.style.color = state.finalInstagramHandle ? "var(--green)" : "var(--text-muted)";
+        }
+
+        // 1. Email Section
+        if (state.finalEmail) {
+            if (hubEmailBlock) hubEmailBlock.classList.remove("hidden");
+            if (workflowEmailRecipient) workflowEmailRecipient.value = state.finalEmail;
+            if (composerRecipientSourceTag) {
+                composerRecipientSourceTag.textContent = state.emailConfirmed ? "Verified Contact" : "User Provided";
+            }
+            if (workflowEmailSubject) {
+                workflowEmailSubject.value = `Collaboration confirmation for "${videoTitle}"`;
+            }
+            if (workflowEmailBody) {
+                workflowEmailBody.value = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
+            }
+            validateSendButton();
+        } else {
+            if (hubEmailBlock) hubEmailBlock.classList.add("hidden");
+        }
+
+        // 2. Instagram Section
+        if (state.finalInstagramHandle) {
+            if (hubInstagramBlock) hubInstagramBlock.classList.remove("hidden");
+            if (hubDmHeadHandle) hubDmHeadHandle.textContent = `Direct message to ${state.finalInstagramHandle}`;
+            if (instaMessageBody) {
+                instaMessageBody.value = generateInstagramDmDraft(creatorName, videoTitle, state.userRole);
+            }
+        } else {
+            if (hubInstagramBlock) hubInstagramBlock.classList.add("hidden");
+        }
+
+        // 3. Other Socials Grid (Displays all other channels including other Instagram profiles)
+        const currentIg = (state.finalInstagramHandle || "").toLowerCase().replace('@', '');
+        const otherSocials = (state.socialProfiles || []).filter(s => {
+            const isCurrentIg = (s.platform || "").toLowerCase() === "instagram" && (s.username || "").toLowerCase().replace('@', '') === currentIg;
+            return !isCurrentIg;
+        });
+
+        if (hubOtherSocialsBlock && hubSocialsGrid) {
+            if (otherSocials.length > 0) {
+                hubOtherSocialsBlock.classList.remove("hidden");
+                hubSocialsGrid.innerHTML = "";
+                otherSocials.forEach(s => {
                     const meta = getSocialMediaMeta(s.platform);
                     const card = document.createElement("div");
                     card.className = "social-card font-mono";
@@ -784,277 +1760,57 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                             <div class="social-info">
                                 <span class="social-platform-title">${escapeHtml(meta.name)}</span>
-                                <span class="social-handle-text">${escapeHtml(s.username)}</span>
+                                <span class="social-handle-text">${escapeHtml(s.username || s.platform)}</span>
                             </div>
                         </div>
-                        <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="btn-retro-outline" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap;">
+                        <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap; flex: 0;">
                             <span>Open ↗</span>
                         </a>
                     `;
-                    noemailSocialsGrid.appendChild(card);
+                    hubSocialsGrid.appendChild(card);
                 });
             } else {
-                if (noemailSocialsEmpty) noemailSocialsEmpty.classList.remove("hidden");
+                hubOtherSocialsBlock.classList.add("hidden");
             }
-        }
-
-        if (noemailCopyPitchBody) {
-            noemailCopyPitchBody.value = generateConfirmationDraft(c.name || c.channel_name, c.video_title, state.userRole);
         }
     }
 
-    if (noemailPitchCopyBtn) {
-        noemailPitchCopyBtn.onclick = async () => {
-            const text = noemailCopyPitchBody ? noemailCopyPitchBody.value.trim() : "";
-            if (!text) return;
-            try {
-                await navigator.clipboard.writeText(text);
-                if (noemailPitchBtnText) {
-                    noemailPitchBtnText.textContent = "✓ Message copied";
-                    setTimeout(() => { noemailPitchBtnText.textContent = "📋 Copy Message"; }, 2500);
-                }
-                showToast("✓ Message copied to clipboard!");
-            } catch (err) {
-                if (noemailCopyPitchBody) {
-                    noemailCopyPitchBody.select();
-                    document.execCommand("copy");
-                }
-                showToast("✓ Message copied to clipboard!");
-            }
+    // Jump back to edit email or IG from Outreach Hub
+    if (hubEditEmailBtn) {
+        hubEditEmailBtn.onclick = () => {
+            state.stage = "verify_email";
+            renderVerifyEmailStep();
+            showScreen("verifyEmail", 3);
         };
     }
 
-    if (noemailPitchRegenBtn) {
-        noemailPitchRegenBtn.onclick = () => {
-            const c = state.creator || {};
-            if (noemailCopyPitchBody) {
-                noemailCopyPitchBody.value = generateConfirmationDraft(c.name || c.channel_name, c.video_title, state.userRole);
-            }
-            showToast("✓ Message reset");
+    if (hubEditIgBtn) {
+        hubEditIgBtn.onclick = () => {
+            state.stage = "verify_instagram";
+            renderVerifyInstagramStep();
+            showScreen("verifyInstagram", 3);
         };
     }
 
-    // Inline Manual Email Input Listener
-    if (noemailManualEmailInput) {
-        noemailManualEmailInput.addEventListener("input", () => {
-            const val = noemailManualEmailInput.value.trim();
-            if (!val) {
-                if (noemailManualStatusIcon) noemailManualStatusIcon.textContent = "";
-                if (noemailManualErrMsg) noemailManualErrMsg.classList.add("hidden");
-                if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = true;
-                return;
-            }
-
-            if (emailRegex.test(val)) {
-                if (noemailManualStatusIcon) {
-                    noemailManualStatusIcon.textContent = "✓";
-                    noemailManualStatusIcon.style.color = "var(--color-primary-green-dark)";
-                }
-                if (noemailManualErrMsg) noemailManualErrMsg.classList.add("hidden");
-                if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = false;
-            } else {
-                if (noemailManualStatusIcon) {
-                    noemailManualStatusIcon.textContent = "✕";
-                    noemailManualStatusIcon.style.color = "var(--color-accent-red)";
-                }
-                if (noemailManualErrMsg) noemailManualErrMsg.classList.remove("hidden");
-                if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = true;
-            }
-        });
-    }
-
-    if (noemailManualEmailForm) {
-        noemailManualEmailForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const email = noemailManualEmailInput.value.trim();
-            if (!emailRegex.test(email)) {
-                showToast("Please enter a valid email address.", "error");
-                return;
-            }
-
-            try {
-                if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = true;
-                const res = await fetch("/api/outreach/manual-email", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        session_id: state.sessionId,
-                        email: email,
-                        user_role: state.userRole
-                    })
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Failed to set manual email");
-                }
-
-                const updatedSession = await res.json();
-                state.finalEmail = updatedSession.final_email;
-                state.emailSource = updatedSession.email_source;
-                state.emailConfidence = updatedSession.email_confidence;
-                state.message = updatedSession.message;
-                state.stage = "message_draft";
-
-                renderEmailComposerScreen();
-                showScreen("messageEmail", 4);
-            } catch (err) {
-                showToast(err.message, "error");
-            } finally {
-                if (noemailManualSubmitBtn) noemailManualSubmitBtn.disabled = false;
-            }
-        });
-    }
-
-    // --------------------------------------------------------------------------
-    // SCREEN 4A: Manual Email Screen (After "Not the right creator")
-    // --------------------------------------------------------------------------
-    function renderManualEmailScreen() {
-        const c = state.creator || {};
-        if (manualEmailInputField) manualEmailInputField.value = "";
-        if (manualEmailStatusIcon) manualEmailStatusIcon.textContent = "";
-        if (manualEmailErrMsg) manualEmailErrMsg.classList.add("hidden");
-        if (submitManualEmailBtn) submitManualEmailBtn.disabled = true;
-
-        if (manualCopyMessageBody) {
-            manualCopyMessageBody.value = generateConfirmationDraft(c.name || c.channel_name, c.video_title, state.userRole);
-        }
-    }
-
-    if (manualEmailInputField) {
-        manualEmailInputField.addEventListener("input", () => {
-            const val = manualEmailInputField.value.trim();
-            if (emailRegex.test(val)) {
-                if (manualEmailStatusIcon) {
-                    manualEmailStatusIcon.textContent = "✓";
-                    manualEmailStatusIcon.style.color = "var(--color-primary-green-dark)";
-                }
-                if (manualEmailErrMsg) manualEmailErrMsg.classList.add("hidden");
-                if (submitManualEmailBtn) submitManualEmailBtn.disabled = false;
-            } else {
-                if (manualEmailStatusIcon) {
-                    manualEmailStatusIcon.textContent = val ? "✕" : "";
-                    manualEmailStatusIcon.style.color = "var(--color-accent-red)";
-                }
-                if (manualEmailErrMsg) manualEmailErrMsg.classList.remove("hidden");
-                if (submitManualEmailBtn) submitManualEmailBtn.disabled = true;
-            }
-        });
-    }
-
-    if (manualEmailForm) {
-        manualEmailForm.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const email = manualEmailInputField.value.trim();
-            if (!emailRegex.test(email)) {
-                showToast("Please enter a valid email address.", "error");
-                return;
-            }
-
-            try {
-                if (submitManualEmailBtn) submitManualEmailBtn.disabled = true;
-                const res = await fetch("/api/outreach/manual-email", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        session_id: state.sessionId,
-                        email: email,
-                        user_role: state.userRole
-                    })
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(errData.detail || "Failed to set manual email");
-                }
-
-                const updatedSession = await res.json();
-                state.finalEmail = updatedSession.final_email;
-                state.emailSource = updatedSession.email_source;
-                state.emailConfidence = updatedSession.email_confidence;
-                state.message = updatedSession.message;
-                state.stage = "message_draft";
-
-                renderEmailComposerScreen();
-                showScreen("messageEmail", 4);
-            } catch (err) {
-                showToast(err.message, "error");
-            } finally {
-                if (submitManualEmailBtn) submitManualEmailBtn.disabled = false;
-            }
-        });
-    }
-
-    if (manualCopyMessageBtn) {
-        manualCopyMessageBtn.onclick = async () => {
-            const text = manualCopyMessageBody ? manualCopyMessageBody.value.trim() : "";
-            if (!text) return;
-            try {
-                await navigator.clipboard.writeText(text);
-                if (manualCopyBtnText) {
-                    manualCopyBtnText.textContent = "✓ Message copied";
-                    setTimeout(() => { manualCopyBtnText.textContent = "📋 Copy Message"; }, 2500);
-                }
-                showToast("✓ Message copied to clipboard!");
-            } catch (err) {
-                if (manualCopyMessageBody) {
-                    manualCopyMessageBody.select();
-                    document.execCommand("copy");
-                }
-                showToast("✓ Message copied to clipboard!");
-            }
+    // Back from Outreach Hub to Step 2 · Instagram
+    if (btnBackHub) {
+        btnBackHub.onclick = () => {
+            state.stage = "verify_instagram";
+            renderVerifyInstagramStep();
+            showScreen("verifyInstagram", 3);
         };
     }
 
-    if (manualCopyRegenBtn) {
-        manualCopyRegenBtn.onclick = () => {
-            const c = state.creator || {};
-            if (manualCopyMessageBody) {
-                manualCopyMessageBody.value = generateConfirmationDraft(c.name || c.channel_name, c.video_title, state.userRole);
-            }
-            showToast("✓ Message reset");
+    // Back from Delivery screen to Outreach Hub
+    if (btnBackDelivery) {
+        btnBackDelivery.onclick = () => {
+            state.stage = "outreach_hub";
+            renderOutreachHub();
+            showScreen("outreachHub", 4);
         };
     }
 
-    if (backFromManualEmailBtn) {
-        backFromManualEmailBtn.onclick = () => {
-            showScreen("creatorFound", 3);
-        };
-    }
-
-    // --------------------------------------------------------------------------
-    // SCREEN 4B: Render Outreach Email Composer (Matches User Request)
-    // --------------------------------------------------------------------------
-    function renderEmailComposerScreen() {
-        const c = state.creator || {};
-        const creatorName = c.name || c.channel_name || "Creator";
-        const creatorHandle = c.channel_handle || `@${creatorName.toLowerCase().replace(/\s+/g, '')}`;
-        const videoTitle = c.video_title || "your video";
-
-        if (emailFlowHeading) emailFlowHeading.textContent = `Reaching out to ${creatorName}`;
-        if (emailFlowBadge) emailFlowBadge.textContent = `Auto-sent by Arclent → ${creatorHandle}`;
-
-        const currentRecipient = state.finalEmail || state.discoveredEmail?.email || "";
-        if (workflowEmailRecipient) {
-            workflowEmailRecipient.value = currentRecipient;
-        }
-        if (composerRecipientSourceTag) {
-            composerRecipientSourceTag.textContent = state.emailSource || "Publicly Found";
-        }
-
-        const defaultDraft = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
-        const defaultSubject = `Collaboration confirmation for "${videoTitle}"`;
-
-        if (workflowEmailSubject) {
-            workflowEmailSubject.value = state.message?.subject || defaultSubject;
-        }
-        if (workflowEmailBody) {
-            workflowEmailBody.value = state.message?.body || defaultDraft;
-        }
-
-        validateSendButton();
-    }
-
+    // Email Send Validation
     function validateSendButton() {
         if (!workflowSendEmailBtn) return;
         const recipientVal = workflowEmailRecipient ? workflowEmailRecipient.value.trim() : (state.finalEmail || "");
@@ -1065,60 +1821,59 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (workflowEmailRecipient) {
         workflowEmailRecipient.addEventListener("input", () => {
-            const val = workflowEmailRecipient.value.trim();
-            state.finalEmail = val;
+            state.finalEmail = workflowEmailRecipient.value.trim();
             validateSendButton();
         });
     }
 
     if (regenerateEmailBtn) {
-        regenerateEmailBtn.onclick = async () => {
+        regenerateEmailBtn.onclick = () => {
             const c = state.creator || {};
             const creatorName = c.name || c.channel_name || "Creator";
             const videoTitle = c.video_title || "your video";
-            
-            workflowEmailSubject.value = `Collaboration confirmation for "${videoTitle}"`;
-            workflowEmailBody.value = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
+            if (workflowEmailSubject) workflowEmailSubject.value = `Collaboration confirmation for "${videoTitle}"`;
+            if (workflowEmailBody) workflowEmailBody.value = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
             showToast("✓ Draft reset to standard confirmation template");
         };
     }
 
-    // --------------------------------------------------------------------------
-    // SCREEN 4C: Instagram Actions
-    // --------------------------------------------------------------------------
+    // Instagram Actions
     if (copyInstaMsgBtn) {
-        copyInstaMsgBtn.onclick = () => {
-            const text = instaMessageBody.value.trim();
-            if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("✓ Message copied to clipboard!");
-                });
+        copyInstaMsgBtn.onclick = async () => {
+            const text = instaMessageBody ? instaMessageBody.value.trim() : "";
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+                if (copyInstaBtnText) {
+                    copyInstaBtnText.textContent = "✓ Message Copied!";
+                    setTimeout(() => { copyInstaBtnText.textContent = "📋 Copy Message"; }, 2500);
+                }
+                showToast("✓ Message copied to clipboard!");
+            } catch (err) {
+                if (instaMessageBody) {
+                    instaMessageBody.select();
+                    document.execCommand("copy");
+                }
+                showToast("✓ Message copied to clipboard!");
             }
         };
     }
 
     if (openInstagramBtn) {
         openInstagramBtn.onclick = () => {
-            const text = instaMessageBody.value.trim();
+            const text = instaMessageBody ? instaMessageBody.value.trim() : "";
             if (text) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast("✓ Message copied! Opening Instagram profile...");
-                });
+                navigator.clipboard.writeText(text).catch(() => {});
             }
-            const username = state.instagramProfile?.username?.replace("@", "") || "";
-            const profileUrl = state.instagramProfile?.url || `https://instagram.com/${username}`;
-            window.open(profileUrl, "_blank", "noopener,noreferrer");
-        };
-    }
-
-    if (backFromInstagramBtn) {
-        backFromInstagramBtn.onclick = () => {
-            showScreen("noEmailChoice", 3);
+            const handle = state.finalInstagramHandle ? state.finalInstagramHandle.replace("@", "") : "";
+            const url = state.finalInstagramUrl || (handle ? `https://instagram.com/${handle}` : "https://instagram.com");
+            showToast("✓ Message copied! Opening Instagram profile...");
+            window.open(url, "_blank", "noopener,noreferrer");
         };
     }
 
     // --------------------------------------------------------------------------
-    // SCREEN 5: Email Submission & Live Verification Polling
+    // STEP 4: Send Real Email & Live Verification Polling
     // --------------------------------------------------------------------------
     function renderVerificationSuccess() {
         if (verificationPollInterval) {
@@ -1204,8 +1959,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const recipient = workflowEmailRecipient ? workflowEmailRecipient.value.trim() : (state.finalEmail || "").trim();
-            const subject = workflowEmailSubject.value.trim();
-            const body = workflowEmailBody.value.trim();
+            const subject = workflowEmailSubject ? workflowEmailSubject.value.trim() : "";
+            const body = workflowEmailBody ? workflowEmailBody.value.trim() : "";
             state.finalEmail = recipient;
 
             if (!recipient || !emailRegex.test(recipient)) {
@@ -1255,12 +2010,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 showToast(err.message, "error");
             } finally {
                 state.isSending = false;
-                workflowSendEmailBtn.innerHTML = `<span>Send Email</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
+                workflowSendEmailBtn.innerHTML = `<span>Send Verification Email</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>`;
                 validateSendButton();
             }
         });
     }
-
 
     // --------------------------------------------------------------------------
     // Reset / New Search
@@ -1275,7 +2029,15 @@ document.addEventListener("DOMContentLoaded", () => {
         state.stage = "input";
         state.creator = null;
         state.discoveredEmail = null;
+        state.emailCandidates = [];
         state.finalEmail = null;
+        state.emailConfirmed = false;
+        state.instagramProfile = null;
+        state.selectedSocialProfile = null;
+        state.finalInstagramHandle = null;
+        state.finalInstagramUrl = null;
+        state.instagramConfirmed = false;
+        state.socialProfiles = [];
         state.message = null;
 
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
@@ -1286,7 +2048,6 @@ document.addEventListener("DOMContentLoaded", () => {
         showScreen("input", 1);
         if (youtubeUrlInput) youtubeUrlInput.focus();
     }
-
 
     resetButtons.forEach((btn) => {
         btn.addEventListener("click", resetWorkflow);

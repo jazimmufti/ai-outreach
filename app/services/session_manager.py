@@ -69,3 +69,20 @@ def delete_session(session_id: str) -> None:
     """Remove a session."""
     with _session_lock:
         _sessions.pop(session_id, None)
+
+
+def clear_all_sessions() -> None:
+    """Clear all active sessions."""
+    with _session_lock:
+        _sessions.clear()
+
+
+def get_most_recent_session() -> Optional[OutreachSession]:
+    """Retrieve the most recently active session."""
+    _cleanup_expired_sessions()
+    with _session_lock:
+        if not _sessions:
+            return None
+        latest_entry = max(_sessions.values(), key=lambda x: x.get("updated_at", 0))
+        return latest_entry.get("session")
+
