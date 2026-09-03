@@ -198,7 +198,8 @@ body {
     }
 }
 
-.retro-card.hidden {
+.retro-card.hidden,
+.hidden {
     display: none !important;
 }
 
