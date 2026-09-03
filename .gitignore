@@ -29,6 +29,7 @@ wheels/
 .env.local
 token.json
 credentials.json
+.oauth_sessions.json
 *.pem
 
 # IDE & OS

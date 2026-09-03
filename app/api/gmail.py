@@ -42,11 +42,13 @@ async def connect_gmail_endpoint(request: Request):
         except Exception:
             pass
 
+        logger.info("[OAuth Connect] OAuth authorization initiated successfully")
         return {"auth_url": auth_url, "state": state}
     except ValueError as ve:
+        logger.warning(f"[OAuth Connect] Validation error initiating OAuth: {ve}")
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        logger.error(f"Error generating OAuth URL: {e}", exc_info=True)
+        logger.error(f"[OAuth Connect] Error generating OAuth URL: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to initiate Gmail connection: {str(e)}")
 
 
@@ -58,8 +60,13 @@ async def gmail_oauth_callback(
     state: str = Query(None)
 ):
     """Handle the OAuth 2.0 callback from Google with PKCE validation."""
+    logger.info(
+        f"[OAuth Callback] Route reached - code_present={bool(code)}, "
+        f"state_present={bool(state)}, error_present={bool(error)}"
+    )
+
     if error:
-        logger.warning(f"Google OAuth authorization rejected or failed: {error}")
+        logger.warning(f"[OAuth Callback] Google OAuth authorization rejected: {error}")
         return HTMLResponse(
             content=f"""
             <!DOCTYPE html>
@@ -94,6 +101,9 @@ async def gmail_oauth_callback(
         )
 
     if not code or not state:
+        logger.warning(
+            f"[OAuth Callback] Missing parameters: code_present={bool(code)}, state_present={bool(state)}"
+        )
         return HTMLResponse(
             content="""
             <!DOCTYPE html>
@@ -123,8 +133,11 @@ async def gmail_oauth_callback(
         except Exception:
             pass
 
+    state_valid = bool(code_verifier)
+    logger.info(f"[OAuth Callback] PKCE state validation result: state_valid={state_valid}")
+
     if not code_verifier:
-        logger.warning(f"OAuth session expired or state mismatch for state={state}")
+        logger.warning("[OAuth Callback] OAuth session expired or state mismatch")
         return HTMLResponse(
             content="""
             <!DOCTYPE html>
@@ -165,6 +178,7 @@ async def gmail_oauth_callback(
         # Perform token exchange with the original PKCE code_verifier
         status = exchange_code_for_tokens(code=code, state=state, code_verifier=code_verifier)
         user_email = status.get("email", "Connected Account")
+        logger.info(f"[OAuth Callback] Successfully connected Gmail account for email: {user_email}")
 
         # Clean session cookie
         try:

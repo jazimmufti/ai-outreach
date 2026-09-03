@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         description="Google OAuth Redirect URI"
     )
     
+    def is_redirect_uri_from_env(self) -> bool:
+        """Check if GOOGLE_REDIRECT_URI is set explicitly in OS environment variables."""
+        return "GOOGLE_REDIRECT_URI" in os.environ and bool(os.environ["GOOGLE_REDIRECT_URI"].strip())
+
     def get_redirect_uri(self) -> str:
         """Get sanitized Google Redirect URI prioritizing OS environment over .env file."""
         raw = os.environ.get("GOOGLE_REDIRECT_URI") or self.GOOGLE_REDIRECT_URI
@@ -36,6 +40,16 @@ class Settings(BaseSettings):
         if uri.endswith("/api/gmail/callback/"):
             return uri[:-1]
         return uri
+
+    def get_google_client_id(self) -> str:
+        """Get sanitized Google Client ID stripped of whitespace and accidental quotes."""
+        val = os.environ.get("GOOGLE_CLIENT_ID") or self.GOOGLE_CLIENT_ID
+        return str(val).strip().strip("'\"")
+
+    def get_google_client_secret(self) -> str:
+        """Get sanitized Google Client Secret stripped of whitespace and accidental quotes."""
+        val = os.environ.get("GOOGLE_CLIENT_SECRET") or self.GOOGLE_CLIENT_SECRET
+        return str(val).strip().strip("'\"")
 
     
     # Session & Security

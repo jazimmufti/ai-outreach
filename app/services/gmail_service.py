@@ -196,40 +196,40 @@ def remove_oauth_session(state: str) -> None:
 _cached_user_email: Optional[str] = None
 
 def get_stored_credentials() -> Optional[Credentials]:
-    """Retrieve and refresh stored OAuth credentials from GMAIL_TOKEN_JSON env var or token file."""
+    """Retrieve and refresh stored OAuth credentials from token file, with GMAIL_TOKEN_JSON fallback."""
     global _cached_user_email
 
-    # 1. First check if GMAIL_TOKEN_JSON environment variable is configured
+    # 1. First check token file on disk (active interactive session)
+    token_path = settings.TOKEN_FILE
+    if os.path.exists(token_path):
+        try:
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+                try:
+                    with open(token_path, "w", encoding="utf-8") as token_file:
+                        token_file.write(creds.to_json())
+                except Exception:
+                    pass
+            if creds and creds.valid:
+                return creds
+        except Exception as e:
+            logger.warning(f"Error loading credentials from token file: {e}")
+
+    # 2. Fallback to GMAIL_TOKEN_JSON environment variable for headless / ephemeral containers
     if settings.GMAIL_TOKEN_JSON and settings.GMAIL_TOKEN_JSON.strip():
         try:
             token_info = json.loads(settings.GMAIL_TOKEN_JSON.strip())
             creds = Credentials.from_authorized_user_info(token_info, SCOPES)
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-            return creds if creds and creds.valid else None
+            if creds and creds.valid:
+                return creds
         except Exception as e:
             logger.warning(f"Error loading credentials from GMAIL_TOKEN_JSON: {e}")
 
-    # 2. Check token file on disk
-    token_path = settings.TOKEN_FILE
-    if not os.path.exists(token_path):
-        _cached_user_email = None
-        return None
-
-    try:
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            # Save refreshed credentials
-            try:
-                with open(token_path, "w") as token_file:
-                    token_file.write(creds.to_json())
-            except Exception:
-                pass
-        return creds if creds and creds.valid else None
-    except Exception as e:
-        logger.error(f"Error loading stored credentials: {e}")
-        return None
+    _cached_user_email = None
+    return None
 
 
 
@@ -301,21 +301,27 @@ def generate_oauth_url(custom_state: Optional[str] = None) -> Tuple[str, str, st
     Returns:
         Tuple of (auth_url, state, code_verifier)
     """
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
+    client_id = settings.get_google_client_id()
+    client_secret = settings.get_google_client_secret()
+    if not client_id or not client_secret:
         raise ValueError(
-            "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured in .env to connect Gmail."
+            "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured to connect Gmail."
         )
 
     from google_auth_oauthlib.flow import Flow
 
     redirect_uri = settings.get_redirect_uri()
-    client_id_preview = f"{settings.GOOGLE_CLIENT_ID[:16]}..." if settings.GOOGLE_CLIENT_ID else "UNSET"
-    logger.info(f"Generating Google OAuth authorization URL with redirect_uri: {redirect_uri} (client_id: {client_id_preview})")
+    is_env = settings.is_redirect_uri_from_env()
+    client_prefix = f"{client_id[:12]}..." if len(client_id) >= 12 else client_id
+    logger.info(
+        f"[OAuth Init] Generating authorization URL: redirect_uri='{redirect_uri}' "
+        f"(source={'OS_ENV' if is_env else 'CONFIG_DEFAULT'}), client_id='{client_prefix}'"
+    )
 
     client_config = {
         "web": {
-            "client_id": settings.GOOGLE_CLIENT_ID.strip(),
-            "client_secret": settings.GOOGLE_CLIENT_SECRET.strip(),
+            "client_id": client_id,
+            "client_secret": client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "redirect_uris": [redirect_uri]
@@ -358,17 +364,27 @@ def exchange_code_for_tokens(
     code_verifier: Optional[str] = None
 ) -> Dict[str, Any]:
     """Exchange authorization code for OAuth tokens using the original PKCE code_verifier."""
+    client_id = settings.get_google_client_id()
+    client_secret = settings.get_google_client_secret()
+    if not client_id or not client_secret:
+        raise ValueError(
+            "GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be configured to exchange tokens."
+        )
+
     from google_auth_oauthlib.flow import Flow
 
     redirect_uri = settings.get_redirect_uri()
-    client_id_preview = f"{settings.GOOGLE_CLIENT_ID[:16]}..." if settings.GOOGLE_CLIENT_ID else "UNSET"
-    logger.info(f"Exchanging Google OAuth code with redirect_uri: {redirect_uri} (client_id: {client_id_preview})")
-
+    is_env = settings.is_redirect_uri_from_env()
+    client_prefix = f"{client_id[:12]}..." if len(client_id) >= 12 else client_id
+    logger.info(
+        f"[OAuth Exchange] Exchanging code: redirect_uri='{redirect_uri}' "
+        f"(source={'OS_ENV' if is_env else 'CONFIG_DEFAULT'}), client_id='{client_prefix}'"
+    )
 
     client_config = {
         "web": {
-            "client_id": settings.GOOGLE_CLIENT_ID.strip(),
-            "client_secret": settings.GOOGLE_CLIENT_SECRET.strip(),
+            "client_id": client_id,
+            "client_secret": client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
             "redirect_uris": [redirect_uri]
@@ -394,12 +410,17 @@ def exchange_code_for_tokens(
     flow.code_verifier = code_verifier
 
     # Pass the original PKCE code_verifier into fetch_token
-    flow.fetch_token(code=code, code_verifier=code_verifier)
-    credentials = flow.credentials
+    try:
+        flow.fetch_token(code=code, code_verifier=code_verifier)
+        credentials = flow.credentials
+        logger.info("[OAuth Exchange] Token exchange succeeded (valid credentials obtained)")
+    except Exception as e:
+        logger.error(f"[OAuth Exchange] Token exchange failed with error: {type(e).__name__} - {e}")
+        raise
 
     # Save credentials securely to token file
     try:
-        with open(settings.TOKEN_FILE, "w") as token_file:
+        with open(settings.TOKEN_FILE, "w", encoding="utf-8") as token_file:
             token_file.write(credentials.to_json())
     except Exception as e:
         logger.warning(f"Could not write token.json to disk: {e}")
