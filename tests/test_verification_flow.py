@@ -353,7 +353,7 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("You&#039;ve already confirmed this collaboration", res2.text.replace("'", "&#039;"))
         self.assertNotIn("Yes, I confirm this collaboration", res2.text)
         self.assertNotIn("No, I do not confirm", res2.text)
-        self.assertIn("@jazimmufti on Instagram", res2.text)
+        self.assertIn("jazimmufti on Arclent", res2.text)
 
         # 3. Creator tries to click reject on already confirmed session -> remains confirmed
         res3 = self.client.get(f"/verify?session_id={session.session_id}&action=reject")
@@ -369,7 +369,6 @@ class TestVerificationFlow(unittest.TestCase):
             channel_name="MrBeast",
             video_title="Squid Game In Real Life"
         )
-        session.sender_email = "editor@domain.com"
         session.selected_channel = "email"
 
         # 1. Creator rejects
@@ -383,11 +382,11 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("You&#039;ve already rejected this collaboration", res2.text.replace("'", "&#039;"))
         self.assertNotIn("Yes, I confirm this collaboration", res2.text)
         self.assertNotIn("No, I do not confirm", res2.text)
-        self.assertIn("editor@domain.com", res2.text)
+        self.assertIn("Someone on Arclent", res2.text)
 
     def test_dynamic_sender_identity_on_verify(self):
-        """Test that /verify dynamically renders actual sender identity instead of 'Someone on Arclent'."""
-        # Case A: Instagram sender handle
+        """Test that /verify dynamically renders '{username} on Arclent' for Instagram and 'Someone on Arclent' for email."""
+        # Case A: Instagram sender handle -> shows 'artistic_editor on Arclent'
         session_ig = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session_ig.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Antarctica")
         session_ig.user_role = "Colorist"
@@ -397,19 +396,18 @@ class TestVerificationFlow(unittest.TestCase):
         res_ig = self.client.get(f"/verify?session_id={session_ig.session_id}")
         self.assertEqual(res_ig.status_code, 200)
         self.assertNotIn("Someone on Arclent", res_ig.text)
-        self.assertIn("@artistic_editor on Instagram", res_ig.text)
+        self.assertIn("artistic_editor on Arclent", res_ig.text)
 
-        # Case B: Connected Gmail sender
+        # Case B: Email sender -> keeps as 'Someone on Arclent' (system email not exposed)
         session_gmail = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session_gmail.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Antarctica")
         session_gmail.user_role = "VFX Artist"
-        session_gmail.sender_email = "ubja56@gmail.com"
         session_gmail.selected_channel = "email"
 
         res_gmail = self.client.get(f"/verify?session_id={session_gmail.session_id}")
         self.assertEqual(res_gmail.status_code, 200)
-        self.assertNotIn("Someone on Arclent", res_gmail.text)
-        self.assertIn("ubja56@gmail.com", res_gmail.text)
+        self.assertIn("Someone on Arclent", res_gmail.text)
+        self.assertNotIn("ubja56@gmail.com", res_gmail.text)
 
 
 if __name__ == "__main__":

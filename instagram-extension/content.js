@@ -232,6 +232,13 @@
     function insertMessageIntoComposer(composer, text) {
         if (!composer || !text) return false;
 
+        const currentVal = (composer.innerText || composer.textContent || composer.value || "").trim();
+        // If message is already written, do not insert again
+        if (currentVal === text.trim() || currentVal.includes(text.trim())) {
+            console.log("[Arclent Extension] Message already fully present in composer. Skipping duplicate insertion.");
+            return true;
+        }
+
         composer.focus();
 
         if (composer.tagName.toLowerCase() === "textarea" || composer.tagName.toLowerCase() === "input") {
@@ -243,15 +250,15 @@
 
         // For contenteditable / Lexical:
         try {
-            // Select all existing content
+            // Select all existing content so we replace instead of appending
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(composer);
             selection.removeAllRanges();
             selection.addRange(range);
 
-            // Execute insertText command (triggers React & DOM sync)
-            const success = document.execCommand("insertText", false, text);
+            // Execute insertText command (triggers React & DOM sync replacing selection)
+            document.execCommand("insertText", false, text);
 
             // Dispatch synthetic InputEvents
             composer.dispatchEvent(
@@ -379,28 +386,47 @@
             if (verified || inserted) {
                 console.log("[Arclent Extension] ✓ Message successfully inserted into composer. STOPPING (user must click send).");
 
+                // Immediately mark session as completed in storage so it cannot be triggered again on SPA URL changes
+                sessionData.status = "completed";
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+
                 // Auto-detect logged-in user handle on Instagram if available
                 let loggedInUser = null;
                 try {
-                    const profileLinks = Array.from(document.querySelectorAll('a[href^="/"][role="link"], nav a[href^="/"]'));
-                    for (const link of profileLinks) {
-                        const href = link.getAttribute("href") || "";
-                        const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0];
-                        const systemPages = ["direct", "explore", "reels", "stories", "accounts", "p", "reel", "your_activity", "saved", "settings", "messages"];
-                        if (cleanHref && !systemPages.includes(cleanHref.toLowerCase()) && !cleanHref.includes("?")) {
-                            if (link.querySelector('img[alt*="profile picture"]') || (link.textContent || "").toLowerCase().includes("profile")) {
-                                loggedInUser = cleanHref;
-                                break;
+                    // Method 1: Profile link with Profile SVG icon or aria-label
+                    const profileLink = document.querySelector('svg[aria-label="Profile"], svg[aria-label="Your profile"]')?.closest('a');
+                    if (profileLink) {
+                        const href = profileLink.getAttribute("href") || "";
+                        const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0].replace(/^@+/, "").trim();
+                        if (cleanHref && !cleanHref.includes("?")) {
+                            loggedInUser = cleanHref;
+                        }
+                    }
+
+                    // Method 2: Check all sidebar navigation links
+                    if (!loggedInUser) {
+                        const profileLinks = Array.from(document.querySelectorAll('a[href^="/"][role="link"], nav a[href^="/"]'));
+                        for (const link of profileLinks) {
+                            const href = link.getAttribute("href") || "";
+                            const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0].replace(/^@+/, "").trim();
+                            const systemPages = ["direct", "explore", "reels", "stories", "accounts", "p", "reel", "your_activity", "saved", "settings", "messages", "inbox"];
+                            if (cleanHref && !systemPages.includes(cleanHref.toLowerCase()) && !cleanHref.includes("?")) {
+                                if (link.querySelector('img[alt*="profile picture"]') || (link.textContent || "").toLowerCase().includes("profile")) {
+                                    loggedInUser = cleanHref;
+                                    break;
+                                }
                             }
                         }
                     }
+
+                    // Method 3: Avatar image alt tags
                     if (!loggedInUser) {
                         const avatarImgs = Array.from(document.querySelectorAll('img[alt*="profile picture"]'));
                         for (const img of avatarImgs) {
                             const alt = img.getAttribute("alt") || "";
                             const match = alt.match(/^([^']+)'s profile picture/i);
                             if (match && match[1]) {
-                                loggedInUser = match[1];
+                                loggedInUser = match[1].replace(/^@+/, "").trim();
                                 break;
                             }
                         }

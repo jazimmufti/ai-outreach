@@ -1078,7 +1078,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Notify backend of social outreach dispatch immediately
         if (state.sessionId) {
-            const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on Instagram` : (state.senderEmail || "Your collaborator on Instagram");
+            const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
             fetch("/api/outreach/record-social-outreach", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1108,7 +1108,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const creatorName = c.name || c.channel_name || "Creator";
                 const handle = state.finalInstagramHandle || (state.pendingExtensionSession ? state.pendingExtensionSession.handle : "@creator");
                 const message = (state.pendingExtensionSession ? state.pendingExtensionSession.message : "") || "";
-                const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on Instagram` : (state.senderEmail || "Your collaborator on Instagram");
+                const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
 
                 // Record social outreach on backend
                 if (state.sessionId) {
@@ -1165,17 +1165,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (type === "ARCLENT_INSTAGRAM_DM_READY") {
             if (senderHandle) {
-                state.senderHandle = senderHandle;
+                const cleanHandle = String(senderHandle).replace(/^@+/, '').trim();
+                state.senderHandle = cleanHandle;
                 saveSessionState();
                 if (state.sessionId) {
-                    const senderIdentity = `@${senderHandle.replace(/^@+/, '')} on Instagram`;
+                    const senderIdentity = `${cleanHandle} on Arclent`;
                     fetch("/api/outreach/record-social-outreach", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             session_id: state.sessionId,
                             platform: "Instagram",
-                            sender_handle: state.senderHandle,
+                            sender_handle: cleanHandle,
                             sender_identity: senderIdentity
                         })
                     }).catch(() => {});
@@ -1254,7 +1255,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Notify backend of social outreach dispatch
         if (state.sessionId) {
-            const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on ${platformName}` : (state.senderEmail ? `${state.senderEmail} on ${platformName}` : `Your collaborator on ${platformName}`);
+            const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
             fetch("/api/outreach/record-social-outreach", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

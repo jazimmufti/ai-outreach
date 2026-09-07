@@ -444,10 +444,7 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
         session.stage = OutreachStage.SENT
         session.creator_response = "pending"
         session.selected_channel = "email"
-        sender_addr = result.get("sender") or gmail_stat.get("email")
-        if sender_addr:
-            session.sender_email = sender_addr
-            session.sender_identity = sender_addr
+        session.sender_identity = "Someone on Arclent"
         save_session(session)
 
         return SendEmailResponse(
@@ -464,29 +461,23 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
 
 
 def format_sender_display(session: OutreachSession) -> str:
-    """Format dynamic sender identity (no hardcoded platform or user)."""
+    """Format sender identity: 'Someone on Arclent' for email/fallback, or '{username} on Arclent' for social/Instagram."""
+    # 1. If a specific user sender_handle was provided (e.g. from Instagram / social outreach)
+    if session.sender_handle and session.sender_handle.strip():
+        handle = session.sender_handle.strip().lstrip("@")
+        if handle:
+            return f"{handle} on Arclent"
+
+    # 2. If sender_identity was set and formatted
     if session.sender_identity and session.sender_identity.strip():
         val = session.sender_identity.strip()
-        if "someone on arclent" not in val.lower():
-            return val
-    if session.sender_handle and session.sender_handle.strip():
-        handle = session.sender_handle.strip()
-        if not handle.startswith("@") and "@" not in handle and " " not in handle:
-            handle = f"@{handle}"
-        ch = (session.selected_channel or "social").title()
-        if ch.lower() == "x":
-            ch = "X (Twitter)"
-        return f"{handle} on {ch}"
-    if session.sender_email and session.sender_email.strip():
-        return session.sender_email.strip()
-    if session.final_email and session.final_email.strip():
-        return session.final_email.strip()
-    if session.selected_channel and session.selected_channel.strip():
-        ch = session.selected_channel.strip().title()
-        if ch.lower() == "x":
-            ch = "X (Twitter)"
-        return f"Your collaborator on {ch}"
-    return f"Your {session.user_role or 'collaborator'}"
+        # Ensure company email address is never displayed as sender identity
+        if "@" in val and "." in val and " " not in val:
+            return "Someone on Arclent"
+        return val
+
+    # 3. Default for email and unauthenticated outreach
+    return "Someone on Arclent"
 
 
 @router.post("/record-social-outreach")
@@ -501,15 +492,14 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
     if payload.handle:
         session.final_instagram_handle = payload.handle
 
-    if payload.sender_identity and payload.sender_identity.strip() and "someone on arclent" not in payload.sender_identity.lower():
+    if payload.sender_handle and payload.sender_handle.strip():
+        raw_h = payload.sender_handle.strip().lstrip("@")
+        session.sender_handle = raw_h
+        session.sender_identity = f"{raw_h} on Arclent"
+    elif payload.sender_identity and payload.sender_identity.strip() and "@" not in payload.sender_identity:
         session.sender_identity = payload.sender_identity.strip()
-    elif payload.sender_handle and payload.sender_handle.strip():
-        raw_h = payload.sender_handle.strip()
-        clean_h = raw_h if raw_h.startswith("@") or "@" in raw_h else f"@{raw_h}"
-        session.sender_handle = clean_h
-        session.sender_identity = f"{clean_h} on {platform_str}"
     else:
-        session.sender_identity = f"Your collaborator on {platform_str}"
+        session.sender_identity = "Someone on Arclent"
 
     session.stage = OutreachStage.SENT
     session.creator_response = "pending"
