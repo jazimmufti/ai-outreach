@@ -1,26 +1,46 @@
 /**
  * Arclent Instagram Outreach Assistant — Bridge Script (Manifest V3)
- * Injected into Arclent web app origins (localhost, 127.0.0.1, arclent.com)
- * Enables seamless, secure detection and bidirectional communication with the Arclent web app.
+ * Injected into Arclent web app origins (localhost, 127.0.0.1, up.railway.app, arclent.com)
+ * Enables seamless, bidirectional communication between the Arclent web application and the extension.
  */
 
 (() => {
-    // 1. Mark presence in the DOM
-    document.documentElement.setAttribute("data-arclent-instagram-extension", "installed");
-    document.documentElement.dataset.arclentExtensionVersion = "1.0.0";
+    function markAndAnnouncePresence() {
+        if (document.documentElement) {
+            document.documentElement.setAttribute("data-arclent-instagram-extension", "installed");
+            document.documentElement.dataset.arclentInstagramExtension = "installed";
+            document.documentElement.dataset.arclentExtensionVersion = "1.0.0";
+        }
 
-    // 2. Dispatch custom event for immediate script listeners
-    window.dispatchEvent(new CustomEvent("ARCLENT_INSTAGRAM_EXTENSION_READY", {
-        detail: {
+        // Post announcement to main window
+        window.postMessage({
+            type: "ARCLENT_EXTENSION_PONG",
             installed: true,
             version: "1.0.0",
             name: "Arclent Instagram Assistant"
-        }
-    }));
+        }, "*");
 
-    // 3. Listen for window postMessages from Arclent web app
+        // Dispatch DOM CustomEvent
+        window.dispatchEvent(new CustomEvent("ARCLENT_INSTAGRAM_EXTENSION_READY", {
+            detail: {
+                installed: true,
+                version: "1.0.0",
+                name: "Arclent Instagram Assistant"
+            }
+        }));
+    }
+
+    // Mark immediately
+    markAndAnnouncePresence();
+
+    // Re-announce on DOM ready and window load to guarantee detection regardless of timing
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", markAndAnnouncePresence);
+    }
+    window.addEventListener("load", markAndAnnouncePresence);
+
+    // Listen for window postMessages from Arclent web app
     window.addEventListener("message", async (event) => {
-        // Only accept messages from same origin or trusted sources
         if (event.source !== window || !event.data || typeof event.data !== "object") {
             return;
         }
@@ -29,12 +49,7 @@
 
         // A. Handshake Ping
         if (type === "ARCLENT_CHECK_EXTENSION" || type === "ARCLENT_PING") {
-            window.postMessage({
-                type: "ARCLENT_EXTENSION_PONG",
-                installed: true,
-                version: "1.0.0",
-                name: "Arclent Instagram Assistant"
-            }, "*");
+            markAndAnnouncePresence();
             return;
         }
 
@@ -61,7 +76,7 @@
         }
     });
 
-    // 4. Relay background service worker messages to the web page
+    // Relay background service worker messages to the web page
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message && typeof message === "object") {
             window.postMessage(message, "*");

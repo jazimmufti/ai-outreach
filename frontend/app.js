@@ -904,11 +904,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isInstalled) {
                 extensionStatusPill.className = "status-pill status-connected";
                 extensionStatusText.textContent = "Extension: Active";
-                extensionStatusPill.title = "Arclent Instagram Extension is installed and active";
+                extensionStatusPill.title = "Arclent Instagram Extension is connected and active";
             } else {
                 extensionStatusPill.className = "status-pill status-disconnected";
                 extensionStatusText.textContent = "Extension: Not Detected";
-                extensionStatusPill.title = "Install Arclent Instagram Extension for 1-Click DM Auto-Fill";
+                extensionStatusPill.title = "Click to re-check. Install the Chrome extension for 1-click Instagram auto-fill";
             }
         }
         if (igExtensionStatusNote && igExtensionNoteText) {
@@ -928,15 +928,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    async function isInstagramExtensionInstalled(timeoutMs = 400) {
-        // 1. Check DOM marker injected by bridge.js
-        if (document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed" ||
-            document.documentElement.dataset.arclentExtensionVersion) {
+    // Immediate and event-driven extension presence check
+    function checkDirectDomPresence() {
+        if (document.documentElement && (
+            document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed" ||
+            document.documentElement.dataset.arclentInstagramExtension === "installed" ||
+            document.documentElement.dataset.arclentExtensionVersion
+        )) {
             updateExtensionStatusUI(true);
             return true;
         }
+        return false;
+    }
 
-        // 2. Window postMessage ping-pong handshake
+    async function isInstagramExtensionInstalled(timeoutMs = 500) {
+        if (checkDirectDomPresence()) {
+            return true;
+        }
+
         return new Promise((resolve) => {
             let resolved = false;
 
@@ -949,19 +958,56 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
+            function onCustomEvent() {
+                resolved = true;
+                window.removeEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
+                updateExtensionStatusUI(true);
+                resolve(true);
+            }
+
             window.addEventListener("message", onMessage);
+            window.addEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
             window.postMessage({ type: "ARCLENT_CHECK_EXTENSION" }, "*");
 
             setTimeout(() => {
                 if (!resolved) {
                     window.removeEventListener("message", onMessage);
-                    const isInstalled = document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed";
+                    window.removeEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
+                    const isInstalled = checkDirectDomPresence();
                     updateExtensionStatusUI(isInstalled);
                     resolve(isInstalled);
                 }
             }, timeoutMs);
         });
     }
+
+    // Global persistent listeners for extension announcements
+    window.addEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", () => updateExtensionStatusUI(true));
+    window.addEventListener("message", (e) => {
+        if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
+            updateExtensionStatusUI(true);
+        }
+    });
+
+    // Make status pill clickable to re-check
+    if (extensionStatusPill) {
+        extensionStatusPill.style.cursor = "pointer";
+        extensionStatusPill.addEventListener("click", async () => {
+            if (extensionStatusText) extensionStatusText.textContent = "Extension: Checking...";
+            const installed = await isInstagramExtensionInstalled(800);
+            if (installed) {
+                showToast("✓ Arclent Instagram Extension is connected & active!");
+            } else {
+                showToast("Extension not detected. Make sure to reload the extension in chrome://extensions and refresh this page.", "warning");
+            }
+        });
+    }
+
+    // Multi-stage auto-detection on load
+    checkDirectDomPresence();
+    setTimeout(() => { isInstagramExtensionInstalled(400); }, 300);
+    setTimeout(() => { isInstagramExtensionInstalled(500); }, 1200);
+    setTimeout(() => { isInstagramExtensionInstalled(600); }, 2500);
 
     // Handle extension outreach dispatch
     async function dispatchInstagramWithExtension({ username, message, sessionId }) {
