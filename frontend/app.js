@@ -109,32 +109,64 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --------------------------------------------------------------------------
+    // Instagram Handle Normalizer
+    // --------------------------------------------------------------------------
+    function normalizeInstagramHandle(handleOrUrl) {
+        if (!handleOrUrl) return "";
+        let h = String(handleOrUrl).trim();
+
+        // If URL, strip query params and hash fragment, then parse username
+        if (h.includes("instagram.com") || h.includes("instagr.am") || h.includes("ig.me") || h.startsWith("http://") || h.startsWith("https://")) {
+            try {
+                // Strip query parameters and hash fragments first
+                h = h.split("?")[0].split("#")[0];
+                const urlObj = new URL(h.startsWith("http") ? h : `https://${h}`);
+                const pathSegments = urlObj.pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+
+                if (pathSegments.length > 0) {
+                    // Check if ig.me/m/username
+                    if (pathSegments[0].toLowerCase() === "m" && pathSegments[1]) {
+                        h = pathSegments[1];
+                    } else if (pathSegments[0].toLowerCase() === "direct" && pathSegments[1]?.toLowerCase() === "t" && pathSegments[2]) {
+                        h = pathSegments[2];
+                    } else {
+                        // Find first non-system segment
+                        const systemSegments = new Set(["direct", "p", "reel", "reels", "stories", "explore", "inbox", "accounts"]);
+                        const userSegment = pathSegments.find(seg => !systemSegments.has(seg.toLowerCase()));
+                        h = userSegment || pathSegments[pathSegments.length - 1];
+                    }
+                }
+            } catch (e) {
+                // Fallback regex parsing
+                h = h.split("?")[0].split("#")[0];
+                h = h.replace(/^https?:\/\/(www\.)?(instagram\.com|instagr\.am|ig\.me\/m)\//i, "");
+                h = h.replace(/\/+$/, "");
+            }
+        }
+
+        // Strip any residual query params, slashes, or @ symbols
+        h = h.split("?")[0].split("#")[0].replace(/\/+$/, "").replace(/^@+/, "").trim();
+        return h;
+    }
+
+    // --------------------------------------------------------------------------
     // Direct Message URL Generator (Instagram, X, Reddit, Facebook, LinkedIn, etc.)
     // --------------------------------------------------------------------------
     function getDirectMessageUrl(platform, rawHandleOrUrl, text = "", subject = "") {
         const p = (platform || "").toLowerCase();
-        
-        let cleanHandle = (rawHandleOrUrl || "").trim();
-        if (cleanHandle.startsWith("http://") || cleanHandle.startsWith("https://")) {
-            try {
-                const parsedUrl = new URL(cleanHandle);
-                const pathParts = parsedUrl.pathname.replace(/^\/+|\/+$/g, "").split("/");
-                if (pathParts.length > 0 && pathParts[pathParts.length - 1]) {
-                    cleanHandle = pathParts[pathParts.length - 1];
-                }
-            } catch (e) {
-                cleanHandle = cleanHandle.replace(/^https?:\/\/[^\/]+\/?/i, "").replace(/\/+$/, "");
+
+        // 1. Instagram: Always construct the official direct message shortlink ig.me/m/<username>
+        if (p.includes("instagram") || p === "ig") {
+            const handle = normalizeInstagramHandle(rawHandleOrUrl);
+            if (!handle) {
+                // Open Instagram direct inbox as fallback, NEVER profile
+                return "https://www.instagram.com/direct/inbox/";
             }
+            return `https://ig.me/m/${encodeURIComponent(handle)}`;
         }
-        cleanHandle = cleanHandle.replace(/^@+/, "").replace(/^\/+|\/+$/g, "").trim();
 
         const encodedText = encodeURIComponent(text || "");
         const encodedSubject = encodeURIComponent(subject || "Collaboration Confirmation");
-
-        // 1. Instagram: ig.me/m/<username> directly opens Instagram Direct Messages with that user
-        if (p.includes("instagram") || p === "ig") {
-            return `https://ig.me/m/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
-        }
 
         // 2. X / Twitter: Direct message compose overlay with text prefilled
         if (p.includes("twitter") || p === "x" || p.includes("x/")) {
@@ -143,12 +175,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 3. Reddit: Official direct message composer prefilling recipient, subject and text
         if (p.includes("reddit")) {
-            return `https://www.reddit.com/message/compose/?to=${encodeURIComponent(cleanHandle)}&subject=${encodedSubject}&message=${encodedText}`;
+            const cleanRedditHandle = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/(www\.)?reddit\.com\/u(ser)?\//i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            if (!cleanRedditHandle) return "https://www.reddit.com/message/compose/";
+            return `https://www.reddit.com/message/compose/?to=${encodeURIComponent(cleanRedditHandle)}&subject=${encodedSubject}&message=${encodedText}`;
         }
 
         // 4. Facebook / Messenger: m.me/<username> opens Messenger chat
         if (p.includes("facebook") || p.includes("messenger") || p === "fb") {
-            return `https://m.me/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
+            const cleanFb = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/(www\.)?(facebook\.com|m\.me|messenger\.com)\//i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            if (!cleanFb) return "https://www.messenger.com/";
+            return `https://m.me/${encodeURIComponent(cleanFb)}`;
         }
 
         // 5. LinkedIn: Direct compose body
@@ -158,17 +204,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 6. WhatsApp
         if (p.includes("whatsapp")) {
-            return `https://wa.me/${cleanHandle}?text=${encodedText}`;
+            const cleanWa = String(rawHandleOrUrl || "").replace(/[^0-9+]/g, "");
+            return `https://wa.me/${cleanWa}?text=${encodedText}`;
         }
 
         // 7. Telegram
         if (p.includes("telegram")) {
-            return `https://t.me/${cleanHandle}?text=${encodedText}`;
+            const cleanTg = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/t\.me\//i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            return `https://t.me/${encodeURIComponent(cleanTg)}?text=${encodedText}`;
         }
 
         // 8. Discord
         if (p.includes("discord")) {
-            if (rawHandleOrUrl && (rawHandleOrUrl.includes("discord.gg") || rawHandleOrUrl.includes("discord.com"))) {
+            if (rawHandleOrUrl && (String(rawHandleOrUrl).includes("discord.gg") || String(rawHandleOrUrl).includes("discord.com"))) {
                 return rawHandleOrUrl;
             }
             return `https://discord.com/channels/@me`;
@@ -176,14 +229,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 9. TikTok
         if (p.includes("tiktok")) {
-            return `https://www.tiktok.com/@${cleanHandle}`;
+            const cleanTt = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/(www\.)?tiktok\.com\/@/i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            return cleanTt ? `https://www.tiktok.com/@${encodeURIComponent(cleanTt)}` : `https://www.tiktok.com/messages`;
         }
 
-        // Fallback
-        if (rawHandleOrUrl && (rawHandleOrUrl.startsWith("http://") || rawHandleOrUrl.startsWith("https://"))) {
-            return rawHandleOrUrl;
+        // Fallback: Never fall back to profile, try DM handle or direct inbox
+        const fallbackHandle = normalizeInstagramHandle(rawHandleOrUrl);
+        if (fallbackHandle) {
+            return `https://ig.me/m/${encodeURIComponent(fallbackHandle)}`;
         }
-        return `https://ig.me/m/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
+        return "https://www.instagram.com/direct/inbox/";
     }
 
     // --------------------------------------------------------------------------
@@ -807,10 +867,28 @@ document.addEventListener("DOMContentLoaded", () => {
         return generateSocialDmDraft(creatorName, videoTitle, role, "Instagram");
     }
 
+    function fallbackClipboardCopy(text) {
+        try {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            textarea.style.top = "0";
+            textarea.setAttribute("readonly", "");
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textarea);
+        } catch (e) {
+            console.warn("Fallback clipboard copy failed:", e);
+        }
+    }
+
     // --------------------------------------------------------------------------
     // Unified Social Outreach Dispatcher
     // --------------------------------------------------------------------------
-    async function dispatchSocialOutreach(options = {}) {
+    function dispatchSocialOutreach(options = {}) {
         const active = options.profile || state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
         const platformName = options.platform || active.platform || "Instagram";
         const meta = getSocialMediaMeta(platformName);
@@ -833,25 +911,36 @@ document.addEventListener("DOMContentLoaded", () => {
             text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
         }
 
-        // 1. Copy message draft directly to user's clipboard
+        // 1. Generate Direct Message Composer URL
+        const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
+        const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
+
+        // 2. Open DM URL immediately in the user gesture callstack to prevent popup blocker
+        let openedWin = null;
         try {
-            await navigator.clipboard.writeText(text);
-        } catch (err) {
-            if (igConfirmedMessageDraft) {
-                igConfirmedMessageDraft.select();
-                document.execCommand("copy");
-            } else if (instaMessageBody) {
-                instaMessageBody.select();
-                document.execCommand("copy");
+            openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
+            if (!openedWin) {
+                showToast(`Please allow popups to open ${meta.name} messaging.`, "warning");
             }
+        } catch (err) {
+            console.warn("Failed to open DM window:", err);
         }
 
-        // 2. Open Direct Message Composer / Chat
-        const targetUrl = options.url || active.url || handle;
-        const dmUrl = getDirectMessageUrl(platformName, targetUrl, text, subject);
-        window.open(dmUrl, "_blank", "noopener,noreferrer");
+        // 3. Robust clipboard copy (supports modern async and synchronous textarea fallback)
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(err => {
+                    console.warn("Async clipboard copy failed:", err);
+                    fallbackClipboardCopy(text);
+                });
+            } else {
+                fallbackClipboardCopy(text);
+            }
+        } catch (err) {
+            fallbackClipboardCopy(text);
+        }
 
-        // 3. Mark session stage as SENT on backend
+        // 4. Notify backend of social outreach dispatch
         if (state.sessionId) {
             fetch("/api/outreach/record-social-outreach", {
                 method: "POST",
@@ -865,7 +954,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }).catch(() => {});
         }
 
-        // 4. Update state and transition to Live Delivery / Status Screen
+        // 5. Update state and transition to Live Delivery / Status Screen
         state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
         state.stage = "sent";
         state.selectedChannel = platformName.toLowerCase();
@@ -890,9 +979,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
 
         showScreen("deliverySuccess", 4);
-        showToast(`✓ Message copied! Opening ${meta.name} DM... (Paste & Send)`);
+        showToast(`✓ Message copied! Opening ${meta.name} DM... Paste the message and click Send.`);
 
-        // 5. Start live verification polling
+        // 6. Start live verification polling
         startVerificationPolling();
     }
 

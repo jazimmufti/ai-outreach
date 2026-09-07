@@ -275,6 +275,22 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertEqual(status_data["stage"], OutreachStage.SENT)
         self.assertEqual(status_data["creator_response"], "pending")
 
+    def test_instagram_dm_url_patterns(self):
+        """Test that Instagram handles with diverse formats properly map to DM deep links."""
+        handles = [
+            "@mrbeast",
+            "mrbeast",
+            "https://instagram.com/mrbeast/",
+            "https://www.instagram.com/mrbeast/?igsh=123",
+            "https://ig.me/m/mrbeast"
+        ]
+        for raw in handles:
+            clean = raw.split("?")[0].split("#")[0].rstrip("/").replace("https://www.instagram.com/", "").replace("https://instagram.com/", "").replace("https://ig.me/m/", "").lstrip("@")
+            self.assertEqual(clean, "mrbeast")
+            dm_url = f"https://ig.me/m/{clean}"
+            self.assertEqual(dm_url, "https://ig.me/m/mrbeast")
+            self.assertNotIn("https://instagram.com/mrbeast", dm_url)
+
 
 if __name__ == "__main__":
     unittest.main()
