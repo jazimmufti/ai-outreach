@@ -444,6 +444,24 @@
                             }
                         }
                     }
+
+                    // Method 4: Scan embedded JSON script tags for viewer username
+                    if (!loggedInUser) {
+                        const scripts = Array.from(document.querySelectorAll('script[type="application/json"], script[data-sjs]'));
+                        for (const s of scripts) {
+                            const text = s.textContent || "";
+                            const match = text.match(/"viewer"\s*:\s*\{[^}]*"username"\s*:\s*"([a-zA-Z0-9._]+)"/i) ||
+                                          text.match(/"current_user"\s*:\s*\{[^}]*"username"\s*:\s*"([a-zA-Z0-9._]+)"/i);
+                            if (match && match[1]) {
+                                const u = match[1].toLowerCase();
+                                const systemNames = ["instagram", "direct", "explore", "reels", "stories", "accounts", "p", "reel"];
+                                if (!systemNames.includes(u)) {
+                                    loggedInUser = match[1].trim();
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 } catch (e) {
                     console.warn("[Arclent Extension] Could not detect logged-in username:", e);
                 }
