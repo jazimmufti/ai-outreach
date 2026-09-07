@@ -109,7 +109,7 @@ class OutreachSession(BaseModel):
     final_instagram_handle: Optional[str] = None
     final_instagram_url: Optional[str] = None
     message: Optional[OutreachMessage] = None
-    selected_channel: Optional[Literal["email", "instagram", "manual"]] = None
+    selected_channel: Optional[str] = None
     creator_response: Optional[Literal["pending", "confirmed", "rejected"]] = "pending"
     verified_at: Optional[str] = None
     verification_token: Optional[str] = None
@@ -231,6 +231,14 @@ class SendEmailWorkflowRequest(BaseModel):
     recipient: Optional[str] = None
     subject: str = Field(default="Collaboration Opportunity")
     body: str
+
+
+class RecordSocialOutreachRequest(BaseModel):
+    """Request to record social media outreach dispatch."""
+    session_id: str
+    platform: Optional[str] = "Instagram"
+    handle: Optional[str] = None
+    message: Optional[str] = None
 
 
 class CreatorDiscoveryResponse(BaseModel):

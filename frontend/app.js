@@ -104,8 +104,86 @@ document.addEventListener("DOMContentLoaded", () => {
             name: platform || "Profile",
             color: "#FFFFFF",
             bgColor: "#374151",
-            icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
+            icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
         };
+    }
+
+    // --------------------------------------------------------------------------
+    // Direct Message URL Generator (Instagram, X, Reddit, Facebook, LinkedIn, etc.)
+    // --------------------------------------------------------------------------
+    function getDirectMessageUrl(platform, rawHandleOrUrl, text = "", subject = "") {
+        const p = (platform || "").toLowerCase();
+        
+        let cleanHandle = (rawHandleOrUrl || "").trim();
+        if (cleanHandle.startsWith("http://") || cleanHandle.startsWith("https://")) {
+            try {
+                const parsedUrl = new URL(cleanHandle);
+                const pathParts = parsedUrl.pathname.replace(/^\/+|\/+$/g, "").split("/");
+                if (pathParts.length > 0 && pathParts[pathParts.length - 1]) {
+                    cleanHandle = pathParts[pathParts.length - 1];
+                }
+            } catch (e) {
+                cleanHandle = cleanHandle.replace(/^https?:\/\/[^\/]+\/?/i, "").replace(/\/+$/, "");
+            }
+        }
+        cleanHandle = cleanHandle.replace(/^@+/, "").replace(/^\/+|\/+$/g, "").trim();
+
+        const encodedText = encodeURIComponent(text || "");
+        const encodedSubject = encodeURIComponent(subject || "Collaboration Confirmation");
+
+        // 1. Instagram: ig.me/m/<username> directly opens Instagram Direct Messages with that user
+        if (p.includes("instagram") || p === "ig") {
+            return `https://ig.me/m/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
+        }
+
+        // 2. X / Twitter: Direct message compose overlay with text prefilled
+        if (p.includes("twitter") || p === "x" || p.includes("x/")) {
+            return `https://x.com/messages/compose?text=${encodedText}`;
+        }
+
+        // 3. Reddit: Official direct message composer prefilling recipient, subject and text
+        if (p.includes("reddit")) {
+            return `https://www.reddit.com/message/compose/?to=${encodeURIComponent(cleanHandle)}&subject=${encodedSubject}&message=${encodedText}`;
+        }
+
+        // 4. Facebook / Messenger: m.me/<username> opens Messenger chat
+        if (p.includes("facebook") || p.includes("messenger") || p === "fb") {
+            return `https://m.me/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
+        }
+
+        // 5. LinkedIn: Direct compose body
+        if (p.includes("linkedin")) {
+            return `https://www.linkedin.com/messaging/compose/?body=${encodedText}`;
+        }
+
+        // 6. WhatsApp
+        if (p.includes("whatsapp")) {
+            return `https://wa.me/${cleanHandle}?text=${encodedText}`;
+        }
+
+        // 7. Telegram
+        if (p.includes("telegram")) {
+            return `https://t.me/${cleanHandle}?text=${encodedText}`;
+        }
+
+        // 8. Discord
+        if (p.includes("discord")) {
+            if (rawHandleOrUrl && (rawHandleOrUrl.includes("discord.gg") || rawHandleOrUrl.includes("discord.com"))) {
+                return rawHandleOrUrl;
+            }
+            return `https://discord.com/channels/@me`;
+        }
+
+        // 9. TikTok
+        if (p.includes("tiktok")) {
+            return `https://www.tiktok.com/@${cleanHandle}`;
+        }
+
+        // Fallback
+        if (rawHandleOrUrl && (rawHandleOrUrl.startsWith("http://") || rawHandleOrUrl.startsWith("https://"))) {
+            return rawHandleOrUrl;
+        }
+        return `https://ig.me/m/${cleanHandle}${encodedText ? `?text=${encodedText}` : ""}`;
     }
 
     // --------------------------------------------------------------------------
@@ -124,6 +202,7 @@ document.addEventListener("DOMContentLoaded", () => {
         emailConfidence: null,
         instagramProfile: null,
         selectedSocialProfile: null,
+        activeSocialProfile: null,
         finalInstagramHandle: null,
         finalInstagramUrl: null,
         instagramConfirmed: false,
@@ -131,7 +210,9 @@ document.addEventListener("DOMContentLoaded", () => {
         message: null,
         gmailConnected: false,
         senderEmail: null,
-        isSending: false
+        isSending: false,
+        selectedChannel: null,
+        stageBeforeDelivery: null
     };
 
     // Header elements
@@ -701,6 +782,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // --------------------------------------------------------------------------
     function getVerificationLink() {
         const origin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "http://127.0.0.1:8000";
+        if (state.sessionId) {
+            return `${origin}/verify?session_id=${encodeURIComponent(state.sessionId)}`;
+        }
         return `${origin}/verify`;
     }
 
@@ -711,12 +795,105 @@ document.addEventListener("DOMContentLoaded", () => {
         return `Hi ${target}, someone on Arclent claims they worked as ${roleStr} on "${vTitle}". Can you confirm this collaboration?`;
     }
 
-    function generateInstagramDmDraft(creatorName, videoTitle, role) {
+    function generateSocialDmDraft(creatorName, videoTitle, role, platformName = "Instagram") {
         const target = creatorName || "there";
         const roleStr = (role || state.userRole || "Video editor").trim();
         const vTitle = (videoTitle || "your video").trim();
         const verifyUrl = getVerificationLink();
         return `Hey ${target}! I added our work together (${roleStr} on "${vTitle}") to my Arclent portfolio. Could you confirm it here so it shows as verified?\n\nConfirm at: ${verifyUrl}`;
+    }
+
+    function generateInstagramDmDraft(creatorName, videoTitle, role) {
+        return generateSocialDmDraft(creatorName, videoTitle, role, "Instagram");
+    }
+
+    // --------------------------------------------------------------------------
+    // Unified Social Outreach Dispatcher
+    // --------------------------------------------------------------------------
+    async function dispatchSocialOutreach(options = {}) {
+        const active = options.profile || state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+        const platformName = options.platform || active.platform || "Instagram";
+        const meta = getSocialMediaMeta(platformName);
+        const handle = formatHandle(options.handle || state.finalInstagramHandle || active.username || platformName);
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "your video";
+        const role = state.userRole || "Video editor";
+        const subject = `Collaboration confirmation for "${videoTitle}"`;
+
+        let text = options.text;
+        if (!text) {
+            if (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden")) {
+                text = igConfirmedMessageDraft.value.trim();
+            } else if (instaMessageBody && !instaMessageBody.closest(".hidden")) {
+                text = instaMessageBody.value.trim();
+            }
+        }
+        if (!text) {
+            text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
+        }
+
+        // 1. Copy message draft directly to user's clipboard
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            if (igConfirmedMessageDraft) {
+                igConfirmedMessageDraft.select();
+                document.execCommand("copy");
+            } else if (instaMessageBody) {
+                instaMessageBody.select();
+                document.execCommand("copy");
+            }
+        }
+
+        // 2. Open Direct Message Composer / Chat
+        const targetUrl = options.url || active.url || handle;
+        const dmUrl = getDirectMessageUrl(platformName, targetUrl, text, subject);
+        window.open(dmUrl, "_blank", "noopener,noreferrer");
+
+        // 3. Mark session stage as SENT on backend
+        if (state.sessionId) {
+            fetch("/api/outreach/record-social-outreach", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: state.sessionId,
+                    platform: platformName,
+                    handle: handle,
+                    message: text
+                })
+            }).catch(() => {});
+        }
+
+        // 4. Update state and transition to Live Delivery / Status Screen
+        state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
+        state.stage = "sent";
+        state.selectedChannel = platformName.toLowerCase();
+
+        if (vPendingRecipientSub) {
+            vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on ${meta.name}`;
+        }
+        if (vSuccessRecipientSub) {
+            vSuccessRecipientSub.textContent = `Message delivered to ${creatorName} (${handle}) on ${meta.name}`;
+        }
+        if (vRejectedRecipientSub) {
+            vRejectedRecipientSub.textContent = `Message delivered to ${creatorName} (${handle}) on ${meta.name}`;
+        }
+
+        const pendingSub = document.querySelector("#verification-pending-box .v-step-card:nth-child(2) .v-step-sub");
+        if (pendingSub) {
+            pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your ${meta.name} message.`;
+        }
+
+        if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+        showScreen("deliverySuccess", 4);
+        showToast(`✓ Message copied! Opening ${meta.name} DM... (Paste & Send)`);
+
+        // 5. Start live verification polling
+        startVerificationPolling();
     }
 
     // --------------------------------------------------------------------------
@@ -1233,12 +1410,26 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 <div class="other-social-actions">
-                    ${s.url ? `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="other-social-open-link" title="Open profile in new tab">Open ↗</a>` : ''}
+                    <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="Send DM on ${escapeHtml(meta.name)}">Send DM ↗</button>
                     <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
                         ${isSelected ? '✓ Selected' : 'Select'}
                     </button>
                 </div>
             `;
+
+            const dmBtn = item.querySelector(".other-social-open-dm-btn");
+            if (dmBtn) {
+                dmBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    dispatchSocialOutreach({
+                        profile: s,
+                        platform: s.platform,
+                        handle: s.username || s.platform,
+                        url: s.url,
+                        returnScreen: "verify_instagram"
+                    });
+                };
+            }
 
             const selectBtn = item.querySelector(".other-social-select-btn");
             if (selectBtn) {
@@ -1471,10 +1662,30 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
                 <div class="other-social-actions">
-                    ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="other-social-open-link" style="padding: 5px 12px; font-size: 11px;">Open ↗</a>` : ''}
+                    <button type="button" class="other-social-open-dm-btn other-social-open-link" style="padding: 5px 12px; font-size: 11px; background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;">Send DM ↗</button>
                     ${item.raw ? `<button type="button" class="other-social-select-btn" style="padding: 4px 10px; font-size: 11px;">Switch to this</button>` : ''}
                 </div>
             `;
+
+            const dmBtn = row.querySelector(".other-social-open-dm-btn");
+            if (dmBtn) {
+                dmBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (item.platform === "Email") {
+                        state.stage = "outreach_hub";
+                        renderOutreachHub();
+                        showScreen("outreachHub", 4);
+                    } else {
+                        dispatchSocialOutreach({
+                            profile: item.raw || item,
+                            platform: item.platform,
+                            handle: item.username,
+                            url: item.url,
+                            returnScreen: "verify_instagram"
+                        });
+                    }
+                };
+            }
 
             const selectBtn = row.querySelector(".other-social-select-btn");
             if (selectBtn && item.raw) {
@@ -1618,17 +1829,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnIgOpenSend) {
         btnIgOpenSend.onclick = () => {
-            const text = igConfirmedMessageDraft ? igConfirmedMessageDraft.value.trim() : "";
-            if (text) {
-                navigator.clipboard.writeText(text).catch(() => {});
-            }
-            const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
-            const meta = getSocialMediaMeta(active.platform);
-            const handle = state.finalInstagramHandle ? state.finalInstagramHandle.replace("@", "") : "";
-            const defaultBase = (active.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
-            const url = state.finalInstagramUrl || (handle ? `${defaultBase}/${handle}` : defaultBase);
-            showToast(`✓ Message copied! Opening ${meta.name} profile...`);
-            window.open(url, "_blank", "noopener,noreferrer");
+            dispatchSocialOutreach({ returnScreen: "verify_instagram" });
         };
     }
 
@@ -1763,10 +1964,23 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <span class="social-handle-text">${escapeHtml(s.username || s.platform)}</span>
                             </div>
                         </div>
-                        <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap; flex: 0;">
-                            <span>Open ↗</span>
-                        </a>
+                        <button type="button" class="btn-secondary hub-social-send-btn" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap; flex: 0; cursor: pointer;">
+                            <span>Send DM ↗</span>
+                        </button>
                     `;
+                    const sendBtn = card.querySelector(".hub-social-send-btn");
+                    if (sendBtn) {
+                        sendBtn.onclick = (e) => {
+                            e.preventDefault();
+                            dispatchSocialOutreach({
+                                profile: s,
+                                platform: s.platform,
+                                handle: s.username,
+                                url: s.url,
+                                returnScreen: "outreach_hub"
+                            });
+                        };
+                    }
                     hubSocialsGrid.appendChild(card);
                 });
             } else {
@@ -1801,12 +2015,18 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 
-    // Back from Delivery screen to Outreach Hub
+    // Back from Delivery screen to Outreach Hub or Step 2
     if (btnBackDelivery) {
         btnBackDelivery.onclick = () => {
-            state.stage = "outreach_hub";
-            renderOutreachHub();
-            showScreen("outreachHub", 4);
+            if (state.stageBeforeDelivery === "verify_instagram") {
+                state.stage = "verify_instagram";
+                renderVerifyInstagramStep();
+                showScreen("verifyInstagram", 3);
+            } else {
+                state.stage = "outreach_hub";
+                renderOutreachHub();
+                showScreen("outreachHub", 4);
+            }
         };
     }
 
@@ -1861,14 +2081,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (openInstagramBtn) {
         openInstagramBtn.onclick = () => {
-            const text = instaMessageBody ? instaMessageBody.value.trim() : "";
-            if (text) {
-                navigator.clipboard.writeText(text).catch(() => {});
-            }
-            const handle = state.finalInstagramHandle ? state.finalInstagramHandle.replace("@", "") : "";
-            const url = state.finalInstagramUrl || (handle ? `https://instagram.com/${handle}` : "https://instagram.com");
-            showToast("✓ Message copied! Opening Instagram profile...");
-            window.open(url, "_blank", "noopener,noreferrer");
+            dispatchSocialOutreach({ returnScreen: "outreach_hub" });
         };
     }
 
@@ -2034,11 +2247,14 @@ document.addEventListener("DOMContentLoaded", () => {
         state.emailConfirmed = false;
         state.instagramProfile = null;
         state.selectedSocialProfile = null;
+        state.activeSocialProfile = null;
         state.finalInstagramHandle = null;
         state.finalInstagramUrl = null;
         state.instagramConfirmed = false;
         state.socialProfiles = [];
         state.message = null;
+        state.selectedChannel = null;
+        state.stageBeforeDelivery = null;
 
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");

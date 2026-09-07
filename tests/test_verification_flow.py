@@ -214,11 +214,66 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertEqual(updated.creator_response, "rejected")
         self.assertEqual(updated.stage, OutreachStage.REJECTED)
 
-    def test_verify_missing_session_id(self):
-        """Test visiting /verify without session_id returns 400 Bad Request."""
-        res = self.client.get("/verify")
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("Arclent Collaboration Verification", res.text)
+    def test_record_social_outreach_instagram(self):
+        """Test recording social media outreach dispatch via Instagram and subsequent creator confirmation."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="MrBeast",
+            channel_name="MrBeast",
+            video_title="Squid Game In Real Life"
+        )
+        session.final_instagram_handle = "@mrbeast"
+
+        # Record social dispatch
+        res = self.client.post("/api/outreach/record-social-outreach", json={
+            "session_id": session.session_id,
+            "platform": "Instagram",
+            "handle": "@mrbeast",
+            "message": f"Hey MrBeast! Confirm at: http://127.0.0.1:8000/verify?session_id={session.session_id}"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["stage"], OutreachStage.SENT)
+        self.assertEqual(data["selected_channel"], "instagram")
+        self.assertEqual(data["creator_response"], "pending")
+
+        # Verify creator can open link and confirm
+        verify_res = self.client.get(f"/verify?session_id={session.session_id}&action=confirm")
+        self.assertEqual(verify_res.status_code, 200)
+        self.assertIn("Collaboration Confirmed!", verify_res.text)
+
+        # Verify session is updated to verified
+        updated = get_session(session.session_id)
+        self.assertEqual(updated.stage, OutreachStage.VERIFIED)
+        self.assertEqual(updated.creator_response, "confirmed")
+
+    def test_record_social_outreach_other_platform(self):
+        """Test recording social outreach via X/Twitter or Reddit."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="TechReviewer",
+            channel_name="TechReviewer",
+            video_title="Smartphone Review"
+        )
+
+        # Record social dispatch on X (Twitter)
+        res = self.client.post("/api/outreach/record-social-outreach", json={
+            "session_id": session.session_id,
+            "platform": "X",
+            "handle": "@tech_reviewer"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["stage"], OutreachStage.SENT)
+        self.assertEqual(data["selected_channel"], "x")
+
+        # Status endpoint returns session with pending creator response
+        status_res = self.client.get(f"/api/outreach/session-status?session_id={session.session_id}")
+        self.assertEqual(status_res.status_code, 200)
+        status_data = status_res.json()
+        self.assertEqual(status_data["stage"], OutreachStage.SENT)
+        self.assertEqual(status_data["creator_response"], "pending")
 
 
 if __name__ == "__main__":

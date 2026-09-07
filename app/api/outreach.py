@@ -22,7 +22,8 @@ from app.models.schemas import (
     ManualEmailRequest,
     GenerateMessageRequest,
     SendEmailWorkflowRequest,
-    SendEmailResponse
+    SendEmailResponse,
+    RecordSocialOutreachRequest
 )
 from app.services.session_manager import (
     create_session,
@@ -455,6 +456,30 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
     except Exception as e:
         logger.error(f"Failed to send email via workflow: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/record-social-outreach")
+async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
+    """Step 4 Send (Social): Record that outreach was dispatched via Instagram or other social platform."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    platform_str = payload.platform or "Instagram"
+    session.selected_channel = platform_str.lower()
+    if payload.handle:
+        session.final_instagram_handle = payload.handle
+
+    session.stage = OutreachStage.SENT
+    session.creator_response = "pending"
+    save_session(session)
+    return {
+        "success": True,
+        "session_id": session.session_id,
+        "stage": session.stage,
+        "selected_channel": session.selected_channel,
+        "creator_response": session.creator_response
+    }
 
 
 @router.get("/verify", response_class=HTMLResponse)
