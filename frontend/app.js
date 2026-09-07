@@ -270,12 +270,31 @@ document.addEventListener("DOMContentLoaded", () => {
         message: null,
         gmailConnected: false,
         senderEmail: null,
+        senderHandle: null,
         isSending: false,
         selectedChannel: null,
         stageBeforeDelivery: null,
         extensionInstalled: false,
         pendingExtensionSession: null
     };
+
+    function saveSessionState() {
+        if (!state.sessionId) return;
+        try {
+            sessionStorage.setItem("arclent_active_session_id", state.sessionId);
+            sessionStorage.setItem("arclent_active_session_data", JSON.stringify({
+                sessionId: state.sessionId,
+                stage: state.stage,
+                userRole: state.userRole,
+                creator: state.creator,
+                selectedChannel: state.selectedChannel,
+                finalInstagramHandle: state.finalInstagramHandle,
+                finalEmail: state.finalEmail,
+                senderEmail: state.senderEmail,
+                senderHandle: state.senderHandle
+            }));
+        } catch (e) {}
+    }
 
     // Header elements
     const extensionStatusPill = document.getElementById("extension-status-pill");
@@ -862,7 +881,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const target = creatorName || "there";
         const roleStr = (role || state.userRole || "Video editor").trim();
         const vTitle = (videoTitle || "your video").trim();
-        return `Hi ${target}, someone on Arclent claims they worked as ${roleStr} on "${vTitle}". Can you confirm this collaboration?`;
+        const sender = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')}` : (state.senderEmail || "your collaborator");
+        return `Hi ${target}, ${sender} claims they worked as ${roleStr} on "${vTitle}". Can you confirm this collaboration?`;
     }
 
     function generateSocialDmDraft(creatorName, videoTitle, role, platformName = "Instagram") {
@@ -1039,6 +1059,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.stageBeforeDelivery = state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub";
         state.stage = "sent";
         state.selectedChannel = "instagram";
+        saveSessionState();
 
         if (vDmReadySub) {
             vDmReadySub.textContent = `Your message has been added to @${cleanUsername}'s Instagram composer.`;
@@ -1054,6 +1075,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
         showScreen("deliverySuccess", 4);
         showToast(`✓ Opening Instagram DM for @${cleanUsername}... Review & click Send!`);
+
+        // Notify backend of social outreach dispatch immediately
+        if (state.sessionId) {
+            const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on Instagram` : (state.senderEmail || "Your collaborator on Instagram");
+            fetch("/api/outreach/record-social-outreach", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: state.sessionId,
+                    platform: "Instagram",
+                    handle: handle,
+                    sender_handle: state.senderHandle || null,
+                    sender_identity: senderIdentity,
+                    message: message
+                })
+            }).catch(() => {});
+        }
+
+        // Start live verification polling immediately (without waiting for user to click "I've Sent the Message")
+        startVerificationPolling();
     }
 
     // Confirmation handler for "I've Sent the Message"
@@ -1067,6 +1108,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const creatorName = c.name || c.channel_name || "Creator";
                 const handle = state.finalInstagramHandle || (state.pendingExtensionSession ? state.pendingExtensionSession.handle : "@creator");
                 const message = (state.pendingExtensionSession ? state.pendingExtensionSession.message : "") || "";
+                const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on Instagram` : (state.senderEmail || "Your collaborator on Instagram");
 
                 // Record social outreach on backend
                 if (state.sessionId) {
@@ -1077,6 +1119,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             session_id: state.sessionId,
                             platform: "Instagram",
                             handle: handle,
+                            sender_handle: state.senderHandle || null,
+                            sender_identity: senderIdentity,
                             message: message
                         })
                     }).catch(() => {});
@@ -1097,6 +1141,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
                 if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
 
+                saveSessionState();
                 showToast("✓ Message marked as sent! Polling for creator confirmation...");
 
                 // Start verification polling
@@ -1116,9 +1161,26 @@ document.addEventListener("DOMContentLoaded", () => {
     // Global listener for extension messages
     window.addEventListener("message", (event) => {
         if (!event.data || typeof event.data !== "object") return;
-        const { type, success, username, reason } = event.data;
+        const { type, success, username, reason, senderHandle } = event.data;
 
         if (type === "ARCLENT_INSTAGRAM_DM_READY") {
+            if (senderHandle) {
+                state.senderHandle = senderHandle;
+                saveSessionState();
+                if (state.sessionId) {
+                    const senderIdentity = `@${senderHandle.replace(/^@+/, '')} on Instagram`;
+                    fetch("/api/outreach/record-social-outreach", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            platform: "Instagram",
+                            sender_handle: state.senderHandle,
+                            sender_identity: senderIdentity
+                        })
+                    }).catch(() => {});
+                }
+            }
             showToast(`✓ Instagram DM ready for @${username || 'creator'}! Review and click Send in Instagram.`);
             if (verificationDmReadyBox && !verificationDmReadyBox.classList.contains("hidden")) {
                 if (vDmReadySub) {
@@ -1192,6 +1254,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Notify backend of social outreach dispatch
         if (state.sessionId) {
+            const senderIdentity = state.senderHandle ? `@${state.senderHandle.replace(/^@+/, '')} on ${platformName}` : (state.senderEmail ? `${state.senderEmail} on ${platformName}` : `Your collaborator on ${platformName}`);
             fetch("/api/outreach/record-social-outreach", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -1199,6 +1262,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     session_id: state.sessionId,
                     platform: platformName,
                     handle: handle,
+                    sender_handle: state.senderHandle || null,
+                    sender_identity: senderIdentity,
                     message: text
                 })
             }).catch(() => {});
@@ -1208,6 +1273,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
         state.stage = "sent";
         state.selectedChannel = platformName.toLowerCase();
+        saveSessionState();
 
         if (vPendingRecipientSub) {
             vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on ${meta.name}`;
@@ -2434,6 +2500,9 @@ document.addEventListener("DOMContentLoaded", () => {
             verificationPollInterval = null;
         }
 
+        state.stage = "verified";
+        saveSessionState();
+
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "creator";
         const rawSubs = (c.subscriber_count || "").replace(/subscribers/i, "").trim();
@@ -2449,10 +2518,12 @@ document.addEventListener("DOMContentLoaded", () => {
             vShieldAudienceText.textContent = `Collaboration verified against ${audText}`;
         }
 
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.remove("hidden");
 
+        showScreen("deliverySuccess", 4);
         showToast("✓ Response received! Confirmed by creator.");
     }
 
@@ -2461,6 +2532,9 @@ document.addEventListener("DOMContentLoaded", () => {
             clearInterval(verificationPollInterval);
             verificationPollInterval = null;
         }
+
+        state.stage = "rejected";
+        saveSessionState();
 
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "creator";
@@ -2473,22 +2547,28 @@ document.addEventListener("DOMContentLoaded", () => {
             vRejectedDescText.textContent = `Collaboration not confirmed. ${creatorName} indicated they did not collaborate on this project.`;
         }
 
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.remove("hidden");
 
+        showScreen("deliverySuccess", 4);
         showToast("✕ Response received: Collaboration declined by creator.", "error");
     }
 
     function startVerificationPolling() {
         if (verificationPollInterval) clearInterval(verificationPollInterval);
+        if (!state.sessionId) return;
         
-        verificationPollInterval = setInterval(async () => {
+        const checkStatus = async () => {
             if (!state.sessionId) return;
             try {
-                const res = await fetch(`/api/outreach/session-status?session_id=${state.sessionId}`);
+                const res = await fetch(`/api/outreach/session-status?session_id=${encodeURIComponent(state.sessionId)}`);
                 if (res.ok) {
                     const data = await res.json();
+                    if (data.creator && !state.creator) {
+                        state.creator = data.creator;
+                    }
                     if (data.creator_response === "confirmed" || data.stage === "verified") {
                         renderVerificationSuccess();
                     } else if (data.creator_response === "rejected" || data.stage === "rejected") {
@@ -2498,7 +2578,11 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (e) {
                 // Background polling
             }
-        }, 2500);
+        };
+
+        // Immediate check + interval every 1500ms
+        checkStatus();
+        verificationPollInterval = setInterval(checkStatus, 1500);
     }
 
     if (workflowEmailForm) {
@@ -2549,11 +2633,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     vPendingRecipientSub.textContent = `Message delivered to ${creatorName} via verified channel`;
                 }
 
+                if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
                 if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
                 if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
                 if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
 
                 state.stage = "sent";
+                state.selectedChannel = "email";
+                saveSessionState();
+
                 showScreen("deliverySuccess", 4);
                 showToast("✓ Email inquiry sent with Yes / No verification options!");
 
@@ -2578,6 +2666,11 @@ document.addEventListener("DOMContentLoaded", () => {
             verificationPollInterval = null;
         }
 
+        try {
+            sessionStorage.removeItem("arclent_active_session_id");
+            sessionStorage.removeItem("arclent_active_session_data");
+        } catch (e) {}
+
         state.sessionId = null;
         state.stage = "input";
         state.creator = null;
@@ -2596,6 +2689,7 @@ document.addEventListener("DOMContentLoaded", () => {
         state.selectedChannel = null;
         state.stageBeforeDelivery = null;
         state.pendingExtensionSession = null;
+        state.senderHandle = null;
 
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
@@ -2611,7 +2705,64 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", resetWorkflow);
     });
 
-    // Initialize Gmail status and Extension status on page load
+    // --------------------------------------------------------------------------
+    // Restore Session State across Refresh
+    // --------------------------------------------------------------------------
+    async function restoreActiveSession() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlSessionId = urlParams.get("session_id");
+        let storedSessionId = null;
+        try {
+            storedSessionId = sessionStorage.getItem("arclent_active_session_id");
+        } catch (e) {}
+
+        const targetSessionId = urlSessionId || storedSessionId;
+        if (!targetSessionId) return;
+
+        try {
+            let cachedData = {};
+            try {
+                const raw = sessionStorage.getItem("arclent_active_session_data");
+                if (raw) cachedData = JSON.parse(raw);
+            } catch (e) {}
+
+            const res = await fetch(`/api/outreach/session-status?session_id=${encodeURIComponent(targetSessionId)}`);
+            if (res.ok) {
+                const data = await res.json();
+                state.sessionId = data.session_id;
+                state.creator = data.creator || cachedData.creator || null;
+                state.userRole = data.user_role || cachedData.userRole || "Video editor";
+                state.selectedChannel = data.selected_channel || cachedData.selectedChannel || null;
+                state.finalInstagramHandle = data.final_instagram_handle || cachedData.finalInstagramHandle || null;
+                state.finalEmail = data.final_email || cachedData.finalEmail || null;
+                state.senderHandle = data.sender_handle || cachedData.senderHandle || null;
+
+                if (data.creator_response === "confirmed" || data.stage === "verified") {
+                    renderVerificationSuccess();
+                } else if (data.creator_response === "rejected" || data.stage === "rejected") {
+                    renderVerificationRejected();
+                } else if (data.stage === "sent") {
+                    const c = state.creator || {};
+                    const creatorName = c.name || c.channel_name || "Creator";
+                    const ch = (state.selectedChannel || "verified channel").toUpperCase();
+                    if (vPendingRecipientSub) {
+                        vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} via ${ch}`;
+                    }
+                    if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
+                    if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+                    if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                    if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+                    showScreen("deliverySuccess", 4);
+                    startVerificationPolling();
+                }
+            }
+        } catch (err) {
+            console.warn("Could not restore session state:", err);
+        }
+    }
+
+    // Initialize on page load
     checkGmailStatus();
     isInstagramExtensionInstalled();
+    restoreActiveSession();
 });

@@ -110,6 +110,10 @@ class OutreachSession(BaseModel):
     final_instagram_url: Optional[str] = None
     message: Optional[OutreachMessage] = None
     selected_channel: Optional[str] = None
+    sender_identity: Optional[str] = None
+    sender_handle: Optional[str] = None
+    sender_email: Optional[str] = None
+    sender_platform: Optional[str] = None
     creator_response: Optional[Literal["pending", "confirmed", "rejected"]] = "pending"
     verified_at: Optional[str] = None
     verification_token: Optional[str] = None
@@ -238,6 +242,8 @@ class RecordSocialOutreachRequest(BaseModel):
     session_id: str
     platform: Optional[str] = "Instagram"
     handle: Optional[str] = None
+    sender_handle: Optional[str] = None
+    sender_identity: Optional[str] = None
     message: Optional[str] = None
 
 

@@ -330,6 +330,87 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertEqual(confirmed_poll.json()["creator_response"], "confirmed")
         self.assertEqual(confirmed_poll.json()["stage"], OutreachStage.VERIFIED)
 
+    def test_repeated_confirmation_link_handling(self):
+        """Test that opening an already confirmed or rejected link does not show Yes/No buttons."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="MrBeast",
+            channel_name="MrBeast",
+            video_title="Squid Game In Real Life"
+        )
+        session.user_role = "Video editor"
+        session.sender_handle = "@jazimmufti"
+        session.selected_channel = "instagram"
+
+        # 1. Creator confirms
+        res1 = self.client.get(f"/verify?session_id={session.session_id}&action=confirm")
+        self.assertEqual(res1.status_code, 200)
+        self.assertIn("Collaboration Confirmed!", res1.text)
+
+        # 2. Creator reopens the root /verify link again (without action)
+        res2 = self.client.get(f"/verify?session_id={session.session_id}")
+        self.assertEqual(res2.status_code, 200)
+        self.assertIn("You&#039;ve already confirmed this collaboration", res2.text.replace("'", "&#039;"))
+        self.assertNotIn("Yes, I confirm this collaboration", res2.text)
+        self.assertNotIn("No, I do not confirm", res2.text)
+        self.assertIn("@jazimmufti on Instagram", res2.text)
+
+        # 3. Creator tries to click reject on already confirmed session -> remains confirmed
+        res3 = self.client.get(f"/verify?session_id={session.session_id}&action=reject")
+        self.assertEqual(res3.status_code, 200)
+        self.assertIn("You&#039;ve already confirmed this collaboration", res3.text.replace("'", "&#039;"))
+        self.assertNotIn("Yes, I confirm this collaboration", res3.text)
+
+    def test_repeated_rejection_link_handling(self):
+        """Test that opening an already rejected link does not show Yes/No buttons."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="MrBeast",
+            channel_name="MrBeast",
+            video_title="Squid Game In Real Life"
+        )
+        session.sender_email = "editor@domain.com"
+        session.selected_channel = "email"
+
+        # 1. Creator rejects
+        res1 = self.client.get(f"/verify?session_id={session.session_id}&action=reject")
+        self.assertEqual(res1.status_code, 200)
+        self.assertIn("Response Recorded", res1.text)
+
+        # 2. Creator reopens the link again
+        res2 = self.client.get(f"/verify?session_id={session.session_id}")
+        self.assertEqual(res2.status_code, 200)
+        self.assertIn("You&#039;ve already rejected this collaboration", res2.text.replace("'", "&#039;"))
+        self.assertNotIn("Yes, I confirm this collaboration", res2.text)
+        self.assertNotIn("No, I do not confirm", res2.text)
+        self.assertIn("editor@domain.com", res2.text)
+
+    def test_dynamic_sender_identity_on_verify(self):
+        """Test that /verify dynamically renders actual sender identity instead of 'Someone on Arclent'."""
+        # Case A: Instagram sender handle
+        session_ig = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session_ig.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Antarctica")
+        session_ig.user_role = "Colorist"
+        session_ig.sender_handle = "@artistic_editor"
+        session_ig.selected_channel = "instagram"
+
+        res_ig = self.client.get(f"/verify?session_id={session_ig.session_id}")
+        self.assertEqual(res_ig.status_code, 200)
+        self.assertNotIn("Someone on Arclent", res_ig.text)
+        self.assertIn("@artistic_editor on Instagram", res_ig.text)
+
+        # Case B: Connected Gmail sender
+        session_gmail = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session_gmail.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Antarctica")
+        session_gmail.user_role = "VFX Artist"
+        session_gmail.sender_email = "ubja56@gmail.com"
+        session_gmail.selected_channel = "email"
+
+        res_gmail = self.client.get(f"/verify?session_id={session_gmail.session_id}")
+        self.assertEqual(res_gmail.status_code, 200)
+        self.assertNotIn("Someone on Arclent", res_gmail.text)
+        self.assertIn("ubja56@gmail.com", res_gmail.text)
+
 
 if __name__ == "__main__":
     unittest.main()

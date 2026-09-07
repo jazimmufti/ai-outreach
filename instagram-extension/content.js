@@ -379,6 +379,36 @@
             if (verified || inserted) {
                 console.log("[Arclent Extension] ✓ Message successfully inserted into composer. STOPPING (user must click send).");
 
+                // Auto-detect logged-in user handle on Instagram if available
+                let loggedInUser = null;
+                try {
+                    const profileLinks = Array.from(document.querySelectorAll('a[href^="/"][role="link"], nav a[href^="/"]'));
+                    for (const link of profileLinks) {
+                        const href = link.getAttribute("href") || "";
+                        const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0];
+                        const systemPages = ["direct", "explore", "reels", "stories", "accounts", "p", "reel", "your_activity", "saved", "settings", "messages"];
+                        if (cleanHref && !systemPages.includes(cleanHref.toLowerCase()) && !cleanHref.includes("?")) {
+                            if (link.querySelector('img[alt*="profile picture"]') || (link.textContent || "").toLowerCase().includes("profile")) {
+                                loggedInUser = cleanHref;
+                                break;
+                            }
+                        }
+                    }
+                    if (!loggedInUser) {
+                        const avatarImgs = Array.from(document.querySelectorAll('img[alt*="profile picture"]'));
+                        for (const img of avatarImgs) {
+                            const alt = img.getAttribute("alt") || "";
+                            const match = alt.match(/^([^']+)'s profile picture/i);
+                            if (match && match[1]) {
+                                loggedInUser = match[1];
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn("[Arclent Extension] Could not detect logged-in username:", e);
+                }
+
                 // Show clear success banner guiding user to review and click Send manually
                 showFloatingBanner({
                     title: "✓ Message Ready",
@@ -391,6 +421,7 @@
                     type: "ARCLENT_INSTAGRAM_DM_READY",
                     username: sessionData.username,
                     sessionId: sessionData.sessionId,
+                    senderHandle: loggedInUser,
                     success: true
                 }).catch(() => {});
 

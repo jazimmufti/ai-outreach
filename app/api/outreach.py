@@ -443,6 +443,11 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
 
         session.stage = OutreachStage.SENT
         session.creator_response = "pending"
+        session.selected_channel = "email"
+        sender_addr = result.get("sender") or gmail_stat.get("email")
+        if sender_addr:
+            session.sender_email = sender_addr
+            session.sender_identity = sender_addr
         save_session(session)
 
         return SendEmailResponse(
@@ -458,6 +463,32 @@ async def send_email_workflow_endpoint(payload: SendEmailWorkflowRequest, reques
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def format_sender_display(session: OutreachSession) -> str:
+    """Format dynamic sender identity (no hardcoded platform or user)."""
+    if session.sender_identity and session.sender_identity.strip():
+        val = session.sender_identity.strip()
+        if "someone on arclent" not in val.lower():
+            return val
+    if session.sender_handle and session.sender_handle.strip():
+        handle = session.sender_handle.strip()
+        if not handle.startswith("@") and "@" not in handle and " " not in handle:
+            handle = f"@{handle}"
+        ch = (session.selected_channel or "social").title()
+        if ch.lower() == "x":
+            ch = "X (Twitter)"
+        return f"{handle} on {ch}"
+    if session.sender_email and session.sender_email.strip():
+        return session.sender_email.strip()
+    if session.final_email and session.final_email.strip():
+        return session.final_email.strip()
+    if session.selected_channel and session.selected_channel.strip():
+        ch = session.selected_channel.strip().title()
+        if ch.lower() == "x":
+            ch = "X (Twitter)"
+        return f"Your collaborator on {ch}"
+    return f"Your {session.user_role or 'collaborator'}"
+
+
 @router.post("/record-social-outreach")
 async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
     """Step 4 Send (Social): Record that outreach was dispatched via Instagram or other social platform."""
@@ -470,6 +501,16 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
     if payload.handle:
         session.final_instagram_handle = payload.handle
 
+    if payload.sender_identity and payload.sender_identity.strip() and "someone on arclent" not in payload.sender_identity.lower():
+        session.sender_identity = payload.sender_identity.strip()
+    elif payload.sender_handle and payload.sender_handle.strip():
+        raw_h = payload.sender_handle.strip()
+        clean_h = raw_h if raw_h.startswith("@") or "@" in raw_h else f"@{raw_h}"
+        session.sender_handle = clean_h
+        session.sender_identity = f"{clean_h} on {platform_str}"
+    else:
+        session.sender_identity = f"Your collaborator on {platform_str}"
+
     session.stage = OutreachStage.SENT
     session.creator_response = "pending"
     save_session(session)
@@ -478,6 +519,7 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
         "session_id": session.session_id,
         "stage": session.stage,
         "selected_channel": session.selected_channel,
+        "sender_identity": session.sender_identity,
         "creator_response": session.creator_response
     }
 
@@ -522,12 +564,21 @@ async def handle_creator_verification_response(
     role = session.user_role or "Video editor"
     sub_count = (session.creator.subscriber_count or "").replace("subscribers", "").strip() if session.creator else ""
     audience_text = f"{creator_name}'s {sub_count} YouTube audience." if sub_count and sub_count != "Active Creator" else f"{creator_name}'s YouTube audience."
+    sender_display = format_sender_display(session)
 
-    # Direct Confirmation Action
-    if action == "confirm":
+    # Check whether session was already confirmed or rejected before this request
+    was_already_confirmed = (session.creator_response == "confirmed" or session.stage == OutreachStage.VERIFIED)
+    was_already_rejected = (session.creator_response == "rejected" or session.stage == OutreachStage.REJECTED)
+
+    # --------------------------------------------------------------------------
+    # CASE 1: Session is already Confirmed (or action=confirm)
+    # --------------------------------------------------------------------------
+    if was_already_confirmed or action == "confirm":
+        is_already = was_already_confirmed
         session.creator_response = "confirmed"
         session.stage = OutreachStage.VERIFIED
-        session.verified_at = datetime.now(timezone.utc).isoformat()
+        if not session.verified_at:
+            session.verified_at = datetime.now(timezone.utc).isoformat()
         save_session(session)
 
         return HTMLResponse(content=f"""<!DOCTYPE html>
@@ -568,14 +619,26 @@ async def handle_creator_verification_response(
             border-bottom: 1.5px solid #E5E7EB;
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 8px;
+            justify-content: space-between;
         }}
         .brand-text {{
             font-family: 'Space Grotesk', sans-serif;
             font-size: 20px;
             font-weight: 800;
             letter-spacing: -0.02em;
+        }}
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border: 1.5px solid #111827;
+            background: #00D26A;
+            color: #000;
+            border-radius: 2px;
         }}
         .icon-circle {{
             width: 54px;
@@ -601,7 +664,44 @@ async def handle_creator_verification_response(
             font-size: 15px;
             color: #4B5563;
             line-height: 1.55;
-            margin: 0 0 24px 0;
+            margin: 0 0 20px 0;
+        }}
+        .collab-meta-box {{
+            background: #FAF8F2;
+            border: 1.5px solid #111827;
+            border-radius: 3px;
+            padding: 14px 18px;
+            margin-bottom: 22px;
+            text-align: left;
+        }}
+        .meta-row {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed #D1D5DB;
+            font-size: 13px;
+        }}
+        .meta-row:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+        .meta-row:first-child {{
+            padding-top: 0;
+        }}
+        .meta-label {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            flex-shrink: 0;
+            margin-right: 10px;
+        }}
+        .meta-value {{
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+            word-break: break-word;
         }}
         .shield-box {{
             background: #E8FDF0;
@@ -622,10 +722,35 @@ async def handle_creator_verification_response(
     <div class="card">
         <div class="brand-row">
             <span class="brand-text">Arclent</span>
+            <span class="status-badge">✓ VERIFIED</span>
         </div>
         <div class="icon-circle">✓</div>
-        <h1>Collaboration Confirmed!</h1>
+        <h1>{"You've already confirmed this collaboration" if is_already else "Collaboration Confirmed!"}</h1>
         <p>Thank you <strong>{creator_name}</strong>! You have verified this collaboration for <strong>{role}</strong> on <em>"{video_title}"</em>.</p>
+        
+        <div class="collab-meta-box">
+            <div class="meta-row">
+                <span class="meta-label">CREATOR / CHANNEL</span>
+                <span class="meta-value">{creator_name}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">CLAIMED ROLE</span>
+                <span class="meta-value">{role}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">PROJECT CONTENT</span>
+                <span class="meta-value">"{video_title}"</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">REQUESTED BY</span>
+                <span class="meta-value">{sender_display}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">STATUS</span>
+                <span class="meta-value" style="color: #065F46;">✓ Confirmed & Verified</span>
+            </div>
+        </div>
+
         <div class="shield-box">
             <span>🛡</span>
             <span>Collaboration verified against {audience_text}</span>
@@ -634,10 +759,15 @@ async def handle_creator_verification_response(
 </body>
 </html>""")
 
-    # Direct Rejection Action
-    elif action == "reject":
+    # --------------------------------------------------------------------------
+    # CASE 2: Session is already Rejected (or action=reject)
+    # --------------------------------------------------------------------------
+    if was_already_rejected or action == "reject":
+        is_already = was_already_rejected
         session.creator_response = "rejected"
         session.stage = OutreachStage.REJECTED
+        if not session.verified_at:
+            session.verified_at = datetime.now(timezone.utc).isoformat()
         save_session(session)
 
         return HTMLResponse(content=f"""<!DOCTYPE html>
@@ -648,7 +778,7 @@ async def handle_creator_verification_response(
     <title>Collaboration Declined — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800&family=Space+Grotesk:wght@700;800&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
     <style>
         body {{
             background: #FAF7F0;
@@ -677,12 +807,25 @@ async def handle_creator_verification_response(
             border-bottom: 1.5px solid #E5E7EB;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
         }}
         .brand-text {{
             font-family: 'Space Grotesk', sans-serif;
             font-size: 20px;
             font-weight: 800;
+        }}
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border: 1.5px solid #111827;
+            background: #FEE2E2;
+            color: #991B1B;
+            border-radius: 2px;
         }}
         .icon-circle {{
             width: 54px;
@@ -710,7 +853,44 @@ async def handle_creator_verification_response(
             font-size: 15px;
             color: #4B5563;
             line-height: 1.55;
-            margin: 0 0 24px 0;
+            margin: 0 0 20px 0;
+        }}
+        .collab-meta-box {{
+            background: #FAF8F2;
+            border: 1.5px solid #111827;
+            border-radius: 3px;
+            padding: 14px 18px;
+            margin-bottom: 22px;
+            text-align: left;
+        }}
+        .meta-row {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 7px 0;
+            border-bottom: 1px dashed #D1D5DB;
+            font-size: 13px;
+        }}
+        .meta-row:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+        .meta-row:first-child {{
+            padding-top: 0;
+        }}
+        .meta-label {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            flex-shrink: 0;
+            margin-right: 10px;
+        }}
+        .meta-value {{
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+            word-break: break-word;
         }}
         .declined-box {{
             background: #FEF2F2;
@@ -731,10 +911,31 @@ async def handle_creator_verification_response(
     <div class="card">
         <div class="brand-row">
             <span class="brand-text">Arclent</span>
+            <span class="status-badge">✕ DECLINED</span>
         </div>
         <div class="icon-circle">✕</div>
-        <h1>Response Recorded</h1>
+        <h1>{"You've already rejected this collaboration" if is_already else "Response Recorded"}</h1>
         <p>Thank you <strong>{creator_name}</strong>. Your response has been recorded that you did not collaborate on <em>"{video_title}"</em>.</p>
+        
+        <div class="collab-meta-box">
+            <div class="meta-row">
+                <span class="meta-label">CREATOR / CHANNEL</span>
+                <span class="meta-value">{creator_name}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">CLAIMED ROLE</span>
+                <span class="meta-value">{role}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">PROJECT CONTENT</span>
+                <span class="meta-value">"{video_title}"</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">REQUESTED BY</span>
+                <span class="meta-value">{sender_display}</span>
+            </div>
+        </div>
+
         <div class="declined-box">
             <span>✕</span>
             <span>Collaboration declined and marked unverified</span>
@@ -743,23 +944,14 @@ async def handle_creator_verification_response(
 </body>
 </html>""")
 
-    # Interactive Review & Verification Page (Matches email buttons: Yes / No)
-    else:
-        token_param = f"&token={token}" if token else ""
-        confirm_href = f"/verify?session_id={session.session_id}&action=confirm{token_param}"
-        reject_href = f"/verify?session_id={session.session_id}&action=reject{token_param}"
+    # --------------------------------------------------------------------------
+    # CASE 3: First-time Interactive Review & Confirmation Page (Yes / No)
+    # --------------------------------------------------------------------------
+    token_param = f"&token={token}" if token else ""
+    confirm_href = f"/verify?session_id={session.session_id}&action=confirm{token_param}"
+    reject_href = f"/verify?session_id={session.session_id}&action=reject{token_param}"
 
-        status_notice = ""
-        if session.creator_response == "confirmed":
-            status_notice = """<div style="margin-bottom: 20px; padding: 10px 14px; background: #E8FDF0; border: 1.5px solid #00D26A; border-radius: 2px; color: #065F46; font-size: 13px; font-weight: 700;">
-                ✓ You previously confirmed this collaboration.
-            </div>"""
-        elif session.creator_response == "rejected":
-            status_notice = """<div style="margin-bottom: 20px; padding: 10px 14px; background: #FEF2F2; border: 1.5px solid #EF4444; border-radius: 2px; color: #991B1B; font-size: 13px; font-weight: 700;">
-                ✕ You previously declined this collaboration.
-            </div>"""
-
-        return HTMLResponse(content=f"""<!DOCTYPE html>
+    return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -953,11 +1145,9 @@ async def handle_creator_verification_response(
             </div>
         </div>
 
-        {status_notice}
-
         <h1 class="main-heading">Can you confirm this collaboration?</h1>
         <p class="body-desc">
-            Someone on Arclent claims they worked as <strong>{role}</strong> on <em>"{video_title}"</em>.
+            <strong>{sender_display}</strong> claims they worked as <strong>{role}</strong> on <em>"{video_title}"</em>.
         </p>
 
         <div class="collab-meta-box">
@@ -972,6 +1162,10 @@ async def handle_creator_verification_response(
             <div class="meta-row">
                 <span class="meta-label">PROJECT CONTENT</span>
                 <span class="meta-value">"{video_title}"</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">REQUESTED BY</span>
+                <span class="meta-value">{sender_display}</span>
             </div>
         </div>
 

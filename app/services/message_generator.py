@@ -30,8 +30,17 @@ async def generate_outreach_message(
         title_context = " on your content"
         subject_title = ""
 
+    if sender_name and sender_name.strip() and "someone on arclent" not in sender_name.lower():
+        sender_label = sender_name.strip()
+    elif channel == "instagram":
+        sender_label = "your collaborator on Instagram"
+    elif channel == "email" and sender_name:
+        sender_label = sender_name.strip()
+    else:
+        sender_label = f"your collaborator ({role_text})"
+
     default_subject = f"Collaboration confirmation{subject_title}"
-    default_body = f'Hi {target_name}, someone on Arclent claims they worked as {role_text}{title_context}. Can you confirm this collaboration?'
+    default_body = f'Hi {target_name}, {sender_label} claims they worked as {role_text}{title_context}. Can you confirm this collaboration?'
 
     # If custom notes are provided or AI customization requested with Mistral AI
     if (settings.MISTRAL_API_KEY or settings.GEMINI_API_KEY) and custom_notes:
@@ -41,7 +50,7 @@ async def generate_outreach_message(
             system_prompt = (
                 "You are an assistant for Arclent, a creator verification and collaboration platform. "
                 "Your task is to write a concise collaboration verification inquiry to a YouTube creator. "
-                "Structure: 'Hi {creator_name}, someone on Arclent claims they worked as {role} on \"{video_title}\". Can you confirm this collaboration?' "
+                f"Structure: 'Hi {{creator_name}}, {sender_label} claims they worked as {{role}} on \"{{video_title}}\". Can you confirm this collaboration?' "
                 "Incorporate any specific custom notes naturally while keeping the message brief, clear, and professional."
             )
             user_prompt = (
