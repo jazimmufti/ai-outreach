@@ -18,7 +18,9 @@ async function notifyArclentTabs(payload) {
         "http://localhost/*",
         "http://127.0.0.1/*",
         "https://*.arclent.com/*",
-        "https://arclent.com/*"
+        "https://arclent.com/*",
+        "https://*.up.railway.app/*",
+        "https://ai-outreach-production-8dcc.up.railway.app/*"
     ];
 
     try {

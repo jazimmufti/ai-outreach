@@ -60,15 +60,15 @@ To install and use the extension locally in Google Chrome:
 
 ## 🧪 Testing the Integration
 
-1. Start the Arclent web app:
-   ```bash
-   python -m uvicorn app.main:app --reload
+1. Open your live Arclent web app:
+   ```text
+   https://ai-outreach-production-8dcc.up.railway.app/
    ```
-2. Open `http://localhost:8000` in Google Chrome with the extension loaded.
-3. Enter a YouTube URL (e.g., `https://www.youtube.com/watch?v=0e3GPea1Tyg`) and click **"Find the creator"**.
-4. In **Step 2 (Instagram)**, confirm the creator's Instagram handle.
-5. Click **"Open Instagram & Send ↗"**.
-6. **Expected Result**:
+   (or locally at `http://localhost:8000`) in Google Chrome with the extension loaded.
+2. Enter a YouTube URL (e.g., `https://www.youtube.com/watch?v=0e3GPea1Tyg`) and click **"Find the creator"**.
+3. In **Step 2 (Instagram)**, confirm the creator's Instagram handle.
+4. Click **"Open Instagram & Send ↗"**.
+5. **Expected Result**:
    - Instagram opens directly to the creator's profile.
    - The Message button is clicked automatically.
    - The DM composer opens and the Arclent outreach message appears pre-filled.
