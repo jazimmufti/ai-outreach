@@ -228,14 +228,18 @@
         return null;
     }
 
-    // 3. Insert Text Correctly (React & Lexical State Compatible)
+    function normalizeText(str) {
+        return (str || "").replace(/\s+/g, " ").trim();
+    }
+
+    // 3. Insert Text Correctly (React & Lexical State Compatible Without Duplication)
     function insertMessageIntoComposer(composer, text) {
         if (!composer || !text) return false;
 
-        const currentVal = (composer.innerText || composer.textContent || composer.value || "").trim();
+        const currentVal = composer.innerText || composer.textContent || composer.value || "";
         // If message is already written, do not insert again
-        if (currentVal === text.trim() || currentVal.includes(text.trim())) {
-            console.log("[Arclent Extension] Message already fully present in composer. Skipping duplicate insertion.");
+        if (normalizeText(currentVal).includes(normalizeText(text))) {
+            console.log("[Arclent Extension] Message already present in composer. Skipping duplicate insertion.");
             return true;
         }
 
@@ -258,39 +262,39 @@
             selection.addRange(range);
 
             // Execute insertText command (triggers React & DOM sync replacing selection)
-            document.execCommand("insertText", false, text);
+            const execSuccess = document.execCommand("insertText", false, text);
 
-            // Dispatch synthetic InputEvents
-            composer.dispatchEvent(
-                new InputEvent("input", {
-                    bubbles: true,
-                    cancelable: true,
-                    inputType: "insertText",
-                    data: text
-                })
-            );
+            // In Chromium, execCommand('insertText') natively fires InputEvents with data.
+            // Dispatch a standard input event without data so React component state reconciles
+            // without triggering a secondary synthetic data insertion in Lexical.
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
             composer.dispatchEvent(new Event("change", { bubbles: true }));
 
-            return true;
+            const checkVal = composer.innerText || composer.textContent || "";
+            if (execSuccess && normalizeText(checkVal).includes(normalizeText(text).substring(0, 20))) {
+                return true;
+            }
         } catch (err) {
             console.warn("[Arclent Extension] execCommand insertText failed, falling back to innerText:", err);
-            try {
-                composer.innerText = text;
-                composer.dispatchEvent(new InputEvent("input", { bubbles: true, data: text }));
-                return true;
-            } catch (_) {
-                return false;
-            }
+        }
+
+        // Fallback if execCommand did not populate text
+        try {
+            composer.innerText = text;
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
+            composer.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+        } catch (_) {
+            return false;
         }
     }
 
     // 4. Verify Message Was Inserted
     function verifyMessageContent(composer, expectedText) {
         if (!composer || !expectedText) return false;
-        const currentText = (composer.innerText || composer.textContent || composer.value || "").trim();
-        // Check if a substantial part of the message is present
-        const sample = expectedText.trim().substring(0, Math.min(30, expectedText.length));
-        return currentText.includes(sample);
+        const currentText = composer.innerText || composer.textContent || composer.value || "";
+        const sample = normalizeText(expectedText).substring(0, Math.min(30, expectedText.length));
+        return normalizeText(currentText).includes(sample);
     }
 
     // --------------------------------------------------------------------------
@@ -312,6 +316,10 @@
         }
 
         isProcessing = true;
+        // Mark as processing immediately to lock against concurrent SPA observers
+        sessionData.status = "processing";
+        await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+
         console.log("[Arclent Extension] Processing pending outreach for:", sessionData.username);
 
         try {
@@ -322,6 +330,8 @@
                     message: `Please log into your Instagram account in this tab. Your Arclent message for @${sessionData.username} will be prepared as soon as you log in.`,
                     type: "warning"
                 });
+                sessionData.status = "pending";
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                 isProcessing = false;
                 return;
             }
@@ -345,8 +355,9 @@
                     await new Promise(r => setTimeout(r, 1200));
                 } else {
                     console.warn("[Arclent Extension] Message button not found on profile. Attempting direct navigation...");
-                    // Try direct shortlink or direct inbox fallback
                     window.location.href = `https://ig.me/m/${encodeURIComponent(targetUser)}`;
+                    sessionData.status = "pending";
+                    await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                     isProcessing = false;
                     return;
                 }
@@ -373,6 +384,8 @@
                     reason: "Message composer element not found."
                 }).catch(() => {});
 
+                sessionData.status = "failed";
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                 isProcessing = false;
                 return;
             }
@@ -390,7 +403,7 @@
                 sessionData.status = "completed";
                 await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
 
-                // Auto-detect logged-in user handle on Instagram if available
+                // Auto-detect logged-in user handle on Instagram
                 let loggedInUser = null;
                 try {
                     // Method 1: Profile link with Profile SVG icon or aria-label
@@ -433,6 +446,23 @@
                     }
                 } catch (e) {
                     console.warn("[Arclent Extension] Could not detect logged-in username:", e);
+                }
+
+                // If backend origin is present, directly update the session backend as well
+                const backendOrigin = sessionData.backendOrigin || (sessionData.source === "arclent" ? "https://ai-outreach-production-8dcc.up.railway.app" : null);
+                if (loggedInUser && backendOrigin && sessionData.sessionId) {
+                    try {
+                        fetch(`${backendOrigin}/api/outreach/record-social-outreach`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                session_id: sessionData.sessionId,
+                                platform: "Instagram",
+                                sender_handle: loggedInUser,
+                                sender_identity: `${loggedInUser} on Arclent`
+                            })
+                        }).catch(() => {});
+                    } catch (_) {}
                 }
 
                 // Show clear success banner guiding user to review and click Send manually

@@ -409,6 +409,40 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("Someone on Arclent", res_gmail.text)
         self.assertNotIn("ubja56@gmail.com", res_gmail.text)
 
+    def test_record_social_outreach_preserves_and_updates_sender_handle(self):
+        """Test recording social outreach dynamically updates sender_handle and formats correctly on /verify."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Squid Game In Real Life")
+        session.user_role = "Video editor"
+
+        # 1. Dispatch with sender_handle
+        res = self.client.post("/api/outreach/record-social-outreach", json={
+            "session_id": session.session_id,
+            "platform": "Instagram",
+            "handle": "@mrbeast",
+            "sender_handle": "@creative_cutter",
+            "message": "Hey MrBeast! Confirm here: ..."
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["sender_handle"], "creative_cutter")
+        self.assertEqual(data["sender_identity"], "creative_cutter on Arclent")
+
+        # 2. Check /verify renders 'creative_cutter on Arclent'
+        v_res = self.client.get(f"/verify?session_id={session.session_id}")
+        self.assertEqual(v_res.status_code, 200)
+        self.assertIn("creative_cutter on Arclent", v_res.text)
+
+        # 3. Subsequent call without sender_handle preserves previously saved handle
+        res2 = self.client.post("/api/outreach/record-social-outreach", json={
+            "session_id": session.session_id,
+            "platform": "Instagram"
+        })
+        self.assertEqual(res2.status_code, 200)
+        data2 = res2.json()
+        self.assertEqual(data2["sender_handle"], "creative_cutter")
+        self.assertEqual(data2["sender_identity"], "creative_cutter on Arclent")
+
 
 if __name__ == "__main__":
     unittest.main()

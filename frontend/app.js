@@ -270,7 +270,13 @@ document.addEventListener("DOMContentLoaded", () => {
         message: null,
         gmailConnected: false,
         senderEmail: null,
-        senderHandle: null,
+        senderHandle: (() => {
+            try {
+                return localStorage.getItem("arclent_user_ig_handle") || null;
+            } catch (_) {
+                return null;
+            }
+        })(),
         isSending: false,
         selectedChannel: null,
         stageBeforeDelivery: null,
@@ -407,6 +413,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const igConfirmedIcon = document.getElementById("ig-confirmed-icon");
     const igConfirmedCreatorName = document.getElementById("ig-confirmed-creator-name");
     const igConfirmedHandle = document.getElementById("ig-confirmed-handle");
+    const igSenderHandleInput = document.getElementById("ig-sender-handle-input");
     const igConfirmedMessageDraft = document.getElementById("ig-confirmed-message-draft");
     const btnIgCopyDraft = document.getElementById("btn-ig-copy-draft");
     const btnIgCopyDraftMain = document.getElementById("btn-ig-copy-draft-main");
@@ -442,10 +449,66 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const hubInstagramBlock = document.getElementById("hub-instagram-block");
     const hubDmHeadHandle = document.getElementById("hub-dm-head-handle");
+    const hubSenderHandleInput = document.getElementById("hub-sender-handle-input");
     const instaMessageBody = document.getElementById("insta-message-body");
     const copyInstaMsgBtn = document.getElementById("copy-insta-msg-btn");
     const copyInstaBtnText = document.getElementById("copy-insta-btn-text");
     const openInstagramBtn = document.getElementById("open-instagram-btn");
+
+    // Helper: Update Sender Handle (Instagram Username)
+    function setSenderHandle(handle, syncBackend = true) {
+        if (!handle) return;
+        const clean = String(handle).replace(/^@+/, '').trim();
+        if (!clean) return;
+        state.senderHandle = clean;
+        try {
+            localStorage.setItem("arclent_user_ig_handle", clean);
+        } catch (_) {}
+        saveSessionState();
+
+        if (igSenderHandleInput && igSenderHandleInput.value !== `@${clean}` && igSenderHandleInput.value !== clean) {
+            igSenderHandleInput.value = `@${clean}`;
+        }
+        if (hubSenderHandleInput && hubSenderHandleInput.value !== `@${clean}` && hubSenderHandleInput.value !== clean) {
+            hubSenderHandleInput.value = `@${clean}`;
+        }
+
+        if (syncBackend && state.sessionId) {
+            const senderIdentity = `${clean} on Arclent`;
+            fetch("/api/outreach/record-social-outreach", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: state.sessionId,
+                    platform: "Instagram",
+                    sender_handle: clean,
+                    sender_identity: senderIdentity
+                })
+            }).catch(() => {});
+        }
+    }
+
+    if (igSenderHandleInput) {
+        igSenderHandleInput.addEventListener("input", () => {
+            const val = igSenderHandleInput.value.trim();
+            if (val) setSenderHandle(val, true);
+        });
+        igSenderHandleInput.addEventListener("change", () => {
+            const val = igSenderHandleInput.value.trim();
+            if (val) setSenderHandle(val, true);
+        });
+    }
+
+    if (hubSenderHandleInput) {
+        hubSenderHandleInput.addEventListener("input", () => {
+            const val = hubSenderHandleInput.value.trim();
+            if (val) setSenderHandle(val, true);
+        });
+        hubSenderHandleInput.addEventListener("change", () => {
+            const val = hubSenderHandleInput.value.trim();
+            if (val) setSenderHandle(val, true);
+        });
+    }
 
     const hubOtherSocialsBlock = document.getElementById("hub-other-socials-block");
     const hubSocialsGrid = document.getElementById("hub-socials-grid");
@@ -1049,6 +1112,8 @@ document.addEventListener("DOMContentLoaded", () => {
             username: cleanUsername,
             message: message,
             sessionId: sessionId,
+            backendOrigin: window.location.origin,
+            senderHandle: state.senderHandle || null,
             source: "arclent"
         }, "*");
 
@@ -1165,22 +1230,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (type === "ARCLENT_INSTAGRAM_DM_READY") {
             if (senderHandle) {
-                const cleanHandle = String(senderHandle).replace(/^@+/, '').trim();
-                state.senderHandle = cleanHandle;
-                saveSessionState();
-                if (state.sessionId) {
-                    const senderIdentity = `${cleanHandle} on Arclent`;
-                    fetch("/api/outreach/record-social-outreach", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            session_id: state.sessionId,
-                            platform: "Instagram",
-                            sender_handle: cleanHandle,
-                            sender_identity: senderIdentity
-                        })
-                    }).catch(() => {});
-                }
+                setSenderHandle(senderHandle, true);
             }
             showToast(`✓ Instagram DM ready for @${username || 'creator'}! Review and click Send in Instagram.`);
             if (verificationDmReadyBox && !verificationDmReadyBox.classList.contains("hidden")) {
@@ -1994,6 +2044,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (igConfirmedCreatorName) igConfirmedCreatorName.textContent = creatorName;
         if (igConfirmedHandle) igConfirmedHandle.textContent = handle;
+        if (igSenderHandleInput && state.senderHandle) {
+            igSenderHandleInput.value = `@${state.senderHandle.replace(/^@+/, '')}`;
+        }
 
         const draftMsg = generateInstagramDmDraft(creatorName, videoTitle, state.userRole);
         if (igConfirmedMessageDraft) {
@@ -2339,6 +2392,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (state.finalInstagramHandle) {
             if (hubInstagramBlock) hubInstagramBlock.classList.remove("hidden");
             if (hubDmHeadHandle) hubDmHeadHandle.textContent = `Direct message to ${state.finalInstagramHandle}`;
+            if (hubSenderHandleInput && state.senderHandle) {
+                hubSenderHandleInput.value = `@${state.senderHandle.replace(/^@+/, '')}`;
+            }
             if (instaMessageBody) {
                 instaMessageBody.value = generateInstagramDmDraft(creatorName, videoTitle, state.userRole);
             }

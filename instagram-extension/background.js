@@ -69,6 +69,8 @@ async function handleIncomingMessage(request, sender) {
             message: message,
             sessionId: sessionId || null,
             source: request.source || "arclent",
+            backendOrigin: request.backendOrigin || null,
+            senderHandle: request.senderHandle || null,
             status: "pending",
             createdAt: Date.now(),
             targetUrl: `https://www.instagram.com/${username}/`
@@ -115,11 +117,14 @@ async function handleIncomingMessage(request, sender) {
 
     // 3. DM Ready confirmation from content.js
     if (type === "ARCLENT_INSTAGRAM_DM_READY") {
-        const { username, sessionId } = request;
+        const { username, sessionId, senderHandle } = request;
         const stored = await chrome.storage.local.get("activeOutreachSession");
         if (stored.activeOutreachSession) {
             stored.activeOutreachSession.status = "ready";
             stored.activeOutreachSession.readyAt = Date.now();
+            if (senderHandle) {
+                stored.activeOutreachSession.senderHandle = senderHandle;
+            }
             await chrome.storage.local.set({ activeOutreachSession: stored.activeOutreachSession });
         }
 
@@ -139,6 +144,7 @@ async function handleIncomingMessage(request, sender) {
             type: "ARCLENT_INSTAGRAM_DM_READY",
             username: username || (stored.activeOutreachSession ? stored.activeOutreachSession.username : null),
             sessionId: sessionId || (stored.activeOutreachSession ? stored.activeOutreachSession.sessionId : null),
+            senderHandle: senderHandle || (stored.activeOutreachSession ? stored.activeOutreachSession.senderHandle : null),
             success: true
         });
 

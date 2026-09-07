@@ -474,6 +474,8 @@ def format_sender_display(session: OutreachSession) -> str:
         # Ensure company email address is never displayed as sender identity
         if "@" in val and "." in val and " " not in val:
             return "Someone on Arclent"
+        if val != "Someone on Arclent" and " on Arclent" not in val and "@" not in val:
+            return f"{val} on Arclent"
         return val
 
     # 3. Default for email and unauthenticated outreach
@@ -497,8 +499,14 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
         session.sender_handle = raw_h
         session.sender_identity = f"{raw_h} on Arclent"
     elif payload.sender_identity and payload.sender_identity.strip() and "@" not in payload.sender_identity:
-        session.sender_identity = payload.sender_identity.strip()
-    else:
+        clean_id = payload.sender_identity.strip()
+        if clean_id.endswith(" on Arclent"):
+            session.sender_identity = clean_id
+            session.sender_handle = clean_id.replace(" on Arclent", "").strip().lstrip("@")
+        else:
+            session.sender_identity = f"{clean_id} on Arclent"
+            session.sender_handle = clean_id.lstrip("@")
+    elif not session.sender_handle:
         session.sender_identity = "Someone on Arclent"
 
     session.stage = OutreachStage.SENT
@@ -509,6 +517,7 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
         "session_id": session.session_id,
         "stage": session.stage,
         "selected_channel": session.selected_channel,
+        "sender_handle": session.sender_handle,
         "sender_identity": session.sender_identity,
         "creator_response": session.creator_response
     }

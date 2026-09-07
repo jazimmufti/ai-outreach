@@ -13,7 +13,11 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://www.instagram.com/*"
+    "https://www.instagram.com/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*.up.railway.app/*",
+    "https://ai-outreach-production-8dcc.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background.js"
