@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arclent Instagram Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <header class="popup-header">
+            <div class="header-brand">
+                <div class="brand-logo">A</div>
+                <div class="brand-info">
+                    <h1 class="brand-title">Arclent</h1>
+                    <span class="brand-subtitle">Instagram DM Assistant</span>
+                </div>
+            </div>
+            <div class="status-indicator active" id="status-pill" title="Extension Ready">
+                <span class="status-dot"></span>
+                <span class="status-text" id="status-text">Active</span>
+            </div>
+        </header>
+
+        <!-- Main Body -->
+        <main class="popup-body">
+            <!-- Session Status Card -->
+            <section class="session-card" id="session-card">
+                <div class="card-header">
+                    <span class="card-label">CURRENT SESSION</span>
+                    <span class="badge" id="session-badge">IDLE</span>
+                </div>
+                <div class="session-content" id="session-content">
+                    <p class="empty-state-text" id="session-empty-text">
+                        No active outreach session. Start a verification in the Arclent web app.
+                    </p>
+                    <div class="active-session-details hidden" id="session-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Creator:</span>
+                            <span class="detail-val font-mono" id="session-username">@creator</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Status:</span>
+                            <span class="detail-val" id="session-status-text">Message Prepared</span>
+                        </div>
+                        <div class="message-preview-box font-mono" id="session-message-preview">
+                            Message text preview...
+                        </div>
+                        <button type="button" class="btn-primary" id="btn-re-trigger" style="margin-top: 8px;">
+                            Fill DM in Instagram Tab ↗
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- How It Works Card -->
+            <section class="guide-card">
+                <h2 class="guide-title">How It Works</h2>
+                <div class="steps-list">
+                    <div class="step-item">
+                        <div class="step-num">1</div>
+                        <div class="step-text">Click <strong>"Open Instagram & Send ↗"</strong> in Arclent.</div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-num">2</div>
+                        <div class="step-text">Extension opens Instagram and inserts the verification message into the DM composer.</div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-num">3</div>
+                        <div class="step-text"><strong>You review the message and click Send in Instagram.</strong></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="popup-footer">
+            <a href="http://localhost:8000" target="_blank" class="footer-link">Open Arclent Dashboard ↗</a>
+            <span class="version-tag">v1.0.0</span>
+        </footer>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

@@ -272,10 +272,14 @@ document.addEventListener("DOMContentLoaded", () => {
         senderEmail: null,
         isSending: false,
         selectedChannel: null,
-        stageBeforeDelivery: null
+        stageBeforeDelivery: null,
+        extensionInstalled: false,
+        pendingExtensionSession: null
     };
 
     // Header elements
+    const extensionStatusPill = document.getElementById("extension-status-pill");
+    const extensionStatusText = document.getElementById("extension-status-text");
     const gmailStatusPill = document.getElementById("gmail-status-pill");
     const gmailStatusText = document.getElementById("gmail-status-text");
     const headerConnectBtn = document.getElementById("header-connect-btn");
@@ -393,6 +397,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const igConfirmedOtherSocialsBox = document.getElementById("ig-confirmed-other-socials-box");
     const igConfirmedOtherSocialsList = document.getElementById("ig-confirmed-other-socials-list");
     const igConfirmedOtherCount = document.getElementById("ig-confirmed-other-count");
+    const igExtensionStatusNote = document.getElementById("ig-extension-status-note");
+    const igExtensionNoteText = document.getElementById("ig-extension-note-text");
 
     // Screen 5: Outreach Hub Elements
     const btnBackHub = document.getElementById("btn-back-hub");
@@ -427,6 +433,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Screen 6: Delivery & Status Polling Elements
     const btnBackDelivery = document.getElementById("btn-back-delivery");
+    const verificationDmReadyBox = document.getElementById("verification-dm-ready-box");
+    const vDmReadySub = document.getElementById("v-dm-ready-sub");
+    const vDmReadyGuideText = document.getElementById("v-dm-ready-guide-text");
+    const btnConfirmDmSent = document.getElementById("btn-confirm-dm-sent");
     const verificationPendingBox = document.getElementById("verification-pending-box");
     const verificationSuccessBox = document.getElementById("verification-success-box");
     const verificationRejectedBox = document.getElementById("verification-rejected-box");
@@ -886,9 +896,200 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --------------------------------------------------------------------------
+    // Chrome Extension Integration & Handshake
+    // --------------------------------------------------------------------------
+    function updateExtensionStatusUI(isInstalled) {
+        state.extensionInstalled = !!isInstalled;
+        if (extensionStatusPill && extensionStatusText) {
+            if (isInstalled) {
+                extensionStatusPill.className = "status-pill status-connected";
+                extensionStatusText.textContent = "Extension: Active";
+                extensionStatusPill.title = "Arclent Instagram Extension is installed and active";
+            } else {
+                extensionStatusPill.className = "status-pill status-disconnected";
+                extensionStatusText.textContent = "Extension: Not Detected";
+                extensionStatusPill.title = "Install Arclent Instagram Extension for 1-Click DM Auto-Fill";
+            }
+        }
+        if (igExtensionStatusNote && igExtensionNoteText) {
+            if (isInstalled) {
+                igExtensionStatusNote.classList.remove("hidden");
+                igExtensionStatusNote.style.background = "#F0FDF4";
+                igExtensionStatusNote.style.borderColor = "#22C55E";
+                igExtensionStatusNote.style.color = "#166534";
+                igExtensionNoteText.innerHTML = `<span><strong>Extension Active:</strong> 1-Click message auto-fill enabled for Instagram</span>`;
+            } else {
+                igExtensionStatusNote.classList.remove("hidden");
+                igExtensionStatusNote.style.background = "#FFFBEB";
+                igExtensionStatusNote.style.borderColor = "#F59E0B";
+                igExtensionStatusNote.style.color = "#92400E";
+                igExtensionNoteText.innerHTML = `<span><strong>Desktop mode:</strong> Extension not detected. Load <code style="background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">instagram-extension/</code> in <code style="background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">chrome://extensions</code> for 1-click auto-fill, or continue with clipboard fallback.</span>`;
+            }
+        }
+    }
+
+    async function isInstagramExtensionInstalled(timeoutMs = 400) {
+        // 1. Check DOM marker injected by bridge.js
+        if (document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed" ||
+            document.documentElement.dataset.arclentExtensionVersion) {
+            updateExtensionStatusUI(true);
+            return true;
+        }
+
+        // 2. Window postMessage ping-pong handshake
+        return new Promise((resolve) => {
+            let resolved = false;
+
+            function onMessage(e) {
+                if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
+                    resolved = true;
+                    window.removeEventListener("message", onMessage);
+                    updateExtensionStatusUI(true);
+                    resolve(true);
+                }
+            }
+
+            window.addEventListener("message", onMessage);
+            window.postMessage({ type: "ARCLENT_CHECK_EXTENSION" }, "*");
+
+            setTimeout(() => {
+                if (!resolved) {
+                    window.removeEventListener("message", onMessage);
+                    const isInstalled = document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed";
+                    updateExtensionStatusUI(isInstalled);
+                    resolve(isInstalled);
+                }
+            }, timeoutMs);
+        });
+    }
+
+    // Handle extension outreach dispatch
+    async function dispatchInstagramWithExtension({ username, message, sessionId }) {
+        const cleanUsername = normalizeInstagramHandle(username);
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const handle = formatHandle(cleanUsername);
+
+        state.pendingExtensionSession = {
+            username: cleanUsername,
+            handle: handle,
+            message: message,
+            sessionId: sessionId
+        };
+
+        // Post outreach message to extension via bridge
+        window.postMessage({
+            type: "ARCLENT_INSTAGRAM_OUTREACH",
+            username: cleanUsername,
+            message: message,
+            sessionId: sessionId,
+            source: "arclent"
+        }, "*");
+
+        // Robust clipboard backup
+        fallbackClipboardCopy(message);
+
+        // Transition Arclent UI to "Instagram DM Ready" state (NEVER assuming sent until user confirms)
+        state.stageBeforeDelivery = state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub";
+        state.stage = "sent";
+        state.selectedChannel = "instagram";
+
+        if (vDmReadySub) {
+            vDmReadySub.textContent = `Your message has been added to @${cleanUsername}'s Instagram composer.`;
+        }
+        if (vDmReadyGuideText) {
+            vDmReadyGuideText.textContent = `We opened ${creatorName}'s DM in Instagram and populated your draft. Review the message and click Send in Instagram.`;
+        }
+
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
+        if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+        showScreen("deliverySuccess", 4);
+        showToast(`✓ Opening Instagram DM for @${cleanUsername}... Review & click Send!`);
+    }
+
+    // Confirmation handler for "I've Sent the Message"
+    if (btnConfirmDmSent) {
+        btnConfirmDmSent.onclick = async () => {
+            try {
+                btnConfirmDmSent.disabled = true;
+                btnConfirmDmSent.innerHTML = `<span>Recording Dispatch...</span>`;
+
+                const c = state.creator || {};
+                const creatorName = c.name || c.channel_name || "Creator";
+                const handle = state.finalInstagramHandle || (state.pendingExtensionSession ? state.pendingExtensionSession.handle : "@creator");
+                const message = (state.pendingExtensionSession ? state.pendingExtensionSession.message : "") || "";
+
+                // Record social outreach on backend
+                if (state.sessionId) {
+                    await fetch("/api/outreach/record-social-outreach", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            platform: "Instagram",
+                            handle: handle,
+                            message: message
+                        })
+                    }).catch(() => {});
+                }
+
+                // Transition UI to Verification Pending
+                if (vPendingRecipientSub) {
+                    vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on Instagram`;
+                }
+
+                const pendingSub = document.querySelector("#verification-pending-box .v-step-card:nth-child(2) .v-step-sub");
+                if (pendingSub) {
+                    pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your Instagram message.`;
+                }
+
+                if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
+                if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+                if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+                showToast("✓ Message marked as sent! Polling for creator confirmation...");
+
+                // Start verification polling
+                startVerificationPolling();
+
+            } catch (err) {
+                showToast(err.message, "error");
+            } finally {
+                if (btnConfirmDmSent) {
+                    btnConfirmDmSent.disabled = false;
+                    btnConfirmDmSent.innerHTML = `<span>I've Sent the Message ✓</span>`;
+                }
+            }
+        };
+    }
+
+    // Global listener for extension messages
+    window.addEventListener("message", (event) => {
+        if (!event.data || typeof event.data !== "object") return;
+        const { type, success, username, reason } = event.data;
+
+        if (type === "ARCLENT_INSTAGRAM_DM_READY") {
+            showToast(`✓ Instagram DM ready for @${username || 'creator'}! Review and click Send in Instagram.`);
+            if (verificationDmReadyBox && !verificationDmReadyBox.classList.contains("hidden")) {
+                if (vDmReadySub) {
+                    vDmReadySub.textContent = `Your message has been verified and added to @${username || 'creator'}'s Instagram composer.`;
+                }
+            }
+        } else if (type === "ARCLENT_INSTAGRAM_DM_FAILED") {
+            showToast(`Note: ${reason || 'We copied your message to the clipboard. Please paste into the box.'}`, "warning");
+        } else if (type === "ARCLENT_EXTENSION_PONG" || type === "ARCLENT_INSTAGRAM_EXTENSION_READY") {
+            updateExtensionStatusUI(true);
+        }
+    });
+
+    // --------------------------------------------------------------------------
     // Unified Social Outreach Dispatcher
     // --------------------------------------------------------------------------
-    function dispatchSocialOutreach(options = {}) {
+    async function dispatchSocialOutreach(options = {}) {
         const active = options.profile || state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
         const platformName = options.platform || active.platform || "Instagram";
         const meta = getSocialMediaMeta(platformName);
@@ -911,11 +1112,25 @@ document.addEventListener("DOMContentLoaded", () => {
             text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
         }
 
-        // 1. Generate Direct Message Composer URL
+        const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
+        const isDesktop = !(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        const extensionInstalled = await isInstagramExtensionInstalled();
+
+        // Branch 1: Desktop Chrome with Extension Installed for Instagram
+        if (isInstagram && isDesktop && extensionInstalled) {
+            await dispatchInstagramWithExtension({
+                username: handle,
+                message: text,
+                sessionId: state.sessionId
+            });
+            return;
+        }
+
+        // Branch 2: Mobile or Desktop without Extension -> Direct Message URL + Clipboard Fallback
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
-        // 2. Open DM URL immediately in the user gesture callstack to prevent popup blocker
+        // Open DM URL immediately in the user gesture callstack
         let openedWin = null;
         try {
             openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
@@ -926,21 +1141,10 @@ document.addEventListener("DOMContentLoaded", () => {
             console.warn("Failed to open DM window:", err);
         }
 
-        // 3. Robust clipboard copy (supports modern async and synchronous textarea fallback)
-        try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).catch(err => {
-                    console.warn("Async clipboard copy failed:", err);
-                    fallbackClipboardCopy(text);
-                });
-            } else {
-                fallbackClipboardCopy(text);
-            }
-        } catch (err) {
-            fallbackClipboardCopy(text);
-        }
+        // Robust clipboard copy
+        fallbackClipboardCopy(text);
 
-        // 4. Notify backend of social outreach dispatch
+        // Notify backend of social outreach dispatch
         if (state.sessionId) {
             fetch("/api/outreach/record-social-outreach", {
                 method: "POST",
@@ -954,7 +1158,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }).catch(() => {});
         }
 
-        // 5. Update state and transition to Live Delivery / Status Screen
+        // Update state and transition to Live Delivery / Status Screen
         state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
         state.stage = "sent";
         state.selectedChannel = platformName.toLowerCase();
@@ -974,6 +1178,7 @@ document.addEventListener("DOMContentLoaded", () => {
             pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your ${meta.name} message.`;
         }
 
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
@@ -981,7 +1186,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showScreen("deliverySuccess", 4);
         showToast(`✓ Message copied! Opening ${meta.name} DM... Paste the message and click Send.`);
 
-        // 6. Start live verification polling
+        // Start live verification polling
         startVerificationPolling();
     }
 
@@ -2344,7 +2549,9 @@ document.addEventListener("DOMContentLoaded", () => {
         state.message = null;
         state.selectedChannel = null;
         state.stageBeforeDelivery = null;
+        state.pendingExtensionSession = null;
 
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
@@ -2358,6 +2565,7 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener("click", resetWorkflow);
     });
 
-    // Initialize Gmail status on page load
+    // Initialize Gmail status and Extension status on page load
     checkGmailStatus();
+    isInstagramExtensionInstalled();
 });

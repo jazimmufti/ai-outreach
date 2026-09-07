@@ -291,6 +291,45 @@ class TestVerificationFlow(unittest.TestCase):
             self.assertEqual(dm_url, "https://ig.me/m/mrbeast")
             self.assertNotIn("https://instagram.com/mrbeast", dm_url)
 
+    def test_instagram_extension_outreach_flow_confirmation(self):
+        """Test full workflow: Instagram outreach dispatched -> session recorded -> creator confirms via link."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="VisualCreator",
+            channel_name="VisualCreator",
+            video_title="Cinema Camera Review"
+        )
+        session.final_instagram_handle = "@visualcreator"
+        session.instagram_confirmed = True
+
+        # Step 1: User completes Instagram DM and clicks 'I've Sent the Message'
+        res = self.client.post("/api/outreach/record-social-outreach", json={
+            "session_id": session.session_id,
+            "platform": "Instagram",
+            "handle": "@visualcreator",
+            "message": f"Hey! Please verify: http://localhost:8000/verify?session_id={session.session_id}"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["stage"], OutreachStage.SENT)
+        self.assertEqual(data["creator_response"], "pending")
+
+        # Step 2: Polling status shows pending
+        poll_res = self.client.get(f"/api/outreach/session-status?session_id={session.session_id}")
+        self.assertEqual(poll_res.status_code, 200)
+        self.assertEqual(poll_res.json()["creator_response"], "pending")
+
+        # Step 3: Creator clicks verification link in Instagram DM
+        verify_res = self.client.get(f"/api/outreach/verify?session_id={session.session_id}&action=confirm")
+        self.assertEqual(verify_res.status_code, 200)
+        self.assertIn("Collaboration Confirmed!", verify_res.text)
+
+        # Step 4: Status polling reflects confirmed state
+        confirmed_poll = self.client.get(f"/api/outreach/session-status?session_id={session.session_id}")
+        self.assertEqual(confirmed_poll.status_code, 200)
+        self.assertEqual(confirmed_poll.json()["creator_response"], "confirmed")
+        self.assertEqual(confirmed_poll.json()["stage"], OutreachStage.VERIFIED)
+
 
 if __name__ == "__main__":
     unittest.main()

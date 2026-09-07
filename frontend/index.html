@@ -22,8 +22,13 @@
                 </a>
             </div>
 
-            <!-- 4-Segment Progress Indicator matching screenshots -->
+            <!-- Extension & Gmail Status Pills and 4-Segment Progress Indicator -->
             <div class="header-right-group">
+                <div id="extension-status-pill" class="status-pill status-disconnected" title="Arclent Instagram Extension Status">
+                    <span class="status-dot"></span>
+                    <span id="extension-status-text">Extension: Checking</span>
+                </div>
+
                 <div id="gmail-status-pill" class="status-pill status-disconnected" title="Connected Gmail Account">
                     <span class="status-dot"></span>
                     <span id="gmail-status-text">Gmail: Not connected</span>
@@ -415,6 +420,12 @@
                         </button>
                     </div>
 
+                    <!-- Extension Auto-fill Status Indicator -->
+                    <div id="ig-extension-status-note" class="font-mono" style="margin-top: 10px; font-size: 11.5px; padding: 6px 12px; background: #F0FDF4; border: 1px dashed #22C55E; border-radius: 4px; color: #166534; display: flex; align-items: center; gap: 6px;">
+                        <span>⚡</span>
+                        <span id="ig-extension-note-text">Chrome Extension installed: Message will be automatically inserted in Instagram DM</span>
+                    </div>
+
                     <!-- Other Discovered Profiles section directly below -->
                     <div id="ig-confirmed-other-socials-box" class="discovered-profiles-footer-box" style="margin-top: 24px; padding-top: 18px; border-top: 1.5px dashed rgba(51, 71, 91, 0.25);">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
@@ -567,6 +578,34 @@
                         <span>Back to Hub</span>
                     </button>
                     <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 5px 12px; font-size: 12px;">New Search</button>
+                </div>
+
+                <!-- State 0: Instagram DM Ready (Extension populated composer; waiting for user manual send) -->
+                <div id="verification-dm-ready-box" class="verification-status-stack hidden">
+                    <div class="verification-step-card" style="background: #F0FDF4; border-color: #22C55E;">
+                        <div class="v-step-icon" style="background: #22C55E; color: #FFFFFF;">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title" style="color: #166534;">Instagram DM Ready</h3>
+                            <p class="v-step-sub" id="v-dm-ready-sub">Your message has been added to the Instagram composer.</p>
+                        </div>
+                    </div>
+
+                    <div class="verification-step-card" style="background: #FAF8F2;">
+                        <div class="v-step-icon spinner-icon" style="background: #F59E0B; color: #000;">●</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title">Review & Click Send in Instagram</h3>
+                            <p class="v-step-sub" id="v-dm-ready-guide-text">We've populated the conversation for you. Review the draft in Instagram and click Send to dispatch.</p>
+                        </div>
+                    </div>
+
+                    <div class="dm-ready-action-card" style="margin-top: 14px; background: #FAF7F0; border: 2px solid var(--border-color); padding: 18px; border-radius: 4px; box-shadow: var(--shadow-btn);">
+                        <p class="font-mono" style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
+                            Did you click Send in Instagram?
+                        </p>
+                        <button type="button" id="btn-confirm-dm-sent" class="btn-primary" style="width: 100%; justify-content: center; font-size: 14px; padding: 12px 20px;">
+                            <span>I've Sent the Message ✓</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- State 1: Awaiting Creator Response -->
