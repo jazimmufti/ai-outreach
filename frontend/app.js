@@ -483,6 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const hubSocialsGrid = document.getElementById("hub-socials-grid");
 
     // Screen 6: Delivery & Status Polling Elements
+    const deliveryHeaderRow = document.getElementById("delivery-header-row") || document.querySelector(".delivery-header-row");
     const btnBackDelivery = document.getElementById("btn-back-delivery");
     const verificationDmReadyBox = document.getElementById("verification-dm-ready-box");
     const vDmReadySub = document.getElementById("v-dm-ready-sub");
@@ -1102,6 +1103,8 @@ document.addEventListener("DOMContentLoaded", () => {
             vDmReadyGuideText.textContent = `We opened ${creatorName}'s DM in Instagram and populated your draft. Review the message and click Send in Instagram.`;
         }
 
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
         if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -1310,6 +1313,8 @@ document.addEventListener("DOMContentLoaded", () => {
             pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your ${meta.name} message.`;
         }
 
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -1536,6 +1541,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 vPendingRecipientSub.textContent = `Message delivered to ${creatorName} (${recipient}) via verified channel`;
             }
 
+            if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+            if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
             if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
             if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
             if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
@@ -2538,6 +2545,8 @@ document.addEventListener("DOMContentLoaded", () => {
             vShieldAudienceText.textContent = `Collaboration verified against ${audText}`;
         }
 
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.add("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
@@ -2567,6 +2576,8 @@ document.addEventListener("DOMContentLoaded", () => {
             vRejectedDescText.textContent = `Collaboration not confirmed. ${creatorName} indicated they did not collaborate on this project.`;
         }
 
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.add("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -2653,6 +2664,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     vPendingRecipientSub.textContent = `Message delivered to ${creatorName} via verified channel`;
                 }
 
+                if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+                if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
                 if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
                 if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
                 if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -2711,6 +2724,8 @@ document.addEventListener("DOMContentLoaded", () => {
         state.pendingExtensionSession = null;
         state.senderHandle = null;
 
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -2768,6 +2783,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (vPendingRecipientSub) {
                         vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} via ${ch}`;
                     }
+                    if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+                    if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
                     if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
                     if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
                     if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");

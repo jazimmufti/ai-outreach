@@ -84,6 +84,7 @@ class TestUIScenariosAndBranding(unittest.TestCase):
 
         # Verify Delivery Screen
         self.assertIn("screen-delivery-success", html)
+        self.assertIn("delivery-header-row", html)
         self.assertIn("btn-back-delivery", html)
 
     def test_scenario_c_no_demo_simulation_controls(self):
