@@ -18,6 +18,7 @@
     // State & Helpers
     // --------------------------------------------------------------------------
     let isProcessing = false;
+    let lastInsertedSessionId = null;
     let floatingBanner = null;
 
     function getCleanCurrentPath() {
@@ -33,6 +34,10 @@
             return t === "log in" || t === "sign up";
         });
         return Boolean(passwordInput && loginBtn);
+    }
+
+    function normalizeText(str) {
+        return (str || "").replace(/\s+/g, " ").trim();
     }
 
     // --------------------------------------------------------------------------
@@ -148,17 +153,14 @@
 
     // 1. Locate the Profile "Message" Button
     function findInstagramMessageButton() {
-        // Strategy A: Standard button/link with text "Message" or "Send message"
         const candidates = Array.from(document.querySelectorAll('button, div[role="button"], a[role="button"], a[href*="/direct/t/"], a[href*="/direct/new/"]'));
         
         for (const el of candidates) {
-            // Check visible text
             const text = (el.textContent || "").trim().toLowerCase();
             const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
             const title = (el.getAttribute("title") || "").toLowerCase();
 
             if (text === "message" || text === "send message" || ariaLabel === "message" || ariaLabel === "send message" || title === "message") {
-                // Check if element is visible
                 const rect = el.getBoundingClientRect();
                 if (rect.width > 0 && rect.height > 0) {
                     return el;
@@ -166,7 +168,6 @@
             }
         }
 
-        // Strategy B: Header section buttons
         const header = document.querySelector("header, main header");
         if (header) {
             const headerBtns = Array.from(header.querySelectorAll('button, div[role="button"]'));
@@ -178,7 +179,6 @@
             }
         }
 
-        // Strategy C: Direct message icon / svg
         const svgs = Array.from(document.querySelectorAll('svg[aria-label="Message"], svg[aria-label="Direct"], svg[aria-label="Share Post"]'));
         for (const svg of svgs) {
             const btn = svg.closest('button, div[role="button"], a');
@@ -228,65 +228,116 @@
         return null;
     }
 
-    function normalizeText(str) {
-        return (str || "").replace(/\s+/g, " ").trim();
-    }
-
     // 3. Insert Text Correctly (React & Lexical State Compatible Without Duplication)
-    function insertMessageIntoComposer(composer, text) {
+    function clearAndInsertLexicalText(composer, text) {
         if (!composer || !text) return false;
 
-        const currentVal = composer.innerText || composer.textContent || composer.value || "";
-        // If message is already written, do not insert again
-        if (normalizeText(currentVal).includes(normalizeText(text))) {
-            console.log("[Arclent Extension] Message already present in composer. Skipping duplicate insertion.");
+        const currentVal = (composer.innerText || composer.textContent || composer.value || "").trim();
+        const targetVal = text.trim();
+
+        // 1. If composer already contains exact target message, do nothing and return success
+        if (normalizeText(currentVal) === normalizeText(targetVal)) {
+            console.log("[Arclent Extension] Composer already contains the exact message.");
             return true;
         }
 
         composer.focus();
 
-        if (composer.tagName.toLowerCase() === "textarea" || composer.tagName.toLowerCase() === "input") {
-            composer.value = text;
-            composer.dispatchEvent(new Event("input", { bubbles: true }));
-            composer.dispatchEvent(new Event("change", { bubbles: true }));
-            return true;
-        }
-
-        // For contenteditable / Lexical:
+        // 2. Select and delete everything inside the composer
         try {
-            // Select all existing content so we replace instead of appending
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(composer);
             selection.removeAllRanges();
             selection.addRange(range);
-
-            // Execute insertText command (triggers React & DOM sync replacing selection)
-            const execSuccess = document.execCommand("insertText", false, text);
-
-            // In Chromium, execCommand('insertText') natively fires InputEvents with data.
-            // Dispatch a standard input event without data so React component state reconciles
-            // without triggering a secondary synthetic data insertion in Lexical.
-            composer.dispatchEvent(new Event("input", { bubbles: true }));
-            composer.dispatchEvent(new Event("change", { bubbles: true }));
-
-            const checkVal = composer.innerText || composer.textContent || "";
-            if (execSuccess && normalizeText(checkVal).includes(normalizeText(text).substring(0, 20))) {
-                return true;
-            }
-        } catch (err) {
-            console.warn("[Arclent Extension] execCommand insertText failed, falling back to innerText:", err);
+            document.execCommand("delete", false, null);
+        } catch (e) {
+            console.warn("[Arclent Extension] Selection delete failed:", e);
         }
 
-        // Fallback if execCommand did not populate text
+        // 3. Clear any remaining text content or child elements
         try {
-            composer.innerText = text;
+            if ((composer.innerText || composer.textContent || "").trim().length > 0) {
+                composer.innerHTML = "";
+                composer.textContent = "";
+            }
+        } catch (_) {}
+
+        // 4. Try insertion via DataTransfer ClipboardEvent (standard Lexical paste handler)
+        let inserted = false;
+        try {
+            composer.focus();
+            const dt = new DataTransfer();
+            dt.setData("text/plain", targetVal);
+            const pasteEv = new ClipboardEvent("paste", {
+                clipboardData: dt,
+                bubbles: true,
+                cancelable: true
+            });
+            composer.dispatchEvent(pasteEv);
+
+            const postPasteVal = (composer.innerText || composer.textContent || composer.value || "").trim();
+            if (normalizeText(postPasteVal).includes(normalizeText(targetVal).substring(0, 30))) {
+                inserted = true;
+            }
+        } catch (e) {
+            console.warn("[Arclent Extension] Paste event failed:", e);
+        }
+
+        // 5. Fallback to execCommand("insertText") if paste did not insert
+        if (!inserted) {
+            try {
+                composer.focus();
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(composer);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                document.execCommand("delete", false, null);
+                const execOk = document.execCommand("insertText", false, targetVal);
+                if (execOk) inserted = true;
+            } catch (e) {
+                console.warn("[Arclent Extension] execCommand insertText failed:", e);
+            }
+        }
+
+        // 6. Direct value set if it's an input/textarea
+        if (!inserted && (composer.tagName.toLowerCase() === "textarea" || composer.tagName.toLowerCase() === "input")) {
+            composer.value = targetVal;
+            inserted = true;
+        }
+
+        // 7. Dispatch input/change events for React state reconciliation
+        try {
             composer.dispatchEvent(new Event("input", { bubbles: true }));
             composer.dispatchEvent(new Event("change", { bubbles: true }));
-            return true;
-        } catch (_) {
-            return false;
+        } catch (_) {}
+
+        // 8. Deduplication safety check: if message appears multiple times in composer, wipe and re-insert once
+        const checkVal = (composer.innerText || composer.textContent || composer.value || "").trim();
+        const snippet = targetVal.substring(0, 30);
+        let occurrences = 0;
+        let pos = checkVal.indexOf(snippet);
+        while (pos !== -1) {
+            occurrences++;
+            pos = checkVal.indexOf(snippet, pos + snippet.length);
         }
+
+        if (occurrences > 1) {
+            console.warn("[Arclent Extension] Duplicate message detected in composer. Wiping and re-inserting once...");
+            try {
+                composer.focus();
+                const selection = window.getSelection();
+                const range = document.createRange();
+                range.selectNodeContents(composer);
+                selection.removeAllRanges();
+                selection.addRange(range);
+                document.execCommand("delete", false, null);
+                document.execCommand("insertText", false, targetVal);
+            } catch (_) {}
+        }
+
+        return true;
     }
 
     // 4. Verify Message Was Inserted
@@ -295,6 +346,70 @@
         const currentText = composer.innerText || composer.textContent || composer.value || "";
         const sample = normalizeText(expectedText).substring(0, Math.min(30, expectedText.length));
         return normalizeText(currentText).includes(sample);
+    }
+
+    // 5. Auto-Detect Logged-In User Handle on Instagram
+    function extractLoggedInUsername() {
+        const systemPages = new Set([
+            "direct", "explore", "reels", "stories", "accounts", "p", "reel",
+            "your_activity", "saved", "settings", "messages", "inbox", "api",
+            "about", "developer", "legal", "terms", "privacy", "help", "requests",
+            "home", "search", "notifications", "create", "profile", "more", "threads",
+            "meta", "graphql", "feed", ""
+        ]);
+
+        // Method 1: Top-left header of Direct conversation / inbox sidebar (e.g. "jazimmufti" with chevron)
+        const headerElements = Array.from(document.querySelectorAll('header span, header h1, header h2, div[role="button"] span, nav span'));
+        for (const el of headerElements) {
+            const text = (el.textContent || "").trim();
+            if (text && /^[a-zA-Z0-9._]{2,30}$/.test(text)) {
+                const lower = text.toLowerCase();
+                if (!systemPages.has(lower) && !["messages", "requests", "primary", "general"].includes(lower)) {
+                    const container = el.closest('header, div[role="button"], div[role="heading"]');
+                    if (container) {
+                        return text;
+                    }
+                }
+            }
+        }
+
+        // Method 2: Avatar image alt attribute ("jazimmufti's profile picture")
+        const avatarImgs = Array.from(document.querySelectorAll('img[alt*="profile picture"]'));
+        for (const img of avatarImgs) {
+            const alt = img.getAttribute("alt") || "";
+            const match = alt.match(/^([^']+)'s profile picture/i);
+            if (match && match[1]) {
+                const u = match[1].replace(/^@+/, "").trim();
+                if (u && !systemPages.has(u.toLowerCase())) {
+                    return u;
+                }
+            }
+        }
+
+        // Method 3: Left navigation profile link with avatar or profile icon / text
+        const navLinks = Array.from(document.querySelectorAll('nav a[href^="/"], div[role="navigation"] a[href^="/"], a[href^="/"][role="link"]'));
+        for (const link of navLinks) {
+            const href = link.getAttribute("href") || "";
+            const clean = href.replace(/^\/+|\/+$/g, "").split("?")[0].split("#")[0].trim();
+            if (clean && !clean.includes("/") && !systemPages.has(clean.toLowerCase())) {
+                if (link.querySelector('img[alt*="profile picture"]') ||
+                    link.querySelector('svg[aria-label="Profile"], svg[aria-label="Your profile"]') ||
+                    (link.textContent || "").toLowerCase().includes("profile")) {
+                    return clean;
+                }
+            }
+        }
+
+        // Method 4: Any user profile anchor in navigation
+        for (const link of navLinks) {
+            const href = link.getAttribute("href") || "";
+            const clean = href.replace(/^\/+|\/+$/g, "").split("?")[0].split("#")[0].trim();
+            if (clean && !clean.includes("/") && !systemPages.has(clean.toLowerCase())) {
+                return clean;
+            }
+        }
+
+        return null;
     }
 
     // --------------------------------------------------------------------------
@@ -315,11 +430,11 @@
             return;
         }
 
-        isProcessing = true;
-        // Mark as processing immediately to lock against concurrent SPA observers
-        sessionData.status = "processing";
-        await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+        if (lastInsertedSessionId === sessionData.sessionId) {
+            return;
+        }
 
+        isProcessing = true;
         console.log("[Arclent Extension] Processing pending outreach for:", sessionData.username);
 
         try {
@@ -330,8 +445,6 @@
                     message: `Please log into your Instagram account in this tab. Your Arclent message for @${sessionData.username} will be prepared as soon as you log in.`,
                     type: "warning"
                 });
-                sessionData.status = "pending";
-                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                 isProcessing = false;
                 return;
             }
@@ -343,7 +456,7 @@
             const isDirectPage = currentPath.startsWith("direct/");
             const isProfilePage = currentPath === targetUser || currentPath.startsWith(`${targetUser}/`);
 
-            // Step A: If on profile page, locate Message button and click it
+            // Step A: If on profile page, locate Message button and click it once
             if (isProfilePage && !isDirectPage) {
                 console.log("[Arclent Extension] On creator profile page. Finding Message button...");
                 const messageBtn = await waitForElement(findInstagramMessageButton, 10000);
@@ -351,13 +464,12 @@
                 if (messageBtn) {
                     console.log("[Arclent Extension] Found Message button. Clicking to open DM...");
                     messageBtn.click();
-                    // Allow navigation to begin
-                    await new Promise(r => setTimeout(r, 1200));
+                    // Let navigation to /direct/t/... occur and trigger next step cleanly
+                    isProcessing = false;
+                    return;
                 } else {
                     console.warn("[Arclent Extension] Message button not found on profile. Attempting direct navigation...");
                     window.location.href = `https://ig.me/m/${encodeURIComponent(targetUser)}`;
-                    sessionData.status = "pending";
-                    await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                     isProcessing = false;
                     return;
                 }
@@ -390,62 +502,24 @@
                 return;
             }
 
-            // Step C: Insert the Message
-            console.log("[Arclent Extension] Composer found. Inserting message draft...");
-            const inserted = insertMessageIntoComposer(composer, sessionData.message);
+            // Step C: Insert the Message cleanly (clears existing draft first)
+            console.log("[Arclent Extension] Composer found. Inserting message draft cleanly...");
+            const inserted = clearAndInsertLexicalText(composer, sessionData.message);
             await new Promise(r => setTimeout(r, 400));
             const verified = verifyMessageContent(composer, sessionData.message);
 
             if (verified || inserted) {
                 console.log("[Arclent Extension] ✓ Message successfully inserted into composer. STOPPING (user must click send).");
 
-                // Immediately mark session as completed in storage so it cannot be triggered again on SPA URL changes
+                // Mark session as completed and remember session ID
+                lastInsertedSessionId = sessionData.sessionId;
                 sessionData.status = "completed";
                 await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
 
                 // Auto-detect logged-in user handle on Instagram
-                let loggedInUser = null;
-                try {
-                    // Method 1: Profile link with Profile SVG icon or aria-label
-                    const profileLink = document.querySelector('svg[aria-label="Profile"], svg[aria-label="Your profile"]')?.closest('a');
-                    if (profileLink) {
-                        const href = profileLink.getAttribute("href") || "";
-                        const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0].replace(/^@+/, "").trim();
-                        if (cleanHref && !cleanHref.includes("?")) {
-                            loggedInUser = cleanHref;
-                        }
-                    }
-
-                    // Method 2: Check all sidebar navigation links
-                    if (!loggedInUser) {
-                        const profileLinks = Array.from(document.querySelectorAll('a[href^="/"][role="link"], nav a[href^="/"]'));
-                        for (const link of profileLinks) {
-                            const href = link.getAttribute("href") || "";
-                            const cleanHref = href.replace(/^\/+|\/+$/g, "").split("/")[0].replace(/^@+/, "").trim();
-                            const systemPages = ["direct", "explore", "reels", "stories", "accounts", "p", "reel", "your_activity", "saved", "settings", "messages", "inbox"];
-                            if (cleanHref && !systemPages.includes(cleanHref.toLowerCase()) && !cleanHref.includes("?")) {
-                                if (link.querySelector('img[alt*="profile picture"]') || (link.textContent || "").toLowerCase().includes("profile")) {
-                                    loggedInUser = cleanHref;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    // Method 3: Avatar image alt tags
-                    if (!loggedInUser) {
-                        const avatarImgs = Array.from(document.querySelectorAll('img[alt*="profile picture"]'));
-                        for (const img of avatarImgs) {
-                            const alt = img.getAttribute("alt") || "";
-                            const match = alt.match(/^([^']+)'s profile picture/i);
-                            if (match && match[1]) {
-                                loggedInUser = match[1].replace(/^@+/, "").trim();
-                                break;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.warn("[Arclent Extension] Could not detect logged-in username:", e);
+                const loggedInUser = extractLoggedInUsername();
+                if (loggedInUser) {
+                    console.log("[Arclent Extension] Detected logged-in username:", loggedInUser);
                 }
 
                 // If backend origin is present, directly update the session backend as well
