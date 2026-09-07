@@ -18,7 +18,7 @@
     // State & Helpers
     // --------------------------------------------------------------------------
     let isProcessing = false;
-    let lastInsertedSessionId = null;
+    let lastInsertedSessionKey = null;
     let floatingBanner = null;
 
     function getCleanCurrentPath() {
@@ -232,8 +232,8 @@
     function clearAndInsertLexicalText(composer, text) {
         if (!composer || !text) return false;
 
-        const currentVal = (composer.innerText || composer.textContent || composer.value || "").trim();
         const targetVal = text.trim();
+        const currentVal = (composer.innerText || composer.textContent || composer.value || "").trim();
 
         // 1. If composer already contains exact target message, do nothing and return success
         if (normalizeText(currentVal) === normalizeText(targetVal)) {
@@ -243,7 +243,7 @@
 
         composer.focus();
 
-        // 2. Select and delete everything inside the composer
+        // 2. Select and delete everything inside the composer to clear any previous draft
         try {
             const selection = window.getSelection();
             const range = document.createRange();
@@ -255,67 +255,49 @@
             console.warn("[Arclent Extension] Selection delete failed:", e);
         }
 
-        // 3. Clear any remaining text content or child elements
-        try {
-            if ((composer.innerText || composer.textContent || "").trim().length > 0) {
-                composer.innerHTML = "";
-                composer.textContent = "";
-            }
-        } catch (_) {}
+        // 3. Direct value set if it's an input/textarea
+        if (composer.tagName.toLowerCase() === "textarea" || composer.tagName.toLowerCase() === "input") {
+            composer.value = targetVal;
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
+            composer.dispatchEvent(new Event("change", { bubbles: true }));
+            return true;
+        }
 
-        // 4. Try insertion via DataTransfer ClipboardEvent (standard Lexical paste handler)
+        // 4. For Lexical / contenteditable: Use ONLY execCommand insertText (single pass, no paste event mixing)
         let inserted = false;
         try {
             composer.focus();
-            const dt = new DataTransfer();
-            dt.setData("text/plain", targetVal);
-            const pasteEv = new ClipboardEvent("paste", {
-                clipboardData: dt,
-                bubbles: true,
-                cancelable: true
-            });
-            composer.dispatchEvent(pasteEv);
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(composer);
+            selection.removeAllRanges();
+            selection.addRange(range);
 
-            const postPasteVal = (composer.innerText || composer.textContent || composer.value || "").trim();
-            if (normalizeText(postPasteVal).includes(normalizeText(targetVal).substring(0, 30))) {
+            const execOk = document.execCommand("insertText", false, targetVal);
+            if (execOk) {
                 inserted = true;
             }
         } catch (e) {
-            console.warn("[Arclent Extension] Paste event failed:", e);
+            console.warn("[Arclent Extension] execCommand insertText failed:", e);
         }
 
-        // 5. Fallback to execCommand("insertText") if paste did not insert
+        // Fallback only if execCommand was not supported
         if (!inserted) {
             try {
-                composer.focus();
-                const selection = window.getSelection();
-                const range = document.createRange();
-                range.selectNodeContents(composer);
-                selection.removeAllRanges();
-                selection.addRange(range);
-                document.execCommand("delete", false, null);
-                const execOk = document.execCommand("insertText", false, targetVal);
-                if (execOk) inserted = true;
-            } catch (e) {
-                console.warn("[Arclent Extension] execCommand insertText failed:", e);
-            }
+                composer.innerText = targetVal;
+                inserted = true;
+            } catch (_) {}
         }
 
-        // 6. Direct value set if it's an input/textarea
-        if (!inserted && (composer.tagName.toLowerCase() === "textarea" || composer.tagName.toLowerCase() === "input")) {
-            composer.value = targetVal;
-            inserted = true;
-        }
-
-        // 7. Dispatch input/change events for React state reconciliation
+        // 5. Dispatch input & change events for React state reconciliation
         try {
             composer.dispatchEvent(new Event("input", { bubbles: true }));
             composer.dispatchEvent(new Event("change", { bubbles: true }));
         } catch (_) {}
 
-        // 8. Deduplication safety check: if message appears multiple times in composer, wipe and re-insert once
-        const checkVal = (composer.innerText || composer.textContent || composer.value || "").trim();
-        const snippet = targetVal.substring(0, 30);
+        // 6. Deduplication safety check: if message appears multiple times in composer, wipe and re-insert once
+        const checkVal = (composer.innerText || composer.textContent || "").trim();
+        const snippet = targetVal.substring(0, Math.min(30, targetVal.length));
         let occurrences = 0;
         let pos = checkVal.indexOf(snippet);
         while (pos !== -1) {
@@ -326,7 +308,6 @@
         if (occurrences > 1) {
             console.warn("[Arclent Extension] Duplicate message detected in composer. Wiping and re-inserting once...");
             try {
-                composer.focus();
                 const selection = window.getSelection();
                 const range = document.createRange();
                 range.selectNodeContents(composer);
@@ -334,7 +315,9 @@
                 selection.addRange(range);
                 document.execCommand("delete", false, null);
                 document.execCommand("insertText", false, targetVal);
-            } catch (_) {}
+            } catch (_) {
+                composer.innerText = targetVal;
+            }
         }
 
         return true;
@@ -430,7 +413,8 @@
             return;
         }
 
-        if (lastInsertedSessionId === sessionData.sessionId) {
+        const sessionKey = sessionData.sessionId || `${sessionData.username}_${(sessionData.message || "").substring(0, 30)}`;
+        if (lastInsertedSessionKey === sessionKey) {
             return;
         }
 
@@ -511,8 +495,8 @@
             if (verified || inserted) {
                 console.log("[Arclent Extension] ✓ Message successfully inserted into composer. STOPPING (user must click send).");
 
-                // Mark session as completed and remember session ID
-                lastInsertedSessionId = sessionData.sessionId;
+                // Mark session as completed and remember session key
+                lastInsertedSessionKey = sessionKey;
                 sessionData.status = "completed";
                 await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
 
