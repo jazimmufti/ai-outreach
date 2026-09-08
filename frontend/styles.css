@@ -1425,6 +1425,74 @@ body {
     border: 1px solid #E5E7EB;
 }
 
+.lookup-value-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.lookup-content-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.lookup-username-stylish {
+    font-family: var(--font-heading);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--black);
+    word-break: break-all;
+    line-height: 1.3;
+}
+
+.btn-open-profile-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #FFFFFF;
+    color: var(--black);
+    border: 1.5px solid var(--black);
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-family: var(--font-heading);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 2px 2px 0px var(--black);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.btn-open-profile-pill:hover {
+    background: #F4EFE6;
+    color: var(--black);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px var(--black);
+}
+
+.btn-open-profile-pill:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0px var(--black);
+}
+
+.btn-open-profile-pill svg {
+    display: block;
+    transition: transform 0.15s ease;
+}
+
+.btn-open-profile-pill:hover svg {
+    transform: translate(1px, -1px);
+}
+
 .lookup-actions-row {
     margin-top: 4px;
     display: flex;
@@ -1445,13 +1513,6 @@ body {
 
 .lookup-link-btn:hover {
     opacity: 0.8;
-}
-
-.lookup-value-col {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
 }
 
 .lookup-value {
@@ -2157,6 +2218,19 @@ body {
 
     .lookup-value {
         font-size: 13.5px;
+    }
+
+    .lookup-content-row {
+        gap: 8px;
+    }
+
+    .lookup-username-stylish {
+        font-size: 16px;
+    }
+
+    .btn-open-profile-pill {
+        font-size: 11px;
+        padding: 4px 10px;
     }
 
     /* Verification Status Elements */
