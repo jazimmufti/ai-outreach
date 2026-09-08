@@ -22,18 +22,13 @@
                 </a>
             </div>
 
-            <!-- Gmail & Instagram Status Pills and 4-Segment Progress Indicator -->
+            <!-- Gmail Status Pill and 4-Segment Progress Indicator -->
             <div class="header-right-group">
                 <div id="gmail-status-pill" class="status-pill status-disconnected" title="Connected Gmail Account">
                     <span class="status-dot"></span>
                     <span id="gmail-status-text">Gmail: Not connected</span>
                     <button id="header-connect-btn" class="btn-micro">Connect</button>
                     <button id="header-disconnect-btn" class="btn-micro btn-micro-danger" style="display: none;">Disconnect</button>
-                </div>
-
-                <div id="instagram-status-pill" class="status-pill font-mono hidden" title="Click to connect or change your linked Instagram handle" style="display: none; cursor: pointer; background: #FEF3C7; border-color: #D97706;">
-                    <span class="status-dot" style="background: #F59E0B;"></span>
-                    <span id="instagram-status-text" style="color: #92400E; font-weight: 700;">Connect Instagram +</span>
                 </div>
 
                 <div class="progress-segments" aria-label="Step Progress">
@@ -776,6 +771,9 @@
                     Credits for <strong id="modal-detected-handles-list"></strong> were found in the video description. 
                     To get <strong>auto-verified</strong>, connect your Instagram account.
                 </p>
+                <p class="modal-optional-hint font-mono" style="font-size: 0.8rem; color: #6B7280; margin-top: -0.25rem; margin-bottom: 1.25rem;">
+                    💡 Connecting Instagram is optional. You can skip and verify manually at any time.
+                </p>
 
                 <!-- Suggested chips -->
                 <div id="modal-ci-chips-container" class="modal-chips-container hidden">
@@ -806,7 +804,7 @@
                             <span>Connect & Auto-Verify ⚡</span>
                         </button>
                         <button type="button" id="btn-modal-ci-skip" class="btn-secondary">
-                            <span>Continue to Manual Outreach</span>
+                            <span>Skip (Verify Manually)</span>
                         </button>
                     </div>
                 </form>

@@ -297,23 +297,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 return null;
             }
         })(),
-        linkedInstagramAccount: (() => {
-            try {
-                const stored = localStorage.getItem("arclent_linked_instagram");
-                if (stored !== null && stored !== undefined && stored.trim() !== "") {
-                    return stored.replace(/^@+/, "").trim().toLowerCase();
-                }
-                return null;
-            } catch (_) {
-                return null;
-            }
-        })(),
+        linkedInstagramAccount: null,
         isSending: false,
         selectedChannel: null,
         stageBeforeDelivery: null,
         extensionInstalled: false,
         pendingExtensionSession: null
     };
+
+    // Ensure stale linked account is removed on fresh initialization
+    try {
+        localStorage.removeItem("arclent_linked_instagram");
+    } catch (_) {}
 
     function saveSessionState() {
         if (!state.sessionId) return;
@@ -342,33 +337,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const headerConnectBtn = document.getElementById("header-connect-btn");
     const headerDisconnectBtn = document.getElementById("header-disconnect-btn");
     const composerDisconnectGmailBtn = document.getElementById("composer-disconnect-gmail-btn");
-    const instagramStatusPill = document.getElementById("instagram-status-pill");
-    const instagramStatusText = document.getElementById("instagram-status-text");
-
-    function updateInstagramPill() {
-        if (!instagramStatusText) return;
-        const dot = instagramStatusPill ? instagramStatusPill.querySelector(".status-dot") : null;
-        if (state.linkedInstagramAccount) {
-            instagramStatusText.textContent = `IG: @${state.linkedInstagramAccount}`;
-            instagramStatusText.style.color = "#065F46";
-            if (instagramStatusPill) {
-                instagramStatusPill.style.background = "#ECFDF5";
-                instagramStatusPill.style.borderColor = "#059669";
-                instagramStatusPill.style.cursor = "default";
-                instagramStatusPill.title = `Linked Instagram: @${state.linkedInstagramAccount}`;
-                instagramStatusPill.classList.remove("hidden");
-                instagramStatusPill.style.display = "";
-            }
-            if (dot) dot.style.background = "#10B981";
-        } else {
-            // When unlinked, do not show connect prompt on the first page
-            if (instagramStatusPill) {
-                instagramStatusPill.classList.add("hidden");
-                instagramStatusPill.style.display = "none";
-            }
-        }
-    }
-    updateInstagramPill();
 
     // 4-Segment Progress Bar Elements
     const progSeg1 = document.getElementById("prog-seg-1");
@@ -708,7 +676,6 @@ document.addEventListener("DOMContentLoaded", () => {
             try {
                 localStorage.setItem("arclent_linked_instagram", cleanHandle);
             } catch (_) {}
-            updateInstagramPill();
             saveSessionState();
 
             const isMatch = currentModalExtractedHandles.map(h => h.replace(/^@+/, '').toLowerCase()).includes(cleanHandle);
@@ -1188,32 +1155,15 @@ document.addEventListener("DOMContentLoaded", () => {
             showScreen("verifyEmail", 3);
             showCreditsDetectedBanner(extracted);
             showConnectInstagramModal(extracted, data);
-
-            // Show connect Instagram in header only now that credits are mentioned
-            if (instagramStatusPill && instagramStatusText) {
-                instagramStatusText.textContent = "Connect Instagram +";
-                instagramStatusText.style.color = "#92400E";
-                instagramStatusPill.style.background = "#FEF3C7";
-                instagramStatusPill.style.borderColor = "#D97706";
-                instagramStatusPill.style.cursor = "pointer";
-                instagramStatusPill.title = "Credits detected in video! Connect Instagram to auto-verify";
-                instagramStatusPill.classList.remove("hidden");
-                instagramStatusPill.style.display = "";
-                instagramStatusPill.onclick = () => showConnectInstagramModal(extracted, data);
-            }
             return;
         }
 
-        // CASE 3: No credits mentioned or not verified -> keep connect instagram hidden
+        // CASE 3: No credits mentioned or not verified -> keep connect modal & banner hidden
         if (autoVerifyFallbackBanner) {
             autoVerifyFallbackBanner.classList.add("hidden");
         }
         hideCreditsDetectedBanner();
         hideConnectInstagramModal();
-        if (!state.linkedInstagramAccount && instagramStatusPill) {
-            instagramStatusPill.classList.add("hidden");
-            instagramStatusPill.style.display = "none";
-        }
 
         // START SPECIFICALLY FROM 1 · EMAIL (Existing Verification Workflow)
         state.stage = "verify_email";

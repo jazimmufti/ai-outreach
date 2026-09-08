@@ -269,6 +269,11 @@ class TestModalConnectInstagramGuards(unittest.TestCase):
         # Default template text must not hardcode @ummer.04
         self.assertNotIn('<strong id="modal-detected-handles-list">@ummer.04</strong>', html)
         self.assertIn('<strong id="modal-detected-handles-list"></strong>', html)
+        # IG pill must NOT be in the top header
+        self.assertNotIn('id="instagram-status-pill"', html)
+        # Connecting must be optional with clear skip action
+        self.assertIn('Skip (Verify Manually)', html)
+        self.assertIn('Connecting Instagram is optional', html)
 
     def test_app_js_guards_and_instagram_redirect(self):
         with open("frontend/app.js", "r", encoding="utf-8") as f:
@@ -278,6 +283,9 @@ class TestModalConnectInstagramGuards(unittest.TestCase):
         self.assertIn('screens.input && !screens.input.classList.contains("hidden")', js)
         self.assertIn('state.stage === "input"', js)
 
+        # Initial state must be null (not connected initially)
+        self.assertIn('linkedInstagramAccount: null', js)
+
         # Guard: only if user hasn't connected
         self.assertIn('if (state.linkedInstagramAccount)', js)
 
@@ -286,9 +294,6 @@ class TestModalConnectInstagramGuards(unittest.TestCase):
 
         # Redirect to Instagram login page on handle entry
         self.assertIn('window.location.href = "https://www.instagram.com/accounts/login/";', js)
-
-        # Status pill hidden when unlinked so no connect prompt on first page
-        self.assertIn('instagramStatusPill.classList.add("hidden")', js)
 
 
 if __name__ == "__main__":
