@@ -5,6 +5,7 @@ against the creator's linked Arclent Instagram account.
 Provides a clear verification status, method, matched account, and reason.
 """
 
+import re
 from typing import List, Optional
 
 from app.models.schemas import AutoVerificationResult
@@ -82,8 +83,18 @@ def verify_contribution_from_description(
             reason="No Instagram accounts detected in the video description. Continuing to existing verification."
         )
 
-    # 4. Check for match
-    if active_linked in extracted:
+    # 4. Check for match (direct or alphanumeric normalization, e.g. 'Trenton Oliver' == 'trenton_oliver')
+    def normalize_for_comparison(val: str) -> str:
+        return re.sub(r"[^a-zA-Z0-9]", "", val or "").lower()
+
+    active_norm = normalize_for_comparison(active_linked)
+    matched_acc = None
+    for acc in extracted:
+        if acc.lower() == active_linked.lower() or normalize_for_comparison(acc) == active_norm:
+            matched_acc = acc
+            break
+
+    if matched_acc:
         return AutoVerificationResult(
             verified=True,
             status="auto_verified",
@@ -91,11 +102,11 @@ def verify_contribution_from_description(
             matched_account=active_linked,
             linked_account=active_linked,
             extracted_accounts=extracted,
-            reason=f"Linked Instagram account @{active_linked} was found in the video's contributor information."
+            reason=f"Linked Instagram account @{active_linked} was matched with credit '{matched_acc}' in the video's contributor information."
         )
 
     # 5. Accounts found, but none match linked account
-    accounts_preview = ", ".join(f"@{acc}" for acc in extracted[:3])
+    accounts_preview = ", ".join(f"@{acc}" if " " not in acc else f'"{acc}"' for acc in extracted[:3])
     if len(extracted) > 3:
         accounts_preview += f" (+{len(extracted) - 3} more)"
 
@@ -106,7 +117,7 @@ def verify_contribution_from_description(
         matched_account=None,
         linked_account=active_linked,
         extracted_accounts=extracted,
-        reason=f"Detected Instagram account(s) {accounts_preview}, but none match your linked account @{active_linked}. Continuing to existing verification."
+        reason=f"Detected contributor credit(s) {accounts_preview}, but none match your linked account @{active_linked}. Continuing to existing verification."
     )
 
 
@@ -132,7 +143,7 @@ async def verify_contribution_from_description_async(
     )
     verified_handles = [
         c["username"] for c in verified_contribs
-        if "Instagram" in c.get("platforms", []) and c.get("username")
+        if ("Instagram" in c.get("platforms", []) or c.get("is_name") or c.get("platforms")) and c.get("username")
     ]
     return verify_contribution_from_description(
         description,
@@ -140,3 +151,4 @@ async def verify_contribution_from_description_async(
         user_role=user_role,
         verified_accounts=verified_handles
     )
+

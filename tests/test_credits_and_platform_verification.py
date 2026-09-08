@@ -416,5 +416,68 @@ class TestPlatformExistenceCandidateFiltering(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Instagram", results[0]["platforms"])
 
 
+class TestNameFirstAndHumanNameCredits(unittest.IsolatedAsyncioTestCase):
+    """Tests for name-first credits (DRNKIE: Thumbnail) and plain human name credits (Edited by Trenton Oliver)."""
+
+    def setUp(self):
+        reset_dummy_linked_instagram_account()
+
+    def tearDown(self):
+        reset_dummy_linked_instagram_account()
+
+    def test_nerdout_thumbnail_designer_credit(self):
+        nerdout_desc = """
+DRNKIE: Thumbnail
+YouTube: [/ drnkie](https://www.youtube.com/drnkie)
+Twitch: [/ drnkie](https://www.twitch.tv/drnkie)
+Twitter: [/ drnkie](https://twitter.com/drnkie)
+
+Badogblue: Editor/Gameplay
+YouTube: [/ badogblue](https://www.youtube.com/user/badogblue)
+Twitter: [/ badogblue](https://twitter.com/badogblue)
+        """
+        # When user selects Thumbnail designer
+        candidates_thumb = extract_credit_candidates(nerdout_desc, user_role="Thumbnail designer")
+        self.assertEqual(len(candidates_thumb), 1)
+        self.assertEqual(candidates_thumb[0]["username"], "drnkie")
+        self.assertEqual(candidates_thumb[0]["display_name"], "DRNKIE")
+        self.assertIn("Twitter", candidates_thumb[0]["known_platforms"])
+
+        # When user selects Video editor
+        candidates_editor = extract_credit_candidates(nerdout_desc, user_role="Video editor")
+        self.assertEqual(len(candidates_editor), 1)
+        self.assertEqual(candidates_editor[0]["username"], "badogblue")
+        self.assertEqual(candidates_editor[0]["display_name"], "Badogblue")
+
+    def test_plain_name_edited_by_trenton_oliver(self):
+        desc = "Edited by Trenton Oliver\nHope everyone enjoyed the video!"
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["display_name"], "Trenton Oliver")
+        self.assertTrue(candidates[0]["is_name"])
+
+        # Auto-verification with linked account 'trenton_oliver'
+        res = verify_contribution_from_description(desc, linked_account="trenton_oliver", user_role="Video editor")
+        self.assertTrue(res.verified)
+        self.assertEqual(res.status, "auto_verified")
+        self.assertEqual(res.matched_account, "trenton_oliver")
+
+        # Auto-verification with linked account 'trentonoliver'
+        res2 = verify_contribution_from_description(desc, linked_account="trentonoliver", user_role="Video editor")
+        self.assertTrue(res2.verified)
+        self.assertEqual(res2.status, "auto_verified")
+
+    def test_plain_name_thumbnail_by_trenton_oliver(self):
+        desc = "Thumbnail by Trenton Oliver\nGreat match!"
+        candidates = extract_credit_candidates(desc, user_role="Thumbnail designer")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["display_name"], "Trenton Oliver")
+
+        # Video editor should not match thumbnail credit
+        editor_cand = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(editor_cand, [])
+
+
 if __name__ == "__main__":
     unittest.main()
+

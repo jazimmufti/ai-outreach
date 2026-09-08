@@ -568,7 +568,13 @@ document.addEventListener("DOMContentLoaded", () => {
             bannerCreditsDetected.classList.add("hidden");
             return;
         }
-        const formatted = list.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
+        const formatted = list.map(h => {
+            const trimmed = (h || "").trim();
+            if (trimmed.includes(" ")) {
+                return `"${trimmed}"`;
+            }
+            return `@${trimmed.replace(/^@+/, '')}`;
+        }).join(", ");
         if (bannerCreditsHandles) bannerCreditsHandles.textContent = formatted;
         bannerCreditsDetected.classList.remove("hidden");
     }
@@ -601,24 +607,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         currentModalExtractedHandles = cleanHandles;
-        const formatted = currentModalExtractedHandles.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
+        const formatted = currentModalExtractedHandles.map(h => {
+            const trimmed = (h || "").trim();
+            if (trimmed.includes(" ")) {
+                return `"${trimmed}"`;
+            }
+            return `@${trimmed.replace(/^@+/, '')}`;
+        }).join(", ");
         if (modalDetectedHandlesList) modalDetectedHandlesList.textContent = formatted;
         if (modalCiTitle) modalCiTitle.textContent = "Credits are already mentioned!";
         if (modalCiDesc) {
-            modalCiDesc.innerHTML = `Credits for <strong>${escapeHtml(formatted)}</strong> were found in the video description. To get <strong>auto-verified</strong>, connect your Instagram account.`;
+            const roleStr = state.userRole ? `for ${escapeHtml(state.userRole.toLowerCase())} ` : "";
+            modalCiDesc.innerHTML = `Credits ${roleStr}<strong>${escapeHtml(formatted)}</strong> were found in the video description. To get <strong>auto-verified</strong>, connect your Instagram account.`;
         }
 
         if (modalCiChipsRow && modalCiChipsContainer) {
             modalCiChipsRow.innerHTML = "";
             currentModalExtractedHandles.forEach(h => {
-                const cleanH = h.replace(/^@+/, "");
+                const trimmed = (h || "").trim();
+                const isName = trimmed.includes(" ");
+                const chipLabel = isName ? `"${trimmed}"` : `@${trimmed.replace(/^@+/, '')}`;
+                const cleanValue = isName ? trimmed.toLowerCase().replace(/[^a-z0-9_\.]/g, '') : trimmed.replace(/^@+/, '');
+
                 const chip = document.createElement("button");
                 chip.type = "button";
                 chip.className = "modal-chip-btn";
-                chip.textContent = `@${cleanH}`;
+                chip.textContent = chipLabel;
                 chip.addEventListener("click", () => {
                     if (modalCiInput) {
-                        modalCiInput.value = cleanH;
+                        modalCiInput.value = cleanValue;
                         modalCiInput.focus();
                     }
                     modalCiChipsRow.querySelectorAll(".modal-chip-btn").forEach(c => c.classList.remove("selected"));
@@ -631,7 +648,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Pre-fill input if only 1 handle
         if (currentModalExtractedHandles.length === 1 && modalCiInput) {
-            modalCiInput.value = currentModalExtractedHandles[0].replace(/^@+/, "");
+            const single = currentModalExtractedHandles[0].trim();
+            if (single.includes(" ")) {
+                modalCiInput.value = single.toLowerCase().replace(/[^a-z0-9_\.]/g, '');
+            } else {
+                modalCiInput.value = single.replace(/^@+/, '');
+            }
         } else if (modalCiInput && !modalCiInput.value && state.linkedInstagramAccount) {
             modalCiInput.value = state.linkedInstagramAccount;
         }

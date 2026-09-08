@@ -276,6 +276,35 @@ REVERSE_CREDIT_PATTERN = re.compile(
     re.IGNORECASE
 )
 
+# Regex to detect name-first credits (e.g. "DRNKIE: Thumbnail", "Badogblue: Editor/Gameplay", "Trenton Oliver: Video Editor")
+NAME_FIRST_CREDIT_REGEX = re.compile(
+    r"^\s*([A-Za-z0-9_\.\s]{2,40}?)\s*[\:\-\—\|\–]\s*"
+    r"((?:[a-zA-Z\s]+[\/])*(?:editor|video editor|video edit|edit|edits|cut|cutting|cutter|"
+    r"thumbnail|thumbnail artist|thumbnail designer|thumb|"
+    r"vfx|vfx artist|visual effects|motion graphics|animator|animation|"
+    r"sound designer|sound design|sound|audio engineer|audio|music|score|composer|"
+    r"writer|script|director|colorist)(?:[\/][a-zA-Z\s]+)*)\s*$",
+    re.IGNORECASE
+)
+
+# Regex to detect role-first plain human name credits (e.g. "Edited by Trenton Oliver", "Editor: Trenton Oliver")
+ROLE_FIRST_NAME_REGEX = re.compile(
+    r"(?i:\b(edited by|editor|video editor|video edit|edit by|edits by|cut by|cuts by|"
+    r"thumbnail by|thumbnail artist|thumbnail designer|thumbnail|thumb by|thumb|"
+    r"vfx by|vfx artist|vfx|visual effects by|visual effects|"
+    r"sound design by|sound designer|sound by|audio by|music by|"
+    r"written by|writer|script by)\b)"
+    r"[ \t\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[ \t\:\-\—\|\–\>\•\*\~]*"
+    r"([A-Z][a-zA-Z0-9_\.]*(?:[ \t]+[A-Z][a-zA-Z0-9_\.]*){1,3})\b"
+)
+
+NAME_EXCLUDE_WORDS: Set[str] = {
+    "the", "our", "this", "video", "channel", "team", "everyone",
+    "youtube", "instagram", "twitter", "twitch", "tiktok", "facebook",
+    "discord", "link", "special", "check", "subscribe", "song", "music",
+    "production", "productions", "courtesy", "records", "stream", "vote"
+}
+
 
 def detect_specified_platform(text_snippet: str) -> Optional[str]:
     """Detect if a specific social platform name or URL domain is explicitly mentioned in the snippet."""
@@ -301,19 +330,26 @@ def extract_credit_candidates(
 ) -> List[Dict[str, Any]]:
     """Extract candidate usernames and their associated role/credit labels from a description.
     
-    Strictly extracts explicit credits only (e.g. 'Editor: @user', 'Contributors: @user1 @user2').
+    Strictly extracts explicit credits only (e.g. 'Editor: @user', 'Contributors: @user1 @user2',
+    'DRNKIE: Thumbnail', 'Edited by Trenton Oliver').
     Filters candidates according to whether the credit role matches user_role.
     Standalone or promotional @mentions without explicit credit indicators are never extracted.
     
     Returns:
-        List of dicts: [{"username": "ummer.04", "role": "editor", "specified_platform": None}, ...]
+        List of dicts: [
+            {"username": "ummer.04", "role": "editor", "specified_platform": None, "is_name": False},
+            {"username": "Trenton Oliver", "role": "editor", "display_name": "Trenton Oliver", "is_name": True}
+        ]
     """
     if not description or not description.strip():
         return []
 
     raw_text = urllib.parse.unquote(description)
     results: List[Dict[str, Any]] = []
-    seen_users: Set[str] = set()
+    seen_keys: Set[str] = set()
+
+    def get_norm_key(name: str) -> str:
+        return re.sub(r"[^a-zA-Z0-9]", "", name or "").lower()
 
     # Strategy A: Match inline credit role patterns (e.g. "Editor: @ummer.04", "thumbnail by @cool_thumb")
     for match in CREDIT_ROLE_PATTERN.finditer(raw_text):
@@ -329,23 +365,28 @@ def extract_credit_candidates(
                 if handle:
                     break
 
-        if handle and handle not in seen_users:
-            seen_users.add(handle)
-            start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
-            end_idx = raw_text.find("\n", match.end())
-            if end_idx == -1:
-                end_idx = len(raw_text)
-            line_context = raw_text[start_idx:end_idx]
-            specified_platform = detect_specified_platform(line_context)
+        if handle:
+            key = get_norm_key(handle)
+            if key and key not in seen_keys:
+                seen_keys.add(key)
+                start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
+                end_idx = raw_text.find("\n", match.end())
+                if end_idx == -1:
+                    end_idx = len(raw_text)
+                line_context = raw_text[start_idx:end_idx]
+                specified_platform = detect_specified_platform(line_context)
 
-            results.append({
-                "username": handle,
-                "role": role_label,
-                "specified_platform": specified_platform
-            })
+                results.append({
+                    "username": handle,
+                    "display_name": handle,
+                    "role": role_label,
+                    "specified_platform": specified_platform,
+                    "is_name": False
+                })
 
     # Strategy B: Line-based credit lists, e.g. "Contributors: @john_doe @ummer.04 @alex123"
-    for line in raw_text.splitlines():
+    lines = raw_text.splitlines()
+    for line in lines:
         line_clean = line.strip()
         if not line_clean:
             continue
@@ -358,13 +399,17 @@ def extract_credit_candidates(
             specified_platform = detect_specified_platform(line_clean)
             for at_match in AT_MENTION_REGEX.finditer(rest):
                 h = clean_and_normalize_username(at_match.group(1))
-                if h and h not in seen_users:
-                    seen_users.add(h)
-                    results.append({
-                        "username": h,
-                        "role": role_label,
-                        "specified_platform": specified_platform
-                    })
+                if h:
+                    key = get_norm_key(h)
+                    if key and key not in seen_keys:
+                        seen_keys.add(key)
+                        results.append({
+                            "username": h,
+                            "display_name": h,
+                            "role": role_label,
+                            "specified_platform": specified_platform,
+                            "is_name": False
+                        })
 
     # Strategy C: Reverse credit mentions (e.g. "@UMMER.04 was the editor on this video")
     for match in REVERSE_CREDIT_PATTERN.finditer(raw_text):
@@ -372,18 +417,104 @@ def extract_credit_candidates(
         role_label = (match.group(2) or "editor").lower()
         if not is_credit_role_matching(role_label, user_role):
             continue
-        if h and h not in seen_users:
-            seen_users.add(h)
-            start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
-            end_idx = raw_text.find("\n", match.end())
-            if end_idx == -1:
-                end_idx = len(raw_text)
-            line_context = raw_text[start_idx:end_idx]
-            specified_platform = detect_specified_platform(line_context)
+        if h:
+            key = get_norm_key(h)
+            if key and key not in seen_keys:
+                seen_keys.add(key)
+                start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
+                end_idx = raw_text.find("\n", match.end())
+                if end_idx == -1:
+                    end_idx = len(raw_text)
+                line_context = raw_text[start_idx:end_idx]
+                specified_platform = detect_specified_platform(line_context)
+                results.append({
+                    "username": h,
+                    "display_name": h,
+                    "role": role_label,
+                    "specified_platform": specified_platform,
+                    "is_name": False
+                })
+
+    # Strategy D: Name-first credits (e.g. "DRNKIE: Thumbnail", "Badogblue: Editor/Gameplay")
+    social_line_re = re.compile(
+        r"^\s*(?:(?:\[\s*)?(YouTube|Twitter|Twitch|Instagram|Discord|Facebook|TikTok)(?:\s*\])?)\s*[:\-\—]?\s*(.*)$",
+        re.IGNORECASE
+    )
+    handle_re = re.compile(r"(?:https?:\/\/[^\s]+[\/=]|@|\/\s*)([a-zA-Z0-9_\.]{2,30})", re.IGNORECASE)
+
+    for idx, line in enumerate(lines):
+        line_clean = line.strip()
+        if not line_clean:
+            continue
+        m = NAME_FIRST_CREDIT_REGEX.match(line_clean)
+        if m:
+            name_part = m.group(1).strip()
+            role_label = m.group(2).strip().lower()
+
+            # Reject common excluded headers or titles
+            lower_name = name_part.lower()
+            if any(w in lower_name for w in ["stream", "vote", "follow", "who is", "thanks", "everyone", "involved"]):
+                continue
+
+            if not is_credit_role_matching(role_label, user_role):
+                continue
+
+            # Look ahead in subsequent lines for social links associated with this person
+            known_socials: Dict[str, str] = {}
+            best_handle = None
+            for sub_idx in range(idx + 1, min(len(lines), idx + 8)):
+                sub_line = lines[sub_idx].strip()
+                if not sub_line or NAME_FIRST_CREDIT_REGEX.match(sub_line):
+                    break
+                sm = social_line_re.match(sub_line)
+                if sm:
+                    plat = sm.group(1).capitalize()
+                    if plat.lower() == "twitter":
+                        plat = "Twitter"
+                    rest = sm.group(2)
+                    hm = handle_re.search(rest)
+                    if hm:
+                        clean_h = clean_and_normalize_username(hm.group(1))
+                        if clean_h:
+                            known_socials[plat] = clean_h
+                            if not best_handle:
+                                best_handle = clean_h
+
+            is_human_name = " " in name_part.strip()
+            final_user = best_handle or (clean_and_normalize_username(name_part) or name_part)
+            key = get_norm_key(final_user)
+            if key and key not in seen_keys:
+                seen_keys.add(key)
+                results.append({
+                    "username": final_user,
+                    "display_name": name_part,
+                    "role": role_label,
+                    "specified_platform": "Instagram" if "Instagram" in known_socials else (list(known_socials.keys())[0] if known_socials else None),
+                    "known_platforms": known_socials,
+                    "is_name": is_human_name
+                })
+
+    # Strategy E: Role-first plain human name credits (e.g. "Edited by Trenton Oliver", "Editor: Trenton Oliver")
+    for m in ROLE_FIRST_NAME_REGEX.finditer(raw_text):
+        role_label = m.group(1).strip().lower()
+        raw_name = m.group(2).strip()
+
+        if not is_credit_role_matching(role_label, user_role):
+            continue
+
+        words = [w.lower() for w in raw_name.split()]
+        if any(w in NAME_EXCLUDE_WORDS for w in words):
+            continue
+
+        key = get_norm_key(raw_name)
+        if key and key not in seen_keys:
+            seen_keys.add(key)
             results.append({
-                "username": h,
+                "username": raw_name,
+                "display_name": raw_name,
                 "role": role_label,
-                "specified_platform": specified_platform
+                "specified_platform": None,
+                "is_name": True
             })
 
     return results
@@ -400,6 +531,7 @@ async def extract_verified_contributor_accounts(
     Filters candidates to only explicit credits matching user_role.
     Strictly verifies candidate existence on target platforms before including them.
     If a username does not exist on the platform, it is omitted.
+    Human names (is_name=True) are preserved directly for auto-verification.
     
     If an account is linked (e.g. Instagram '@ummer.04' or X '@user') and the description
     does not mention which platform, it assumes that linked platform and checks it exclusively.
@@ -441,9 +573,35 @@ async def extract_verified_contributor_accounts(
         for cand in candidates:
             username = cand["username"]
             role = cand["role"]
+            is_name = cand.get("is_name", False)
+            display_name = cand.get("display_name") or username
             specified = cand.get("specified_platform")
+            known_platforms = cand.get("known_platforms", {})
 
-            # Determine platforms to verify for this candidate
+            # Plain human names (e.g. "Trenton Oliver"): preserve directly for user connection & auto-verification
+            if is_name:
+                verified_list.append({
+                    "username": display_name,
+                    "display_name": display_name,
+                    "role": role,
+                    "is_name": True,
+                    "platforms": ["Instagram"],
+                    "urls": {}
+                })
+                continue
+
+            existing_platforms: List[str] = []
+            urls: Dict[str, str] = {}
+
+            if known_platforms:
+                for p, h in known_platforms.items():
+                    plat_name = p.capitalize()
+                    if plat_name.lower() == "twitter":
+                        plat_name = "Twitter"
+                    existing_platforms.append(plat_name)
+                    urls[plat_name] = f"https://{plat_name.lower()}.com/{h}"
+
+            # Determine target platforms to check
             if specified:
                 target_platforms = [specified]
             elif eff_platform:
@@ -451,32 +609,35 @@ async def extract_verified_contributor_accounts(
             else:
                 target_platforms = ["Instagram", "X", "Facebook", "Twitch", "Discord"]
 
-            plat_results = await verify_username_on_platforms(
-                username, client=client, platforms=target_platforms
-            )
+            needed_checks = [p for p in target_platforms if p not in existing_platforms]
+            if needed_checks:
+                plat_results = await verify_username_on_platforms(
+                    username, client=client, platforms=needed_checks
+                )
+                for p, exists in plat_results.items():
+                    if exists:
+                        existing_platforms.append(p)
+                        if p == "Instagram":
+                            urls[p] = f"https://instagram.com/{username}"
+                        elif p == "X":
+                            urls[p] = f"https://x.com/{username}"
+                        elif p == "Facebook":
+                            urls[p] = f"https://facebook.com/{username}"
+                        elif p == "Twitch":
+                            urls[p] = f"https://twitch.tv/{username}"
+                        elif p == "Discord":
+                            urls[p] = f"https://discord.gg/{username}"
 
-            existing_platforms = [p for p, exists in plat_results.items() if exists]
-            # ONLY include candidates that actually exist on at least one target platform!
+            # Candidate exists on at least one platform (or has known platforms in description)
             if existing_platforms:
-                urls = {}
-                for p in existing_platforms:
-                    if p == "Instagram":
-                        urls[p] = f"https://instagram.com/{username}"
-                    elif p == "X":
-                        urls[p] = f"https://x.com/{username}"
-                    elif p == "Facebook":
-                        urls[p] = f"https://facebook.com/{username}"
-                    elif p == "Twitch":
-                        urls[p] = f"https://twitch.tv/{username}"
-                    elif p == "Discord":
-                        urls[p] = f"https://discord.gg/{username}"
-
                 verified_list.append({
                     "username": username,
+                    "display_name": display_name,
                     "role": role,
                     "platforms": existing_platforms,
                     "urls": urls
                 })
 
     return verified_list
+
 

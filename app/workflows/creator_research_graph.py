@@ -522,7 +522,7 @@ async def execute_creator_research_stream(
         )
         extracted_cand_handles = [
             c["username"] for c in verified_contribs
-            if "Instagram" in c.get("platforms", []) and c.get("username")
+            if ("Instagram" in c.get("platforms", []) or c.get("is_name") or c.get("platforms")) and c.get("username")
         ]
     except Exception as e:
         logger.debug(f"Credit extraction error in stream step 2: {e}")
