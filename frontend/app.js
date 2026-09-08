@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 name: "Instagram",
                 color: "#FFFFFF",
                 bgColor: "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)",
-                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>`
+                icon: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="20" height="20" rx="5.5" stroke="#FFFFFF" stroke-width="2.2"/><circle cx="12" cy="12" r="4.2" stroke="#FFFFFF" stroke-width="2.2"/><circle cx="17.6" cy="6.4" r="1.2" fill="#FFFFFF"/></svg>`
             };
         }
         if (p.includes("twitter") || p === "x" || p.includes("x/")) {
@@ -949,13 +949,8 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // CASE 2: Not automatically verified -> show explanation banner & continue with existing verification
-        if (data.auto_verification && !data.auto_verification.verified) {
-            if (autoVerifyFallbackBanner && autoVerifyFallbackReason) {
-                autoVerifyFallbackReason.textContent = data.auto_verification.reason || "Verification requires owner confirmation.";
-                autoVerifyFallbackBanner.classList.remove("hidden");
-            }
-        } else if (autoVerifyFallbackBanner) {
+        // CASE 2: Not automatically verified -> silently continue with existing verification workflow without showing banner
+        if (autoVerifyFallbackBanner) {
             autoVerifyFallbackBanner.classList.add("hidden");
         }
 
