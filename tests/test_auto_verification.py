@@ -109,7 +109,7 @@ class TestAutoVerificationService(unittest.TestCase):
     """Tests for matching description Instagram handles against the linked Arclent account."""
 
     def setUp(self):
-        reset_dummy_linked_instagram_account()
+        set_dummy_linked_instagram_account("ummer.04")
 
     def tearDown(self):
         reset_dummy_linked_instagram_account()
@@ -228,7 +228,8 @@ class TestAutoVerificationWorkflowIntegration(unittest.TestCase):
 
         res = self.client.post("/api/outreach/discover", json={
             "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
-            "user_role": "Video editor"
+            "user_role": "Video editor",
+            "linked_instagram_account": "ummer.04"
         })
 
         self.assertEqual(res.status_code, 200)
@@ -246,6 +247,31 @@ class TestAutoVerificationWorkflowIntegration(unittest.TestCase):
         self.assertIsNotNone(session.verified_at)
 
     @patch("app.api.outreach.execute_creator_research")
+    def test_discover_initially_unlinked_detects_credits_for_user_to_verify(self, mock_research):
+        """Initially unlinked: credits in description are detected, but user must connect to auto-verify."""
+        mock_research.return_value = RawCreatorResearchResult(
+            video_url="https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            creator_name="Test Creator",
+            channel_name="Test Channel",
+            video_title="Super Collab Project",
+            video_description="Project created by XYZ.\nContributors:\n@ummer.04\n@alex123",
+            description="Project created by XYZ.\nContributors:\n@ummer.04\n@alex123",
+            selected_email="creator@test.com"
+        )
+
+        # No linked account provided initially
+        res = self.client.post("/api/outreach/discover", json={
+            "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            "user_role": "Video editor"
+        })
+
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertFalse(data["auto_verification"]["verified"])
+        self.assertEqual(data["auto_verification"]["status"], "fallback_no_linked_account")
+        self.assertIn("ummer.04", data["auto_verification"]["extracted_accounts"])
+
+    @patch("app.api.outreach.execute_creator_research")
     def test_discover_fallback_when_description_does_not_match(self, mock_research):
         """If description contains other handles but not @ummer.04, falls back to existing workflow."""
         mock_research.return_value = RawCreatorResearchResult(
@@ -260,7 +286,8 @@ class TestAutoVerificationWorkflowIntegration(unittest.TestCase):
 
         res = self.client.post("/api/outreach/discover", json={
             "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
-            "user_role": "Video editor"
+            "user_role": "Video editor",
+            "linked_instagram_account": "ummer.04"
         })
 
         self.assertEqual(res.status_code, 200)

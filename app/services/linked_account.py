@@ -10,10 +10,10 @@ without modifying any core verification logic.
 from typing import Optional
 
 
-# Default dummy linked account for testing and demonstration.
-# In production with account-linking enabled, this will be retrieved from the user session/DB.
-LINKED_INSTAGRAM_ACCOUNT: str = "ummer.04"
-DEFAULT_LINKED_PLATFORM: str = "Instagram"
+# Default linked account for Arclent profile.
+# By default, NO account is connected initially.
+LINKED_INSTAGRAM_ACCOUNT: Optional[str] = None
+DEFAULT_LINKED_PLATFORM: Optional[str] = None
 
 # Internal mutable holder allowing overrides during testing without modifying production code.
 _current_linked_account: Optional[str] = LINKED_INSTAGRAM_ACCOUNT
@@ -59,7 +59,7 @@ def set_dummy_linked_account(username: Optional[str], platform: Optional[str] = 
 
 
 def reset_dummy_linked_instagram_account() -> None:
-    """Reset the dummy linked account back to the default 'ummer.04' on 'Instagram'."""
+    """Reset the dummy linked account back to None (unlinked)."""
     global _current_linked_account, _current_linked_platform
     _current_linked_account = LINKED_INSTAGRAM_ACCOUNT
     _current_linked_platform = DEFAULT_LINKED_PLATFORM

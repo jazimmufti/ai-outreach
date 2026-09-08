@@ -1188,14 +1188,32 @@ document.addEventListener("DOMContentLoaded", () => {
             showScreen("verifyEmail", 3);
             showCreditsDetectedBanner(extracted);
             showConnectInstagramModal(extracted, data);
+
+            // Show connect Instagram in header only now that credits are mentioned
+            if (instagramStatusPill && instagramStatusText) {
+                instagramStatusText.textContent = "Connect Instagram +";
+                instagramStatusText.style.color = "#92400E";
+                instagramStatusPill.style.background = "#FEF3C7";
+                instagramStatusPill.style.borderColor = "#D97706";
+                instagramStatusPill.style.cursor = "pointer";
+                instagramStatusPill.title = "Credits detected in video! Connect Instagram to auto-verify";
+                instagramStatusPill.classList.remove("hidden");
+                instagramStatusPill.style.display = "";
+                instagramStatusPill.onclick = () => showConnectInstagramModal(extracted, data);
+            }
             return;
         }
 
-        // CASE 3: Not automatically verified -> silently hide any fallback banner and continue directly to verification
+        // CASE 3: No credits mentioned or not verified -> keep connect instagram hidden
         if (autoVerifyFallbackBanner) {
             autoVerifyFallbackBanner.classList.add("hidden");
         }
         hideCreditsDetectedBanner();
+        hideConnectInstagramModal();
+        if (!state.linkedInstagramAccount && instagramStatusPill) {
+            instagramStatusPill.classList.add("hidden");
+            instagramStatusPill.style.display = "none";
+        }
 
         // START SPECIFICALLY FROM 1 · EMAIL (Existing Verification Workflow)
         state.stage = "verify_email";
