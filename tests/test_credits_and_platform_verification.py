@@ -258,5 +258,38 @@ class TestDeliveryBackToHubHidden(unittest.TestCase):
         self.assertIn('class="btn-retro-back hidden"', html)
 
 
+class TestModalConnectInstagramGuards(unittest.TestCase):
+    """Tests ensuring connect Instagram modal only shows during processing when unlinked with credits, and redirects to Instagram login."""
+
+    def test_modal_hidden_and_no_hardcoded_handle(self):
+        with open("frontend/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+        # Modal must be hidden by default
+        self.assertIn('id="modal-connect-instagram" class="modal-backdrop hidden"', html)
+        # Default template text must not hardcode @ummer.04
+        self.assertNotIn('<strong id="modal-detected-handles-list">@ummer.04</strong>', html)
+        self.assertIn('<strong id="modal-detected-handles-list"></strong>', html)
+
+    def test_app_js_guards_and_instagram_redirect(self):
+        with open("frontend/app.js", "r", encoding="utf-8") as f:
+            js = f.read()
+
+        # Guard against first page
+        self.assertIn('screens.input && !screens.input.classList.contains("hidden")', js)
+        self.assertIn('state.stage === "input"', js)
+
+        # Guard: only if user hasn't connected
+        self.assertIn('if (state.linkedInstagramAccount)', js)
+
+        # Guard: only if credits are mentioned in the given video
+        self.assertIn('cleanHandles.length === 0', js)
+
+        # Redirect to Instagram login page on handle entry
+        self.assertIn('window.location.href = "https://www.instagram.com/accounts/login/";', js)
+
+        # Status pill hidden when unlinked so no connect prompt on first page
+        self.assertIn('instagramStatusPill.classList.add("hidden")', js)
+
+
 if __name__ == "__main__":
     unittest.main()

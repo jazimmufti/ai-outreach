@@ -503,7 +503,26 @@ async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Di
     if state.get("errors"):
         yield {"step": 2, "name": "fetch_metadata", "status": "error", "error": state["errors"][-1]}
         return
-    yield {"step": 2, "name": "fetch_metadata", "label": f"Found: {state.get('video_title', 'Video')}", "status": "completed"}
+
+    # Early credit detection for live processing UI
+    extracted_cand_handles = []
+    try:
+        from app.services.youtube_description_parser import extract_credit_candidates
+        desc_parts = [state.get("video_description") or "", state.get("description") or "", state.get("channel_description") or ""]
+        combined_desc = "\n".join(p for p in desc_parts if p.strip())
+        candidates = extract_credit_candidates(combined_desc)
+        extracted_cand_handles = [c["username"] for c in candidates if c.get("username")]
+    except Exception:
+        pass
+
+    yield {
+        "step": 2,
+        "name": "fetch_metadata",
+        "label": f"Found: {state.get('video_title', 'Video')}",
+        "status": "completed",
+        "extracted_accounts": extracted_cand_handles,
+        "video_title": state.get("video_title")
+    }
 
     # Step 3: Identify Creator
     yield {"step": 3, "name": "identify_creator", "label": "Matching channel identity & branding", "status": "running"}

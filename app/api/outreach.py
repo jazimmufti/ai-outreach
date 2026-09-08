@@ -149,6 +149,7 @@ async def stream_discovery_endpoint(
     async def event_generator():
         try:
             async for event in execute_creator_research_stream(youtube_url):
+                event["session_id"] = session.session_id
                 # When finalized, save to session
                 if event.get("step") == 6 and event.get("status") == "completed" and event.get("data"):
                     raw = event["data"]

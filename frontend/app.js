@@ -349,33 +349,26 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!instagramStatusText) return;
         const dot = instagramStatusPill ? instagramStatusPill.querySelector(".status-dot") : null;
         if (state.linkedInstagramAccount) {
-            instagramStatusText.textContent = `IG: @${state.linkedInstagramAccount} ✎`;
+            instagramStatusText.textContent = `IG: @${state.linkedInstagramAccount}`;
             instagramStatusText.style.color = "#065F46";
             if (instagramStatusPill) {
                 instagramStatusPill.style.background = "#ECFDF5";
                 instagramStatusPill.style.borderColor = "#059669";
-                instagramStatusPill.title = `Linked Instagram: @${state.linkedInstagramAccount} (Click to change)`;
+                instagramStatusPill.style.cursor = "default";
+                instagramStatusPill.title = `Linked Instagram: @${state.linkedInstagramAccount}`;
+                instagramStatusPill.classList.remove("hidden");
+                instagramStatusPill.style.display = "";
             }
             if (dot) dot.style.background = "#10B981";
         } else {
-            instagramStatusText.textContent = `Connect Instagram +`;
-            instagramStatusText.style.color = "#92400E";
+            // When unlinked, do not show connect prompt on the first page
             if (instagramStatusPill) {
-                instagramStatusPill.style.background = "#FEF3C7";
-                instagramStatusPill.style.borderColor = "#D97706";
-                instagramStatusPill.title = "Connect your Instagram account to auto-verify video description credits";
+                instagramStatusPill.classList.add("hidden");
+                instagramStatusPill.style.display = "none";
             }
-            if (dot) dot.style.background = "#F59E0B";
         }
     }
     updateInstagramPill();
-
-    if (instagramStatusPill) {
-        instagramStatusPill.addEventListener("click", () => {
-            const extracted = (state.autoVerification && state.autoVerification.extracted_accounts) || [];
-            showConnectInstagramModal(extracted);
-        });
-    }
 
     // 4-Segment Progress Bar Elements
     const progSeg1 = document.getElementById("prog-seg-1");
@@ -618,52 +611,61 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function showConnectInstagramModal(handles = [], discoveryData = null) {
         if (!modalConnectInstagram) return;
-        currentModalExtractedHandles = Array.isArray(handles) ? handles : [];
 
-        if (currentModalExtractedHandles.length > 0) {
-            const formatted = currentModalExtractedHandles.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
-            if (modalDetectedHandlesList) modalDetectedHandlesList.textContent = formatted;
-            if (modalCiTitle) modalCiTitle.textContent = "Credits are already mentioned!";
-            if (modalCiDesc) {
-                modalCiDesc.innerHTML = `Credits for <strong>${escapeHtml(formatted)}</strong> were found in the video description. To get <strong>auto-verified</strong>, connect your Instagram account.`;
-            }
+        // CRITICAL: Must ONLY show up when it starts processing and NOT on the first page
+        if (screens.input && !screens.input.classList.contains("hidden")) {
+            return;
+        }
+        if (state.stage === "input" || !state.sessionId) {
+            return;
+        }
 
-            if (modalCiChipsRow && modalCiChipsContainer) {
-                modalCiChipsRow.innerHTML = "";
-                currentModalExtractedHandles.forEach(h => {
-                    const cleanH = h.replace(/^@+/, "");
-                    const chip = document.createElement("button");
-                    chip.type = "button";
-                    chip.className = "modal-chip-btn";
-                    chip.textContent = `@${cleanH}`;
-                    chip.addEventListener("click", () => {
-                        if (modalCiInput) {
-                            modalCiInput.value = cleanH;
-                            modalCiInput.focus();
-                        }
-                        modalCiChipsRow.querySelectorAll(".modal-chip-btn").forEach(c => c.classList.remove("selected"));
-                        chip.classList.add("selected");
-                    });
-                    modalCiChipsRow.appendChild(chip);
+        // CRITICAL: Must ONLY be there if user has NOT connected
+        if (state.linkedInstagramAccount) {
+            return;
+        }
+
+        // CRITICAL: Must ONLY be there if credits are mentioned in the given video
+        const rawHandles = Array.isArray(handles) ? handles : [];
+        const cleanHandles = rawHandles.filter(h => h && typeof h === "string" && h.trim().length > 0);
+        if (cleanHandles.length === 0) {
+            return;
+        }
+
+        currentModalExtractedHandles = cleanHandles;
+        const formatted = currentModalExtractedHandles.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
+        if (modalDetectedHandlesList) modalDetectedHandlesList.textContent = formatted;
+        if (modalCiTitle) modalCiTitle.textContent = "Credits are already mentioned!";
+        if (modalCiDesc) {
+            modalCiDesc.innerHTML = `Credits for <strong>${escapeHtml(formatted)}</strong> were found in the video description. To get <strong>auto-verified</strong>, connect your Instagram account.`;
+        }
+
+        if (modalCiChipsRow && modalCiChipsContainer) {
+            modalCiChipsRow.innerHTML = "";
+            currentModalExtractedHandles.forEach(h => {
+                const cleanH = h.replace(/^@+/, "");
+                const chip = document.createElement("button");
+                chip.type = "button";
+                chip.className = "modal-chip-btn";
+                chip.textContent = `@${cleanH}`;
+                chip.addEventListener("click", () => {
+                    if (modalCiInput) {
+                        modalCiInput.value = cleanH;
+                        modalCiInput.focus();
+                    }
+                    modalCiChipsRow.querySelectorAll(".modal-chip-btn").forEach(c => c.classList.remove("selected"));
+                    chip.classList.add("selected");
                 });
-                modalCiChipsContainer.classList.remove("hidden");
-            }
+                modalCiChipsRow.appendChild(chip);
+            });
+            modalCiChipsContainer.classList.remove("hidden");
+        }
 
-            // Pre-fill input if only 1 handle
-            if (currentModalExtractedHandles.length === 1 && modalCiInput) {
-                modalCiInput.value = currentModalExtractedHandles[0].replace(/^@+/, "");
-            } else if (modalCiInput && !modalCiInput.value && state.linkedInstagramAccount) {
-                modalCiInput.value = state.linkedInstagramAccount;
-            }
-        } else {
-            if (modalCiTitle) modalCiTitle.textContent = "Connect Your Instagram Account";
-            if (modalCiDesc) {
-                modalCiDesc.textContent = "Connect your Instagram account to automatically match contributor credits in video descriptions.";
-            }
-            if (modalCiChipsContainer) modalCiChipsContainer.classList.add("hidden");
-            if (modalCiInput) {
-                modalCiInput.value = state.linkedInstagramAccount || "";
-            }
+        // Pre-fill input if only 1 handle
+        if (currentModalExtractedHandles.length === 1 && modalCiInput) {
+            modalCiInput.value = currentModalExtractedHandles[0].replace(/^@+/, "");
+        } else if (modalCiInput && !modalCiInput.value && state.linkedInstagramAccount) {
+            modalCiInput.value = state.linkedInstagramAccount;
         }
 
         if (modalCiErr) modalCiErr.classList.add("hidden");
@@ -681,8 +683,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnBannerConnectIg) {
         btnBannerConnectIg.addEventListener("click", () => {
-            const extracted = (state.autoVerification && state.autoVerification.extracted_accounts) || [];
-            showConnectInstagramModal(extracted);
+            const extracted = (state.autoVerification && state.autoVerification.extracted_accounts) || currentModalExtractedHandles || [];
+            if (extracted.length > 0 && !state.linkedInstagramAccount) {
+                showConnectInstagramModal(extracted);
+            }
         });
     }
 
@@ -705,36 +709,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem("arclent_linked_instagram", cleanHandle);
             } catch (_) {}
             updateInstagramPill();
+            saveSessionState();
 
             const isMatch = currentModalExtractedHandles.map(h => h.replace(/^@+/, '').toLowerCase()).includes(cleanHandle);
 
-            if (isMatch) {
-                if (state.sessionId) {
-                    try {
-                        await fetch("/api/outreach/verify-linked-account", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                session_id: state.sessionId,
-                                instagram_account: cleanHandle
-                            })
-                        });
-                    } catch (_) {}
-                }
-
-                hideConnectInstagramModal();
-                hideCreditsDetectedBanner();
-                renderAutoVerifiedSuccess({
-                    verified: true,
-                    matched_account: cleanHandle,
-                    linked_account: cleanHandle,
-                    extracted_accounts: currentModalExtractedHandles
-                });
-                showToast(`✓ Instagram @${cleanHandle} connected! Collaboration automatically verified.`);
-            } else {
-                hideConnectInstagramModal();
-                showToast(`✓ Instagram @${cleanHandle} connected.`);
+            if (state.sessionId) {
+                try {
+                    await fetch("/api/outreach/verify-linked-account", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            instagram_account: cleanHandle
+                        })
+                    });
+                } catch (_) {}
             }
+
+            if (btnModalCiSubmit) {
+                btnModalCiSubmit.disabled = true;
+                btnModalCiSubmit.textContent = "Connecting... Redirecting to Instagram ↗";
+            }
+
+            // Redirect user to Instagram login page
+            window.location.href = "https://www.instagram.com/accounts/login/";
         });
     }
 
@@ -806,6 +804,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (screens[screenKey]) {
             screens[screenKey].classList.remove("hidden");
             screens[screenKey].classList.add("active");
+        }
+
+        // On the first page, ensure connect modal and credits banner are strictly hidden
+        if (screenKey === "input") {
+            hideConnectInstagramModal();
+            hideCreditsDetectedBanner();
         }
 
         if (stepNum) {
@@ -1041,6 +1045,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 try {
                     const data = JSON.parse(event.data);
                     
+                    if (data.session_id && !state.sessionId) {
+                        state.sessionId = data.session_id;
+                    }
+
                     if (data.status === "error") {
                         eventSource.close();
                         handleDiscoveryError(data.error || "We couldn't identify the creator from this URL.");
@@ -1049,6 +1057,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     if (data.step >= 1 && data.step <= 4) {
                         updateStepper(data.step, data.status, data.label);
+                    }
+
+                    // Early credit detection right when processing starts & metadata is parsed
+                    if (data.step === 2 && data.status === "completed" && data.extracted_accounts && data.extracted_accounts.length > 0) {
+                        if (!state.linkedInstagramAccount) {
+                            showConnectInstagramModal(data.extracted_accounts);
+                        }
                     } else if (data.step === 6 && data.status === "completed" && data.data) {
                         isFinalized = true;
                         eventSource.close();
@@ -1158,6 +1173,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // CASE 1: Automatically Verified via YouTube Description Match
         if (data.auto_verification && data.auto_verification.verified) {
             hideCreditsDetectedBanner();
+            hideConnectInstagramModal();
             renderAutoVerifiedSuccess(data.auto_verification);
             return;
         }
