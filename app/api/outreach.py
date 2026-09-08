@@ -76,8 +76,16 @@ async def discover_creator_endpoint(payload: ResearchRequest):
 
         # Step 0: Automatic Contribution Verification via YouTube Video Description
         # Checks whether creator mentions match the Arclent linked Instagram account
-        desc_to_check = raw_result.video_description or raw_result.description or ""
-        auto_verify_result = verify_contribution_from_description(desc_to_check)
+        desc_parts = [
+            raw_result.video_description or "",
+            raw_result.description or "",
+            raw_result.channel_description or ""
+        ]
+        desc_to_check = "\n".join(p for p in desc_parts if p.strip())
+        auto_verify_result = verify_contribution_from_description(
+            desc_to_check,
+            linked_account=payload.linked_instagram_account
+        )
         session.auto_verification = auto_verify_result
 
         # Check discovered email
@@ -124,12 +132,17 @@ async def discover_creator_endpoint(payload: ResearchRequest):
 
 
 @router.get("/stream")
-async def stream_discovery_endpoint(youtube_url: str = Query(..., description="YouTube video or channel URL")):
+async def stream_discovery_endpoint(
+    youtube_url: str = Query(..., description="YouTube video or channel URL"),
+    user_role: Optional[str] = Query(None, description="Role on the piece of content"),
+    linked_account: Optional[str] = Query(None, description="User's linked Instagram handle")
+):
     """Step 1 Stream: Server-Sent Events for live step progress."""
     if not youtube_url:
         raise HTTPException(status_code=400, detail="Missing required 'youtube_url' parameter")
 
     session = create_session(youtube_url)
+    session.user_role = user_role or "Video editor"
 
     async def event_generator():
         try:
@@ -160,8 +173,16 @@ async def stream_discovery_endpoint(youtube_url: str = Query(..., description="Y
                             break
 
                     # Step 0: Automatic Contribution Verification via YouTube Video Description
-                    desc_to_check = raw.get("video_description") or raw.get("description") or ""
-                    auto_verify_result = verify_contribution_from_description(desc_to_check)
+                    desc_parts = [
+                        raw.get("video_description") or "",
+                        raw.get("description") or "",
+                        raw.get("channel_description") or ""
+                    ]
+                    desc_to_check = "\n".join(p for p in desc_parts if p.strip())
+                    auto_verify_result = verify_contribution_from_description(
+                        desc_to_check,
+                        linked_account=linked_account
+                    )
                     session.auto_verification = auto_verify_result
 
                     if raw.get("selected_email"):

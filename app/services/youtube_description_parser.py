@@ -15,27 +15,49 @@ import re
 import urllib.parse
 from typing import List, Optional, Set
 
-# System keywords and URL paths that should not be treated as user handles
+# System keywords, platform names, and URL paths that should not be treated as user handles
 EXCLUDED_INSTAGRAM_PATHS: Set[str] = {
-    "p", "reel", "reels", "stories", "tv", "explore", "direct", "accounts",
+    "p", "reel", "reels", "stories", "tv", "explore", "direct", "accounts", "account",
     "login", "signup", "about", "help", "terms", "privacy", "press",
     "api", "developer", "jobs", "directory", "settings", "emails",
     "com", "org", "net", "null", "undefined", "true", "false", "profile",
-    "channel", "video", "youtube", "subscribe", "subscribers", "contact",
-    "business", "enquiries", "link", "links", "linktree", "bio", "www", "http", "https"
+    "channel", "video", "videos", "shorts", "feed", "share", "like", "comment",
+    "youtube", "yt", "subscribe", "subscribers", "contact", "everyone", "thanks",
+    "business", "enquiries", "link", "links", "linktree", "bio", "www", "http", "https",
+    "instagram", "insta", "ig", "threads", "facebook", "fb", "twitter", "x",
+    "tiktok", "discord", "linkedin", "snapchat", "instagram.com", "www.instagram.com",
+    "credit", "credits", "editor", "edit", "vfx", "thumbnail", "contributor", "contributors"
 }
 
-# Regex to detect Instagram URLs
+# Regex to detect Instagram URLs (with or without protocol/www)
 INSTAGRAM_URL_REGEX = re.compile(
     r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([a-zA-Z0-9_\.]{1,30})",
     re.IGNORECASE
 )
 
-# Regex to detect explicitly prefixed Instagram handles (e.g. "Instagram: @user", "IG - user")
-PREFIXED_HANDLE_REGEX = re.compile(
-    r"\b(?:instagram|insta|ig|contributor|contributors|credit|credits|edited by|editor|vfx|thumbnail|collab|collaboration)\b"
-    r"[\s\:\-\—\|]*"
-    r"(?:@|https?:\/\/(?:www\.)?instagram\.com\/)?([a-zA-Z0-9_\.]{2,30})\b",
+# Regex to detect explicitly prefixed Instagram handles
+# (e.g. "Instagram: ummer.04", "IG: @ummer.04", "Insta - user")
+INSTA_PREFIXED_HANDLE_REGEX = re.compile(
+    r"\b(?:instagram|insta|ig)\b(?!\.com|\.org|\.net|\.am|\.ai|\.io)"
+    r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
+    r"(?:@|(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/)?"
+    r"(?!https?:\/\/)([a-zA-Z0-9_\.]{2,30})\b",
+    re.IGNORECASE
+)
+
+# Regex to detect general contributor / credit mentions
+# (e.g. "Credits: @ummer.04", "Editor: @user", "Editor: https://instagram.com/user", "Editor: ummer.04")
+# MUST have '@', or an Instagram URL, or contain handle-defining punctuation (. or _)
+CREDIT_PREFIXED_HANDLE_REGEX = re.compile(
+    r"\b(?:contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|thumbnail by|thumbnail)\b"
+    r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
+    r"(?:"
+        r"@([a-zA-Z0-9_\.]{2,30})"
+        r"|"
+        r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([a-zA-Z0-9_\.]{1,30})"
+        r"|"
+        r"(?!https?:\/\/)([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})"
+    r")\b",
     re.IGNORECASE
 )
 
@@ -88,7 +110,11 @@ def clean_and_normalize_username(raw_handle: str) -> Optional[str]:
     if not re.search(r"[a-zA-Z0-9]", handle):
         return None
 
-    # Check against system paths
+    # Reject URLs, domain names, or file extensions that slipped through
+    if handle.startswith(("http", "www.")) or any(handle.endswith(ext) for ext in [".com", ".net", ".org", ".co", ".io", ".ai", ".html", ".php"]):
+        return None
+
+    # Check against system paths and platform names
     if handle in EXCLUDED_INSTAGRAM_PATHS:
         return None
 
@@ -139,11 +165,17 @@ def extract_instagram_accounts(description: Optional[str]) -> List[str]:
     for match in INSTAGRAM_URL_REGEX.finditer(processed_text):
         add_candidate(match.group(1))
 
-    # Strategy 2: Extract from prefixed mentions (e.g. "Instagram: ummer.04" or "Contributor: @user")
-    for match in PREFIXED_HANDLE_REGEX.finditer(processed_text):
+    # Strategy 2: Extract from explicit Instagram prefixes (e.g. "Instagram: ummer.04", "IG: @user")
+    for match in INSTA_PREFIXED_HANDLE_REGEX.finditer(processed_text):
         add_candidate(match.group(1))
 
-    # Strategy 3: Extract from standard @mentions (e.g. "@ummer.04")
+    # Strategy 3: Extract from general contributor/credits prefixes with handle evidence
+    for match in CREDIT_PREFIXED_HANDLE_REGEX.finditer(processed_text):
+        for grp in match.groups():
+            if grp:
+                add_candidate(grp)
+
+    # Strategy 4: Extract from standard @mentions (e.g. "@ummer.04")
     for match in AT_MENTION_REGEX.finditer(processed_text):
         add_candidate(match.group(1))
 

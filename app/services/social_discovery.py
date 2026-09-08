@@ -25,8 +25,10 @@ EXCLUDED_USERNAMES = {
     "pages", "watch", "live", "direct", "stories", "p", "reel", "reels",
     "status", "post", "posts", "i", "settings", "notifications", "r", "u", "user", "invite",
     "com", "net", "org", "null", "undefined", "true", "false", "link", "links",
-    "channel", "video", "youtube", "subscribe", "subscribers", "profile", "account",
-    "https", "http", "www", "follow", "like", "comment", "enquiries", "business", "contact"
+    "channel", "video", "videos", "shorts", "feed", "youtube", "yt", "subscribe", "subscribers", "profile", "account", "accounts",
+    "https", "http", "www", "follow", "like", "comment", "enquiries", "business", "contact",
+    "instagram", "insta", "ig", "threads", "facebook", "fb", "twitter", "x", "tiktok", "discord", "linkedin", "snapchat",
+    "credit", "credits", "editor", "edit", "vfx", "thumbnail", "contributor", "contributors"
 }
 
 KNOWN_SPONSORS_AND_BRANDS = {

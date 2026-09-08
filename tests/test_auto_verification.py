@@ -276,3 +276,63 @@ class TestAutoVerificationWorkflowIntegration(unittest.TestCase):
         self.assertIsNotNone(session)
         self.assertEqual(session.stage, OutreachStage.CREATOR_FOUND)
         self.assertEqual(session.creator_response, "pending")
+
+    @patch("app.api.outreach.execute_creator_research")
+    def test_discover_with_custom_linked_instagram_account(self, mock_research):
+        """Test passing custom linked_instagram_account in discovery."""
+        mock_research.return_value = RawCreatorResearchResult(
+            video_url="https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            creator_name="Test Creator",
+            channel_name="Test Channel",
+            video_title="Super Collab Project",
+            video_description="Video Editor: @special_editor",
+            description="Video Editor: @special_editor",
+            selected_email="creator@test.com"
+        )
+
+        res = self.client.post("/api/outreach/discover", json={
+            "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            "user_role": "Video editor",
+            "linked_instagram_account": "special_editor"
+        })
+
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["stage"], OutreachStage.AUTO_VERIFIED)
+        self.assertTrue(data["auto_verification"]["verified"])
+        self.assertEqual(data["auto_verification"]["matched_account"], "special_editor")
+
+
+class TestParserExclusionsAndEdgeCases(unittest.TestCase):
+    """Specific tests verifying platform names and human names are properly handled."""
+
+    def test_platform_name_never_extracted(self):
+        desc1 = "Follow me on Instagram: https://instagram.com"
+        self.assertNotIn("instagram", extract_instagram_accounts(desc1))
+
+        desc2 = "Detected Instagram account(s) @instagram"
+        self.assertNotIn("instagram", extract_instagram_accounts(desc2))
+        self.assertNotIn("account", extract_instagram_accounts(desc2))
+
+        desc3 = "Credits: instagram"
+        self.assertNotIn("instagram", extract_instagram_accounts(desc3))
+
+    def test_human_names_not_falsely_extracted(self):
+        desc = "Video editor - Rafiq Ahmad yatoo"
+        self.assertEqual(extract_instagram_accounts(desc), [])
+
+    def test_credit_with_symbols_and_urls(self):
+        desc1 = "Video editor: @ummer.04"
+        self.assertEqual(extract_instagram_accounts(desc1), ["ummer.04"])
+
+        desc2 = "Instagram: instagram.com/ummer.04"
+        self.assertEqual(extract_instagram_accounts(desc2), ["ummer.04"])
+
+        desc3 = "Instagram: www.instagram.com/ummer.04"
+        self.assertEqual(extract_instagram_accounts(desc3), ["ummer.04"])
+
+        desc4 = "Credits: https://instagram.com/ummer.04"
+        self.assertEqual(extract_instagram_accounts(desc4), ["ummer.04"])
+
+        desc5 = "Credits: - @ummer.04"
+        self.assertEqual(extract_instagram_accounts(desc5), ["ummer.04"])

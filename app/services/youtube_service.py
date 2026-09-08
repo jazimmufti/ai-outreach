@@ -484,38 +484,80 @@ async def fetch_via_public_fallback(target: Dict[str, Any]) -> Dict[str, Any]:
                         meta_title = soup.find("meta", property="og:title")
                         video_title = meta_title["content"] if meta_title and meta_title.get("content") else f"YouTube Video ({video_id})"
 
-                    meta_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "description"})
-                    if meta_desc and meta_desc.get("content"):
-                        video_description = meta_desc["content"]
+                    # 1. First priority: Extract full un-truncated description from ytInitialPlayerResponse
+                    m_player = re.search(r"var ytInitialPlayerResponse = ({.*?});(?:var|const|let|<\/script>)", html_resp.text)
+                    if m_player:
+                        try:
+                            player_data = json.loads(m_player.group(1))
+                            vd = player_data.get("videoDetails", {})
+                            if vd.get("shortDescription"):
+                                video_description = vd["shortDescription"]
+                            if not creator_name and vd.get("author"):
+                                creator_name = vd["author"]
+                            if not video_title and vd.get("title"):
+                                video_title = vd["title"]
+                            if not channel_url and vd.get("channelId"):
+                                channel_url = f"https://www.youtube.com/channel/{vd['channelId']}"
+                        except Exception as e:
+                            logger.debug(f"ytInitialPlayerResponse parse note: {e}")
+
+                    # 2. Second priority: Search ytInitialData for description and subscriber count
+                    m = re.search(r"var ytInitialData = ({.*?});</script>", html_resp.text)
+                    if m:
+                        try:
+                            yt_data = json.loads(m.group(1))
+
+                            if not video_description:
+                                def find_desc(obj):
+                                    if isinstance(obj, dict):
+                                        if "shortDescription" in obj and isinstance(obj["shortDescription"], str) and obj["shortDescription"]:
+                                            return obj["shortDescription"]
+                                        for v in obj.values():
+                                            res = find_desc(v)
+                                            if res:
+                                                return res
+                                    elif isinstance(obj, list):
+                                        for item in obj:
+                                            res = find_desc(item)
+                                            if res:
+                                                return res
+                                    return None
+                                full_desc = find_desc(yt_data)
+                                if full_desc:
+                                    video_description = full_desc
+
+                            # Look for subscriber count
+                            def find_key(obj, key):
+                                if isinstance(obj, dict):
+                                    for k, v in obj.items():
+                                        if k == key:
+                                            yield v
+                                        if isinstance(v, (dict, list)):
+                                            yield from find_key(v, key)
+                                elif isinstance(obj, list):
+                                    for item in obj:
+                                        yield from find_key(item, key)
+
+                            for sub_text in find_key(yt_data, "subscriberCountText"):
+                                if isinstance(sub_text, dict) and "simpleText" in sub_text:
+                                    subscriber_count = sub_text["simpleText"]
+                                    break
+                                elif isinstance(sub_text, dict) and "runs" in sub_text:
+                                    subscriber_count = "".join(r.get("text", "") for r in sub_text["runs"])
+                                    break
+                        except Exception as e:
+                            logger.debug(f"ytInitialData parse note: {e}")
+
+                    # 3. Fallback: meta tag description (which YouTube truncates to ~150 chars)
+                    if not video_description:
+                        meta_desc = soup.find("meta", property="og:description") or soup.find("meta", attrs={"name": "description"})
+                        if meta_desc and meta_desc.get("content"):
+                            video_description = meta_desc["content"]
 
                     if not channel_url:
                         author_link = soup.find("link", itemprop="url")
                         if author_link and author_link.get("href"):
                             channel_url = author_link["href"]
-
-                    # Search ytInitialData for handle
-                    m = re.search(r"var ytInitialData = ({.*?});</script>", html_resp.text)
-                    if m:
-                        yt_data = json.loads(m.group(1))
-                        # Look for subscriber count
-                        def find_key(obj, key):
-                            if isinstance(obj, dict):
-                                for k, v in obj.items():
-                                    if k == key:
-                                        yield v
-                                    if isinstance(v, (dict, list)):
-                                        yield from find_key(v, key)
-                            elif isinstance(obj, list):
-                                for item in obj:
-                                    yield from find_key(item, key)
-
-                        for sub_text in find_key(yt_data, "subscriberCountText"):
-                            if isinstance(sub_text, dict) and "simpleText" in sub_text:
-                                subscriber_count = sub_text["simpleText"]
-                                break
-                            elif isinstance(sub_text, dict) and "runs" in sub_text:
-                                subscriber_count = "".join(r.get("text", "") for r in sub_text["runs"])
-                                break
             except Exception as e:
                 logger.debug(f"Watch page scrape error: {e}")
 

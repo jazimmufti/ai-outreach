@@ -277,6 +277,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 return null;
             }
         })(),
+        linkedInstagramAccount: (() => {
+            try {
+                return (localStorage.getItem("arclent_linked_instagram") || "ummer.04").replace(/^@+/, "");
+            } catch (_) {
+                return "ummer.04";
+            }
+        })(),
         isSending: false,
         selectedChannel: null,
         stageBeforeDelivery: null,
@@ -297,7 +304,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 finalInstagramHandle: state.finalInstagramHandle,
                 finalEmail: state.finalEmail,
                 senderEmail: state.senderEmail,
-                senderHandle: state.senderHandle
+                senderHandle: state.senderHandle,
+                linkedInstagramAccount: state.linkedInstagramAccount
             }));
         } catch (e) {}
     }
@@ -310,6 +318,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const headerConnectBtn = document.getElementById("header-connect-btn");
     const headerDisconnectBtn = document.getElementById("header-disconnect-btn");
     const composerDisconnectGmailBtn = document.getElementById("composer-disconnect-gmail-btn");
+    const instagramStatusPill = document.getElementById("instagram-status-pill");
+    const instagramStatusText = document.getElementById("instagram-status-text");
+
+    function updateInstagramPill() {
+        if (instagramStatusText) {
+            instagramStatusText.textContent = `IG: @${state.linkedInstagramAccount} ✎`;
+        }
+    }
+    updateInstagramPill();
+
+    if (instagramStatusPill) {
+        instagramStatusPill.addEventListener("click", () => {
+            const current = state.linkedInstagramAccount || "ummer.04";
+            const updated = prompt("Enter your Arclent linked Instagram username (for automatic video credits matching):", current);
+            if (updated && updated.trim()) {
+                state.linkedInstagramAccount = updated.trim().replace(/^@+/, "").toLowerCase();
+                try {
+                    localStorage.setItem("arclent_linked_instagram", state.linkedInstagramAccount);
+                } catch (_) {}
+                updateInstagramPill();
+                showToast(`✓ Linked Instagram set to @${state.linkedInstagramAccount}`);
+            }
+        });
+    }
 
     // 4-Segment Progress Bar Elements
     const progSeg1 = document.getElementById("prog-seg-1");
@@ -783,7 +815,8 @@ document.addEventListener("DOMContentLoaded", () => {
         showScreen("analyzing", 2);
         updateStepper(1, "running");
 
-        const sseUrl = `/api/outreach/stream?youtube_url=${encodeURIComponent(youtubeUrl)}`;
+        const linkedAccountParam = encodeURIComponent(state.linkedInstagramAccount || "ummer.04");
+        const sseUrl = `/api/outreach/stream?youtube_url=${encodeURIComponent(youtubeUrl)}&user_role=${encodeURIComponent(state.userRole)}&linked_account=${linkedAccountParam}`;
         let eventSource = null;
         let isFinalized = false;
 
@@ -832,7 +865,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     youtube_url: youtubeUrl,
-                    user_role: state.userRole
+                    user_role: state.userRole,
+                    linked_instagram_account: state.linkedInstagramAccount || "ummer.04"
                 })
             });
 
@@ -2599,18 +2633,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const creatorName = c.name || c.channel_name || "Creator";
         const videoTitle = c.video_title || "the video";
         const role = state.userRole || "Video editor";
-        const matchedAccount = (autoVerify && autoVerify.matched_account) ? autoVerify.matched_account : "ummer.04";
+        const matchedAccount = (autoVerify && autoVerify.matched_account) 
+            ? autoVerify.matched_account 
+            : (state.linkedInstagramAccount || "ummer.04");
         const cleanHandle = matchedAccount.replace(/^@+/, "");
         const matchedHandle = `@${cleanHandle}`;
 
         if (vAutoMatchedHandle) vAutoMatchedHandle.textContent = matchedHandle;
         if (vAutoVerifiedDesc) {
-            vAutoVerifiedDesc.innerHTML = `Your linked Instagram account <strong>${escapeHtml(matchedHandle)}</strong> was found in the video's contributor information.`;
+            vAutoVerifiedDesc.innerHTML = `Your username <strong>${escapeHtml(matchedHandle)}</strong> matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!`;
         }
         if (vAutoCreatorName) vAutoCreatorName.textContent = creatorName;
         if (vAutoRoleName) vAutoRoleName.textContent = role;
         if (vAutoVideoTitle) vAutoVideoTitle.textContent = `"${videoTitle}"`;
-        if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Linked Arclent Account)`;
+        if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Verified Contributor)`;
 
         if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
         if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
@@ -2621,7 +2657,16 @@ document.addEventListener("DOMContentLoaded", () => {
         if (verificationAutoVerifiedBox) verificationAutoVerifiedBox.classList.remove("hidden");
 
         showScreen("deliverySuccess", 4);
-        showToast("✓ Automatically verified! Linked Instagram account found.");
+
+        // Mark all progress segments complete
+        const segs = [progSeg1, progSeg2, progSeg3, progSeg4];
+        segs.forEach(s => {
+            if (s) {
+                s.className = "seg-bar completed";
+            }
+        });
+
+        showToast("✓ Automatically verified! Your username matches the video credits.");
     }
 
     function renderVerificationRejected() {
