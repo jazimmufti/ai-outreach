@@ -19,6 +19,7 @@ class OutreachStage(str, Enum):
     INSTAGRAM_READY = "instagram_ready"
     MANUAL_MESSAGE_READY = "manual_message_ready"
     SENT = "sent"
+    AUTO_VERIFIED = "auto_verified"
     VERIFIED = "verified"
     REJECTED = "rejected"
 
@@ -89,6 +90,32 @@ class CreatorProfile(BaseModel):
     channel_links: List[str] = Field(default_factory=list)
 
 
+class AutoVerificationResult(BaseModel):
+    """Result of the automatic YouTube description contributor verification."""
+    verified: bool = Field(..., description="Whether the contribution was automatically verified")
+    status: str = Field(
+        ..., 
+        description="Verification outcome code: 'auto_verified', 'fallback_no_match', 'fallback_no_instagram', 'fallback_empty_description', 'fallback_no_linked_account'"
+    )
+    method: Optional[str] = Field(
+        default=None, 
+        description="Verification method identifier when successful ('youtube_description_instagram_match')"
+    )
+    matched_account: Optional[str] = Field(
+        default=None, 
+        description="The normalized Instagram username that matched"
+    )
+    linked_account: Optional[str] = Field(
+        default=None, 
+        description="The normalized linked Arclent Instagram account tested"
+    )
+    extracted_accounts: List[str] = Field(
+        default_factory=list, 
+        description="All Instagram accounts identified in the video description"
+    )
+    reason: str = Field(..., description="Human-readable explanation of the outcome")
+
+
 class OutreachSession(BaseModel):
     """Complete state container for an outreach workflow session."""
     session_id: str
@@ -108,6 +135,7 @@ class OutreachSession(BaseModel):
     instagram_confirmed: Optional[bool] = None
     final_instagram_handle: Optional[str] = None
     final_instagram_url: Optional[str] = None
+    auto_verification: Optional[AutoVerificationResult] = None
     message: Optional[OutreachMessage] = None
     selected_channel: Optional[str] = None
     sender_identity: Optional[str] = None
@@ -256,6 +284,7 @@ class CreatorDiscoveryResponse(BaseModel):
     has_reliable_email: bool
     social_profiles: List[SocialProfile] = Field(default_factory=list)
     instagram_profile: Optional[SocialProfile] = None
+    auto_verification: Optional[AutoVerificationResult] = None
     errors: List[str] = Field(default_factory=list)
 
 

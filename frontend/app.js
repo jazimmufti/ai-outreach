@@ -498,6 +498,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const vShieldAudienceText = document.getElementById("v-shield-audience-text");
     const vRejectedDescText = document.getElementById("v-rejected-desc-text");
 
+    // Auto-Verification Elements
+    const autoVerifyFallbackBanner = document.getElementById("auto-verify-fallback-banner");
+    const autoVerifyFallbackReason = document.getElementById("auto-verify-fallback-reason");
+    const verificationAutoVerifiedBox = document.getElementById("verification-auto-verified-box");
+    const vAutoMatchedHandle = document.getElementById("v-auto-matched-handle");
+    const vAutoVerifiedDesc = document.getElementById("v-auto-verified-desc");
+    const vAutoCreatorName = document.getElementById("v-auto-creator-name");
+    const vAutoRoleName = document.getElementById("v-auto-role-name");
+    const vAutoVideoTitle = document.getElementById("v-auto-video-title");
+    const vAutoMatchedAccountVal = document.getElementById("v-auto-matched-account-val");
+
     const toastContainer = document.getElementById("toast-container");
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
 
@@ -893,7 +904,26 @@ document.addEventListener("DOMContentLoaded", () => {
             state.finalInstagramUrl = null;
         }
 
-        // START SPECIFICALLY FROM 1 · EMAIL
+        // Store auto-verification result in state
+        state.autoVerification = data.auto_verification || null;
+
+        // CASE 1: Automatically Verified via YouTube Description Match
+        if (data.auto_verification && data.auto_verification.verified) {
+            renderAutoVerifiedSuccess(data.auto_verification);
+            return;
+        }
+
+        // CASE 2: Not automatically verified -> show explanation banner & continue with existing verification
+        if (data.auto_verification && !data.auto_verification.verified) {
+            if (autoVerifyFallbackBanner && autoVerifyFallbackReason) {
+                autoVerifyFallbackReason.textContent = data.auto_verification.reason || "Verification requires owner confirmation.";
+                autoVerifyFallbackBanner.classList.remove("hidden");
+            }
+        } else if (autoVerifyFallbackBanner) {
+            autoVerifyFallbackBanner.classList.add("hidden");
+        }
+
+        // START SPECIFICALLY FROM 1 · EMAIL (Existing Verification Workflow)
         state.stage = "verify_email";
         renderVerifyEmailStep();
         showScreen("verifyEmail", 3);
@@ -2556,6 +2586,44 @@ document.addEventListener("DOMContentLoaded", () => {
         showToast("✓ Response received! Confirmed by creator.");
     }
 
+    function renderAutoVerifiedSuccess(autoVerify) {
+        if (verificationPollInterval) {
+            clearInterval(verificationPollInterval);
+            verificationPollInterval = null;
+        }
+
+        state.stage = "auto_verified";
+        saveSessionState();
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "the video";
+        const role = state.userRole || "Video editor";
+        const matchedAccount = (autoVerify && autoVerify.matched_account) ? autoVerify.matched_account : "ummer.04";
+        const cleanHandle = matchedAccount.replace(/^@+/, "");
+        const matchedHandle = `@${cleanHandle}`;
+
+        if (vAutoMatchedHandle) vAutoMatchedHandle.textContent = matchedHandle;
+        if (vAutoVerifiedDesc) {
+            vAutoVerifiedDesc.innerHTML = `Your linked Instagram account <strong>${escapeHtml(matchedHandle)}</strong> was found in the video's contributor information.`;
+        }
+        if (vAutoCreatorName) vAutoCreatorName.textContent = creatorName;
+        if (vAutoRoleName) vAutoRoleName.textContent = role;
+        if (vAutoVideoTitle) vAutoVideoTitle.textContent = `"${videoTitle}"`;
+        if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Linked Arclent Account)`;
+
+        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+        if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
+        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
+        if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+        if (verificationAutoVerifiedBox) verificationAutoVerifiedBox.classList.remove("hidden");
+
+        showScreen("deliverySuccess", 4);
+        showToast("✓ Automatically verified! Linked Instagram account found.");
+    }
+
     function renderVerificationRejected() {
         if (verificationPollInterval) {
             clearInterval(verificationPollInterval);
@@ -2730,6 +2798,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+        if (verificationAutoVerifiedBox) verificationAutoVerifiedBox.classList.add("hidden");
+        if (autoVerifyFallbackBanner) autoVerifyFallbackBanner.classList.add("hidden");
+        state.autoVerification = null;
 
         if (youtubeUrlInput) youtubeUrlInput.value = "";
         showScreen("input", 1);
@@ -2771,8 +2842,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 state.finalInstagramHandle = data.final_instagram_handle || cachedData.finalInstagramHandle || null;
                 state.finalEmail = data.final_email || cachedData.finalEmail || null;
                 state.senderHandle = data.sender_handle || cachedData.senderHandle || null;
+                state.autoVerification = data.auto_verification || null;
 
-                if (data.creator_response === "confirmed" || data.stage === "verified") {
+                if (data.stage === "auto_verified" || (data.auto_verification && data.auto_verification.verified)) {
+                    renderAutoVerifiedSuccess(data.auto_verification || { matched_account: "ummer.04" });
+                } else if (data.creator_response === "confirmed" || data.stage === "verified") {
                     renderVerificationSuccess();
                 } else if (data.creator_response === "rejected" || data.stage === "rejected") {
                     renderVerificationRejected();

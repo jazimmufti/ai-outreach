@@ -25,6 +25,8 @@ from app.models.schemas import (
     SendEmailResponse,
     RecordSocialOutreachRequest
 )
+from datetime import datetime, timezone
+
 from app.services.session_manager import (
     create_session,
     get_session,
@@ -32,6 +34,7 @@ from app.services.session_manager import (
 )
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
+from app.services.auto_verification import verify_contribution_from_description
 from app.workflows.creator_research_graph import execute_creator_research_stream, execute_creator_research
 
 logger = logging.getLogger(__name__)
@@ -71,6 +74,12 @@ async def discover_creator_endpoint(payload: ResearchRequest):
                 session.instagram_profile = s
                 break
 
+        # Step 0: Automatic Contribution Verification via YouTube Video Description
+        # Checks whether creator mentions match the Arclent linked Instagram account
+        desc_to_check = raw_result.video_description or raw_result.description or ""
+        auto_verify_result = verify_contribution_from_description(desc_to_check)
+        session.auto_verification = auto_verify_result
+
         # Check discovered email
         if raw_result.selected_email:
             session.discovered_email = EmailCandidate(
@@ -80,12 +89,18 @@ async def discover_creator_endpoint(payload: ResearchRequest):
                 confidence=raw_result.email_confidence or "high",
                 verification_status="Evidence verified"
             )
-            session.stage = OutreachStage.CREATOR_FOUND
             has_reliable_email = True
         else:
             session.discovered_email = None
-            session.stage = OutreachStage.NO_EMAIL_CHOICE
             has_reliable_email = False
+
+        if auto_verify_result.verified:
+            session.stage = OutreachStage.AUTO_VERIFIED
+            session.creator_response = "confirmed"
+            if not session.verified_at:
+                session.verified_at = datetime.now(timezone.utc).isoformat()
+        else:
+            session.stage = OutreachStage.CREATOR_FOUND if has_reliable_email else OutreachStage.NO_EMAIL_CHOICE
 
         save_session(session)
 
@@ -97,6 +112,7 @@ async def discover_creator_endpoint(payload: ResearchRequest):
             has_reliable_email=has_reliable_email,
             social_profiles=session.social_profiles,
             instagram_profile=session.instagram_profile,
+            auto_verification=session.auto_verification,
             errors=raw_result.errors
         )
 
@@ -143,6 +159,11 @@ async def stream_discovery_endpoint(youtube_url: str = Query(..., description="Y
                             session.instagram_profile = s
                             break
 
+                    # Step 0: Automatic Contribution Verification via YouTube Video Description
+                    desc_to_check = raw.get("video_description") or raw.get("description") or ""
+                    auto_verify_result = verify_contribution_from_description(desc_to_check)
+                    session.auto_verification = auto_verify_result
+
                     if raw.get("selected_email"):
                         session.discovered_email = EmailCandidate(
                             email=raw["selected_email"],
@@ -151,12 +172,18 @@ async def stream_discovery_endpoint(youtube_url: str = Query(..., description="Y
                             confidence=raw.get("email_confidence") or "high",
                             verification_status="Evidence verified"
                         )
-                        session.stage = OutreachStage.CREATOR_FOUND
                         has_reliable_email = True
                     else:
                         session.discovered_email = None
-                        session.stage = OutreachStage.NO_EMAIL_CHOICE
                         has_reliable_email = False
+
+                    if auto_verify_result.verified:
+                        session.stage = OutreachStage.AUTO_VERIFIED
+                        session.creator_response = "confirmed"
+                        if not session.verified_at:
+                            session.verified_at = datetime.now(timezone.utc).isoformat()
+                    else:
+                        session.stage = OutreachStage.CREATOR_FOUND if has_reliable_email else OutreachStage.NO_EMAIL_CHOICE
 
                     save_session(session)
 
@@ -169,6 +196,7 @@ async def stream_discovery_endpoint(youtube_url: str = Query(..., description="Y
                         has_reliable_email=has_reliable_email,
                         social_profiles=session.social_profiles,
                         instagram_profile=session.instagram_profile,
+                        auto_verification=session.auto_verification,
                         errors=raw.get("errors", [])
                     )
                     event["data"] = final_resp_payload.model_dump()

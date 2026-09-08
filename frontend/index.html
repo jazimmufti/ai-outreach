@@ -163,6 +163,17 @@
                     </div>
                 </div>
 
+                <!-- Auto-Verification Fallback Notice (Shows when auto-verification requires owner confirmation) -->
+                <div id="auto-verify-fallback-banner" class="auto-verify-banner hidden">
+                    <div class="auto-verify-banner-header">
+                        <span class="badge-notice font-mono">AUTOMATIC VERIFICATION</span>
+                        <strong class="auto-verify-banner-title">Verification requires owner confirmation</strong>
+                    </div>
+                    <p class="auto-verify-banner-desc" id="auto-verify-fallback-reason">
+                        No matching Instagram account found in the video description for linked account @ummer.04. Continuing with owner verification below.
+                    </p>
+                </div>
+
                 <!-- Dynamic Creator Meta Inset -->
                 <div class="content-card" id="email-step-content-card">
                     <div class="content-thumb" id="email-creator-thumb">
@@ -627,6 +638,53 @@
                     </div>
                 </div>
 
+                <!-- State: Automatically Verified via Description Match (New Feature) -->
+                <div id="verification-auto-verified-box" class="verification-status-stack hidden">
+                    <div class="brand-row-verified" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1.5px solid var(--border-color);">
+                        <span class="brand-subtext font-mono" style="font-weight: 700; font-size: 11px; letter-spacing: 0.05em; color: var(--text-muted);">AUTOMATIC VERIFICATION</span>
+                        <span class="status-badge" style="background: #00D26A; color: #000; font-weight: 800; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 4px 10px; border: 1.5px solid #111827; border-radius: 2px;">✓ AUTOMATICALLY VERIFIED</span>
+                    </div>
+
+                    <div class="verification-step-card" style="background: #F0FDF4; border-color: #22C55E;">
+                        <div class="v-step-icon" style="background: #00D26A; color: #000;">✓</div>
+                        <div class="v-step-content">
+                            <h3 class="v-step-title" style="color: #065F46; font-size: 18px;">✓ Automatically Verified</h3>
+                            <p class="v-step-sub" id="v-auto-verified-desc" style="color: #047857; font-size: 14px; font-weight: 600;">
+                                Your linked Instagram account <strong id="v-auto-matched-handle">@ummer.04</strong> was found in the video's contributor information.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="collab-meta-box" style="background: #FAF8F2; border: 2px solid #111827; border-radius: 3px; padding: 16px 20px; box-shadow: 3px 3px 0px #111827;">
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">CREATOR / CHANNEL</span>
+                            <span class="meta-value" id="v-auto-creator-name" style="font-weight: 700; color: #111827;">Creator</span>
+                        </div>
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">CLAIMED ROLE</span>
+                            <span class="meta-value" id="v-auto-role-name" style="font-weight: 700; color: #111827;">Video editor</span>
+                        </div>
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">PROJECT CONTENT</span>
+                            <span class="meta-value" id="v-auto-video-title" style="font-weight: 700; color: #111827;">Video Title</span>
+                        </div>
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">MATCHED ACCOUNT</span>
+                            <span class="meta-value font-mono" id="v-auto-matched-account-val" style="font-weight: 700; color: #065F46;">@ummer.04 (Linked Arclent Account)</span>
+                        </div>
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">VERIFICATION METHOD</span>
+                            <span class="meta-value font-mono" style="font-weight: 700; color: #111827;">YouTube Video Description Contributor Match</span>
+                        </div>
+                    </div>
+
+                    <div class="verification-shield-card">
+                        <div class="v-shield-icon">🛡</div>
+                        <div class="v-shield-text" id="v-auto-shield-text">
+                            Collaboration automatically verified against video contributor credits.
+                        </div>
+                    </div>
+                </div>
 
                 <!-- State 2: Confirmed by Creator (Exact UI matching user prompt) -->
                 <div id="verification-success-box" class="verification-status-stack hidden">
