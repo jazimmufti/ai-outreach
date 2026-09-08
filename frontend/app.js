@@ -537,9 +537,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const vAutoMatchedHandle = document.getElementById("v-auto-matched-handle");
     const vAutoVerifiedDesc = document.getElementById("v-auto-verified-desc");
     const vAutoCreatorName = document.getElementById("v-auto-creator-name");
+    const vAutoCreatorSubs = document.getElementById("v-auto-creator-subs");
     const vAutoRoleName = document.getElementById("v-auto-role-name");
     const vAutoVideoTitle = document.getElementById("v-auto-video-title");
     const vAutoMatchedAccountVal = document.getElementById("v-auto-matched-account-val");
+    const hubCreatorSubs = document.getElementById("hub-creator-subs");
 
     const toastContainer = document.getElementById("toast-container");
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
@@ -1017,31 +1019,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // --------------------------------------------------------------------------
     function updateExtensionStatusUI(isInstalled) {
         state.extensionInstalled = !!isInstalled;
-        if (extensionStatusPill && extensionStatusText) {
-            if (isInstalled) {
-                extensionStatusPill.className = "status-pill status-connected";
-                extensionStatusText.textContent = "Extension: Active";
-                extensionStatusPill.title = "Arclent Instagram Extension is connected and active";
-            } else {
-                extensionStatusPill.className = "status-pill status-disconnected";
-                extensionStatusText.textContent = "Extension: Not Detected";
-                extensionStatusPill.title = "Click to re-check. Install the Chrome extension for 1-click Instagram auto-fill";
-            }
+        // Don't show extension status pills or notes in user-facing UI per user preference
+        if (extensionStatusPill) {
+            extensionStatusPill.style.display = "none";
         }
-        if (igExtensionStatusNote && igExtensionNoteText) {
-            if (isInstalled) {
-                igExtensionStatusNote.classList.remove("hidden");
-                igExtensionStatusNote.style.background = "#F0FDF4";
-                igExtensionStatusNote.style.borderColor = "#22C55E";
-                igExtensionStatusNote.style.color = "#166534";
-                igExtensionNoteText.innerHTML = `<span><strong>Extension Active:</strong> 1-Click message auto-fill enabled for Instagram</span>`;
-            } else {
-                igExtensionStatusNote.classList.remove("hidden");
-                igExtensionStatusNote.style.background = "#FFFBEB";
-                igExtensionStatusNote.style.borderColor = "#F59E0B";
-                igExtensionStatusNote.style.color = "#92400E";
-                igExtensionNoteText.innerHTML = `<span><strong>Desktop mode:</strong> Extension not detected. Load <code style="background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">instagram-extension/</code> in <code style="background:rgba(0,0,0,0.06);padding:1px 4px;border-radius:3px;">chrome://extensions</code> for 1-click auto-fill, or continue with clipboard fallback.</span>`;
-            }
+        if (igExtensionStatusNote) {
+            igExtensionStatusNote.style.display = "none";
         }
     }
 
@@ -1404,9 +1387,24 @@ document.addEventListener("DOMContentLoaded", () => {
         const avatarEl = document.getElementById(`${prefix}-creator-avatar`);
         const roleEl = document.getElementById(`${prefix}-step-creator-role`);
         const platformEl = document.getElementById(`${prefix}-step-creator-platform`);
+        const subsEl = document.getElementById(`${prefix}-step-creator-subs`);
 
         if (roleEl) roleEl.textContent = `${roleStr} — ${name}`;
         if (platformEl) platformEl.textContent = `YouTube · "${videoTitle}"`;
+
+        if (subsEl) {
+            const rawSubs = (c.subscriber_count || "").trim();
+            if (rawSubs && rawSubs.toLowerCase() !== "active creator" && rawSubs.toLowerCase() !== "none") {
+                const cleanSubs = rawSubs.replace(/subscribers/i, "").trim();
+                subsEl.textContent = `🔴 ${cleanSubs} subscribers`;
+                subsEl.style.display = "inline-flex";
+            } else if (rawSubs) {
+                subsEl.textContent = `🔴 ${rawSubs}`;
+                subsEl.style.display = "inline-flex";
+            } else {
+                subsEl.style.display = "none";
+            }
+        }
 
         const initialChar = name[0] ? name[0].toUpperCase() : "C";
         if (initialEl) initialEl.textContent = initialChar;
@@ -2397,6 +2395,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (hubCreatorHeading) hubCreatorHeading.textContent = `Reaching out to ${creatorName}`;
 
+        if (hubCreatorSubs) {
+            const rawSubs = (c.subscriber_count || "").trim();
+            if (rawSubs && rawSubs.toLowerCase() !== "active creator" && rawSubs.toLowerCase() !== "none") {
+                const cleanSubs = rawSubs.replace(/subscribers/i, "").trim();
+                hubCreatorSubs.textContent = `🔴 ${cleanSubs} subscribers`;
+                hubCreatorSubs.style.display = "inline-flex";
+            } else if (rawSubs) {
+                hubCreatorSubs.textContent = `🔴 ${rawSubs}`;
+                hubCreatorSubs.style.display = "inline-flex";
+            } else {
+                hubCreatorSubs.style.display = "none";
+            }
+        }
+
         // Update summary items
         if (hubSummaryEmailVal) {
             hubSummaryEmailVal.textContent = state.finalEmail || "Not provided (Skipped)";
@@ -2644,6 +2656,17 @@ document.addEventListener("DOMContentLoaded", () => {
             vAutoVerifiedDesc.innerHTML = `Your username <strong>${escapeHtml(matchedHandle)}</strong> matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!`;
         }
         if (vAutoCreatorName) vAutoCreatorName.textContent = creatorName;
+        if (vAutoCreatorSubs) {
+            const rawSubs = (c.subscriber_count || "").trim();
+            if (rawSubs && rawSubs.toLowerCase() !== "active creator" && rawSubs.toLowerCase() !== "none") {
+                const cleanSubs = rawSubs.replace(/subscribers/i, "").trim();
+                vAutoCreatorSubs.textContent = `🔴 ${cleanSubs} subscribers`;
+            } else if (rawSubs) {
+                vAutoCreatorSubs.textContent = `🔴 ${rawSubs}`;
+            } else {
+                vAutoCreatorSubs.textContent = "🔴 Active Audience";
+            }
+        }
         if (vAutoRoleName) vAutoRoleName.textContent = role;
         if (vAutoVideoTitle) vAutoVideoTitle.textContent = `"${videoTitle}"`;
         if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Verified Contributor)`;

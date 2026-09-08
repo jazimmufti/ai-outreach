@@ -22,13 +22,8 @@
                 </a>
             </div>
 
-            <!-- Extension & Gmail & Instagram Status Pills and 4-Segment Progress Indicator -->
+            <!-- Gmail & Instagram Status Pills and 4-Segment Progress Indicator -->
             <div class="header-right-group">
-                <div id="extension-status-pill" class="status-pill status-disconnected" title="Arclent Instagram Extension Status">
-                    <span class="status-dot"></span>
-                    <span id="extension-status-text">Extension: Checking</span>
-                </div>
-
                 <div id="gmail-status-pill" class="status-pill status-disconnected" title="Connected Gmail Account">
                     <span class="status-dot"></span>
                     <span id="gmail-status-text">Gmail: Not connected</span>
@@ -186,7 +181,10 @@
                         <img id="email-creator-avatar" src="" alt="Avatar" class="hidden">
                     </div>
                     <div class="content-meta">
-                        <div class="role" id="email-step-creator-role">Video Editor — MrBeast</div>
+                        <div class="content-meta-top-row">
+                            <span class="role" id="email-step-creator-role">Video Editor — MrBeast</span>
+                            <span class="creator-subs-tag font-mono" id="email-step-creator-subs">🔴 0 subscribers</span>
+                        </div>
                         <div class="platform" id="email-step-creator-platform">YouTube · Added from your work link</div>
                     </div>
                 </div>
@@ -288,7 +286,10 @@
                         <img id="ig-creator-avatar" src="" alt="Avatar" class="hidden">
                     </div>
                     <div class="content-meta">
-                        <div class="role" id="ig-step-creator-role">Video Editor — MrBeast</div>
+                        <div class="content-meta-top-row">
+                            <span class="role" id="ig-step-creator-role">Video Editor — MrBeast</span>
+                            <span class="creator-subs-tag font-mono" id="ig-step-creator-subs">🔴 0 subscribers</span>
+                        </div>
                         <div class="platform" id="ig-step-creator-platform">YouTube · Added from your work link</div>
                     </div>
                 </div>
@@ -436,12 +437,6 @@
                         </button>
                     </div>
 
-                    <!-- Extension Auto-fill Status Indicator -->
-                    <div id="ig-extension-status-note" class="font-mono" style="margin-top: 10px; font-size: 11.5px; padding: 6px 12px; background: #F0FDF4; border: 1px dashed #22C55E; border-radius: 4px; color: #166534; display: flex; align-items: center; gap: 6px;">
-                        <span>⚡</span>
-                        <span id="ig-extension-note-text">Chrome Extension installed: Message will be automatically inserted in Instagram DM</span>
-                    </div>
-
                     <!-- Other Discovered Profiles section directly below -->
                     <div id="ig-confirmed-other-socials-box" class="discovered-profiles-footer-box" style="margin-top: 24px; padding-top: 18px; border-top: 1.5px dashed rgba(51, 71, 91, 0.25);">
                         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
@@ -477,7 +472,10 @@
                         </button>
                         <div class="header-flow-info">
                             <div class="status-badge" style="margin-bottom: 4px;"><span class="dot"></span>READY · OUTREACH CHANNELS VERIFIED</div>
-                            <h1 class="card-main-heading" id="hub-creator-heading" style="margin-bottom: 0;">Reaching out to Creator</h1>
+                            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                                <h1 class="card-main-heading" id="hub-creator-heading" style="margin-bottom: 0;">Reaching out to Creator</h1>
+                                <span class="creator-subs-tag font-mono" id="hub-creator-subs" style="display: inline-flex;">🔴 0 subscribers</span>
+                            </div>
                         </div>
                     </div>
                     <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 7px 16px; font-size: 12.5px;">New Search</button>
@@ -664,6 +662,10 @@
                         <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
                             <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">CREATOR / CHANNEL</span>
                             <span class="meta-value" id="v-auto-creator-name" style="font-weight: 700; color: #111827;">Creator</span>
+                        </div>
+                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">SUBSCRIBERS</span>
+                            <span class="meta-value font-mono" id="v-auto-creator-subs" style="font-weight: 700; color: #DC2626;">🔴 Active Audience</span>
                         </div>
                         <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
                             <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">YOUR ROLE</span>

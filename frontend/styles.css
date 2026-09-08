@@ -1296,12 +1296,37 @@ body {
     font-size: 13.5px;
     line-height: 1.45;
     min-width: 0;
+    flex: 1;
+}
+
+.content-meta-top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 2px;
 }
 
 .content-meta .role {
     font-weight: 800;
     font-family: var(--font-heading);
     color: var(--black);
+}
+
+.creator-subs-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 1px 8px;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+    box-shadow: 0 1px 2px rgba(220, 38, 38, 0.06);
 }
 
 .content-meta .platform {
@@ -1981,4 +2006,260 @@ body {
     color: #78350F;
     margin: 0;
     line-height: 1.45;
+}
+
+/* ==============================================================================
+   MOBILE & RESPONSIVE DESIGN REFINEMENTS
+   Ensures clean touch targets, no horizontal overflow, and attractive card layouts
+   ============================================================================== */
+
+@media (max-width: 640px) {
+    body {
+        padding: 16px 12px 60px 12px;
+        font-size: 14px;
+    }
+
+    .app-container {
+        gap: 14px;
+    }
+
+    .app-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 2px;
+        margin-bottom: 4px;
+        gap: 8px;
+    }
+
+    .header-right-group {
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .progress-segments {
+        gap: 4px;
+    }
+
+    .seg-bar {
+        width: 22px;
+        height: 5px;
+    }
+
+    .status-pill {
+        font-size: 10px;
+        padding: 3px 8px;
+        max-width: 170px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .retro-card {
+        padding: 20px 16px;
+        box-shadow: 3px 3px 0px #111827;
+        border-radius: 4px;
+    }
+
+    .card-main-heading {
+        font-size: 22px;
+        line-height: 1.3;
+        margin-bottom: 6px;
+    }
+
+    .card-main-subtext {
+        font-size: 13.5px;
+        margin-bottom: 18px;
+    }
+
+    /* Step Navigation Bar */
+    .card-top-nav {
+        flex-direction: row !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .btn-card-back,
+    .btn-retro-back {
+        height: 34px !important;
+        padding: 0 10px !important;
+        font-size: 11px !important;
+    }
+
+    .step-pill {
+        height: 34px;
+        font-size: 10.5px;
+        padding: 0 6px;
+    }
+
+    /* Content Card */
+    .content-card {
+        padding: 10px 12px;
+        gap: 10px;
+        margin-bottom: 18px;
+    }
+
+    .content-thumb {
+        width: 42px;
+        height: 42px;
+        font-size: 18px;
+    }
+
+    .content-meta .role {
+        font-size: 13px;
+    }
+
+    .content-meta .platform {
+        font-size: 11.5px;
+    }
+
+    .creator-subs-tag {
+        font-size: 10px;
+        padding: 1px 6px;
+    }
+
+    /* Inputs & Buttons */
+    .retro-input,
+    .retro-textarea {
+        font-size: 14px;
+        padding: 11px 12px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        min-height: 44px;
+        font-size: 14px;
+        padding: 11px 16px;
+    }
+
+    .btn-row {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    /* Lookup Cards */
+    .lookup-row,
+    .lookup-row-ig {
+        padding: 12px 14px;
+        gap: 10px;
+        margin-bottom: 16px;
+        box-shadow: 2px 2px 0px var(--black);
+    }
+
+    .lookup-icon,
+    .lookup-icon-ig {
+        width: 32px;
+        height: 32px;
+    }
+
+    .lookup-value {
+        font-size: 13.5px;
+    }
+
+    /* Verification Status Elements */
+    .verification-step-card {
+        padding: 12px 14px;
+        gap: 12px;
+    }
+
+    .v-step-title {
+        font-size: 15px;
+    }
+
+    .v-step-sub {
+        font-size: 12.5px;
+    }
+
+    .v-step-icon {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+    }
+
+    .collab-meta-box {
+        padding: 12px 14px !important;
+    }
+
+    .meta-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 2px !important;
+        padding: 6px 0 !important;
+    }
+
+    .meta-label {
+        font-size: 10px !important;
+    }
+
+    .meta-value {
+        font-size: 12.5px !important;
+        word-break: break-word;
+    }
+
+    .verification-shield-card {
+        padding: 14px 16px;
+        gap: 10px;
+    }
+
+    .v-shield-text {
+        font-size: 13.5px;
+    }
+
+    /* Social Cards Grid */
+    .socials-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Hub header bar */
+    .card-header-bar {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px !important;
+        margin-bottom: 16px !important;
+    }
+}
+
+@media (max-width: 420px) {
+    body {
+        padding: 10px 8px 50px 8px;
+    }
+
+    .app-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .header-right-group {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .brand-logo-img {
+        max-width: 110px !important;
+    }
+
+    .retro-card {
+        padding: 16px 12px;
+    }
+
+    .card-main-heading {
+        font-size: 20px;
+    }
+
+    .status-pill {
+        max-width: 140px;
+    }
+
+    .steps-nav {
+        gap: 4px !important;
+    }
+
+    .step-pill {
+        font-size: 9.5px;
+        padding: 0 4px;
+    }
 }
