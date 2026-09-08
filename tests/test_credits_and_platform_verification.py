@@ -296,5 +296,125 @@ class TestModalConnectInstagramGuards(unittest.TestCase):
         self.assertIn('window.location.href = "https://www.instagram.com/accounts/login/";', js)
 
 
+class TestRoleMatchingAndStrictExplicitCredits(unittest.TestCase):
+    """Tests that credits are strictly explicit and must match the user's role."""
+
+    def test_role_matching_video_editor_accepts_editor_credits(self):
+        desc = "Special thanks to our editor: @ummer.04 for the amazing video edit!"
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["username"], "ummer.04")
+
+    def test_role_matching_video_editor_rejects_thumbnail_and_vfx(self):
+        desc = "Thumbnail by: @cool_thumb\nVFX by: @fx_wizard"
+        # Video editor should NOT match thumbnail or vfx credits
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(candidates, [])
+
+    def test_role_matching_thumbnail_designer_accepts_thumbnail_credits(self):
+        desc = "Editor: @ummer.04\nThumbnail by: @cool_thumb"
+        candidates = extract_credit_candidates(desc, user_role="Thumbnail designer")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["username"], "cool_thumb")
+
+    def test_generic_credits_match_any_user_role(self):
+        desc = "Credits: @ummer.04\nContributor: @alex_smith"
+        candidates_editor = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(len(candidates_editor), 2)
+        candidates_thumb = extract_credit_candidates(desc, user_role="Thumbnail designer")
+        self.assertEqual(len(candidates_thumb), 2)
+
+    def test_multiple_contributors_on_single_line(self):
+        desc = "Contributors: @john_doe @ummer.04 @alex123"
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        usernames = [c["username"] for c in candidates]
+        self.assertIn("john_doe", usernames)
+        self.assertIn("ummer.04", usernames)
+        self.assertIn("alex123", usernames)
+
+
+class TestDudePerfectNoCreditsScenario(unittest.TestCase):
+    """Tests the exact Dude Perfect scenario where promotional channel links exist but no credits."""
+
+    def setUp(self):
+        reset_dummy_linked_instagram_account()
+
+    def tearDown(self):
+        reset_dummy_linked_instagram_account()
+
+    def test_dude_perfect_description_extracts_no_credits(self):
+        dude_perfect_desc = (
+            "Welcome to TPC Southwind for ASGB 7 with the Savannah Bananas! "
+            "Use anything but golf clubs and once you use it, you lose it until the bag resets. "
+            "BODYARMOR FIT is a crisp, sparkling sports drink that delivers refreshing hydration "
+            "and functional energy in a convenient can. Thanks to BA for always keeping us hydrated! "
+            "Shout out to TPC Southwind for allowing us to take over the course and do one of our most fun videos! "
+            "To learn more about TPC Southwind, Home of the FedEx St. Jude Championship, visit "
+            "https://www.fedexchampionship.com/course. \"In A Flash\" Performed by Sam Tinnesz, RAT VIRUS "
+            "Courtesy of Showdown Productions, Useful Records and Sony Music Words and Music by Sam Tinnesz, "
+            "Brennan Aerts and John Keefe © Only Ginger with a Soul Publishing (SESAC) / Case Ace Publishing (SESAC) / "
+            "Buck Irish Music (ASCAP)(adm Nettwerk Music Group Inc) / Beefy Beats Music (adm Sony Music Publishing / "
+            "All right reserved. Used by permission. #dudeperfect #asgb #asgbsavannahbananas "
+            "NEXT LEVEL STUFF ------------------------------------------- "
+            "🎒 NEW Merch - http://bit.ly/dudeperfectmerch "
+            "📱 Text YTDUDE to 398294 to keep up with us "
+            "🔔 Hit the bell next to Subscribe so you don't miss a video! "
+            "📕 Read our NEW Book - \"Operation Trick Shot\" - https://book.dudeperfect.com/ "
+            "5 best friends and a panda. Dude Perfect is Tyler Toney, Cody Jones, Garrett Hilbert, "
+            "Coby Cotton, and Cory Cotton — best known for trick shots, stereotypes, battles, bottle flips, "
+            "ping pong, and all-around competitive fun. If you like sports and comedy, come join the Dude Perfect team! "
+            "We pride ourselves on making the absolute best family-friendly entertainment possible. Welcome to the crew. "
+            "Business or Media: Dude@DudePerfect.com Go Big and God Bless Pound it 👊🏻 Noggin 🙇🏻♂️ Dude Perfect"
+        )
+        # Even with channel handles mentioned in metadata or description, no credits are extracted
+        candidates = extract_credit_candidates(dude_perfect_desc, user_role="Video editor")
+        self.assertEqual(candidates, [])
+
+        # Auto-verification result must have extracted_accounts == []
+        res = verify_contribution_from_description(dude_perfect_desc, user_role="Video editor")
+        self.assertEqual(res.extracted_accounts, [])
+        self.assertFalse(res.verified)
+
+    def test_promotional_handles_not_treated_as_credits(self):
+        desc = (
+            "Check out my other channels:\n"
+            "@dudeperfectoutdoors\n"
+            "@dudeperfectgaming\n"
+            "@almostathletespodcast\n"
+            "@dudeperfectplus\n"
+        )
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(candidates, [])
+
+
+class TestPlatformExistenceCandidateFiltering(unittest.IsolatedAsyncioTestCase):
+    """Tests ensuring candidate usernames must exist on the platform before being suggested."""
+
+    @patch("app.services.platform_verifier.verify_username_on_platforms")
+    async def test_non_existent_username_is_omitted(self, mock_verify):
+        # When Instagram check returns False (user does not exist)
+        mock_verify.return_value = {
+            "Instagram": False, "X": False, "Facebook": False, "Twitch": False, "Discord": False
+        }
+        desc = "Editor: @nonexistent_user_99999"
+        results = await extract_verified_contributor_accounts(
+            desc, linked_account="ummer.04", user_role="Video editor"
+        )
+        self.assertEqual(results, [])
+
+    @patch("app.services.platform_verifier.verify_username_on_platforms")
+    async def test_existing_username_is_included(self, mock_verify):
+        mock_verify.return_value = {
+            "Instagram": True, "X": False, "Facebook": False, "Twitch": False, "Discord": False
+        }
+        desc = "Editor: @ummer.04"
+        results = await extract_verified_contributor_accounts(
+            desc, linked_account="ummer.04", user_role="Video editor"
+        )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["username"], "ummer.04")
+        self.assertIn("Instagram", results[0]["platforms"])
+
+
 if __name__ == "__main__":
     unittest.main()

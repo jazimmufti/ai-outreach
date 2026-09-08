@@ -49,7 +49,10 @@ INSTA_PREFIXED_HANDLE_REGEX = re.compile(
 # (e.g. "Credits: @ummer.04", "Editor: @user", "Editor: https://instagram.com/user", "Editor: ummer.04")
 # MUST have '@', or an Instagram URL, or contain handle-defining punctuation (. or _)
 CREDIT_PREFIXED_HANDLE_REGEX = re.compile(
-    r"\b(?:contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|thumbnail by|thumbnail)\b"
+    r"\b(?:contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
+    r"edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|visual effects|thumbnail by|thumbnail|thumbnail artist|"
+    r"thumb by|thumb|sound by|sound designer|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
+    r"assisted by|assistant by|assistant|assisted)\b"
     r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
     r"(?:"
         r"@([a-zA-Z0-9_\.]{2,30})"
@@ -175,15 +178,77 @@ def extract_instagram_accounts(description: Optional[str]) -> List[str]:
             if grp:
                 add_candidate(grp)
 
-    # Strategy 4: Extract from standard @mentions (e.g. "@ummer.04")
-    for match in AT_MENTION_REGEX.finditer(processed_text):
-        add_candidate(match.group(1))
+    # Strategy 4: Candidate accounts extracted via explicit credit detection
+    for c in extract_credit_candidates(description):
+        add_candidate(c["username"])
 
     return discovered_usernames
 
 
+def is_credit_role_matching(credit_role: str, user_role: Optional[str]) -> bool:
+    """Check if an explicit credit role in the description matches the user's selected role."""
+    if not user_role or not user_role.strip():
+        # If user didn't specify a role, any explicit credit role is allowed
+        return True
+
+    c_role = (credit_role or "").strip().lower()
+    u_role = user_role.strip().lower()
+
+    # Generic credit roles match any user role (e.g., "Credits: @user", "Contributor: @user", "Assisted by @user")
+    generic_roles = {
+        "credit", "credits", "credited", "contributor", "contributors",
+        "collaborator", "collaborators", "collab", "collaboration",
+        "assisted", "assistant", "team", "special thanks", "thanks to", "thanks"
+    }
+    if any(gr in c_role for gr in generic_roles):
+        return True
+
+    # Editorial roles
+    editor_terms = ["edit", "editor", "edited", "video edit", "video editor", "cut", "cutter", "cutting", "assembly"]
+    is_user_editor = any(t in u_role for t in editor_terms)
+    is_credit_editor = any(t in c_role for t in editor_terms)
+    if is_user_editor:
+        return is_credit_editor
+
+    # Thumbnail roles
+    thumb_terms = ["thumb", "thumbnail", "cover art", "cover", "graphic", "designer"]
+    is_user_thumb = any(t in u_role for t in thumb_terms)
+    is_credit_thumb = any(t in c_role for t in thumb_terms)
+    if is_user_thumb:
+        return is_credit_thumb
+
+    # VFX / Motion Graphics
+    vfx_terms = ["vfx", "visual effects", "fx", "effect", "motion", "animation", "animator", "cgi", "compositor"]
+    is_user_vfx = any(t in u_role for t in vfx_terms)
+    is_credit_vfx = any(t in c_role for t in vfx_terms)
+    if is_user_vfx:
+        return is_credit_vfx
+
+    # Audio / Sound / Music
+    audio_terms = ["sound", "audio", "music", "score", "mix", "master", "composer"]
+    is_user_audio = any(t in u_role for t in audio_terms)
+    is_credit_audio = any(t in c_role for t in audio_terms)
+    if is_user_audio:
+        return is_credit_audio
+
+    # Writer / Script
+    writer_terms = ["writer", "written", "script", "screenplay"]
+    is_user_writer = any(t in u_role for t in writer_terms)
+    is_credit_writer = any(t in c_role for t in writer_terms)
+    if is_user_writer:
+        return is_credit_writer
+
+    # Direct substring / overlap match
+    return c_role in u_role or u_role in c_role
+
+
 CREDIT_ROLE_PATTERN = re.compile(
-    r"\b(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|thumbnail by|thumbnail)\b"
+    r"\b(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
+    r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
+    r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
+    r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
+    r"assisted by|assistant by|assistant|assisted)\b"
+    r"(?:\s*[\(\[](?:instagram|insta|ig|twitter|x|twitch|facebook|fb|discord|youtube)[\)\]])?"
     r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
     r"(?:"
         r"@([a-zA-Z0-9_\.]{2,30})"
@@ -192,6 +257,22 @@ CREDIT_ROLE_PATTERN = re.compile(
         r"|"
         r"(?!https?:\/\/)([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})"
     r")\b",
+    re.IGNORECASE
+)
+
+CREDIT_LINE_PREFIX_PATTERN = re.compile(
+    r"^\s*(?:special\s+thanks\s+to\s+our\s+|thanks\s+to\s+our\s+|special\s+thanks\s+to\s+|thanks\s+to\s+|thanks\s+|)("
+    r"contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
+    r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
+    r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
+    r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
+    r"assisted by|assistant by|assistant|assisted"
+    r")(?:\s*[\(\[](?:instagram|insta|ig|twitter|x|twitch|facebook|fb|discord|youtube)[\)\]])?\s*[\:\-\—\|\–\>\•\*\~]+\s*(.*)$",
+    re.IGNORECASE
+)
+
+REVERSE_CREDIT_PATTERN = re.compile(
+    r"@([a-zA-Z0-9_\.]{2,30})\s+(?:was\s+the\s+|is\s+the\s+|worked\s+as\s+)?(editor|video editor|thumbnail designer|vfx artist|creator|collaborator|contributor|assisted|collaborated|edited)\b",
     re.IGNORECASE
 )
 
@@ -214,8 +295,15 @@ def detect_specified_platform(text_snippet: str) -> Optional[str]:
     return None
 
 
-def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]]:
+def extract_credit_candidates(
+    description: Optional[str],
+    user_role: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """Extract candidate usernames and their associated role/credit labels from a description.
+    
+    Strictly extracts explicit credits only (e.g. 'Editor: @user', 'Contributors: @user1 @user2').
+    Filters candidates according to whether the credit role matches user_role.
+    Standalone or promotional @mentions without explicit credit indicators are never extracted.
     
     Returns:
         List of dicts: [{"username": "ummer.04", "role": "editor", "specified_platform": None}, ...]
@@ -227,9 +315,13 @@ def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]
     results: List[Dict[str, Any]] = []
     seen_users: Set[str] = set()
 
+    # Strategy A: Match inline credit role patterns (e.g. "Editor: @ummer.04", "thumbnail by @cool_thumb")
     for match in CREDIT_ROLE_PATTERN.finditer(raw_text):
         role_label = (match.group(1) or "credit").lower()
-        # The username is in groups 2, 3, or 4
+
+        if not is_credit_role_matching(role_label, user_role):
+            continue
+
         handle = None
         for g in match.groups()[1:]:
             if g:
@@ -239,7 +331,6 @@ def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]
 
         if handle and handle not in seen_users:
             seen_users.add(handle)
-            # Find the line context to detect if a specific platform was explicitly mentioned
             start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
             end_idx = raw_text.find("\n", match.end())
             if end_idx == -1:
@@ -253,21 +344,45 @@ def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]
                 "specified_platform": specified_platform
             })
 
-    # Also capture any standalone @mentions that haven't been captured yet
-    for match in AT_MENTION_REGEX.finditer(raw_text):
-        handle = clean_and_normalize_username(match.group(1))
-        if handle and handle not in seen_users:
-            seen_users.add(handle)
+    # Strategy B: Line-based credit lists, e.g. "Contributors: @john_doe @ummer.04 @alex123"
+    for line in raw_text.splitlines():
+        line_clean = line.strip()
+        if not line_clean:
+            continue
+        line_match = CREDIT_LINE_PREFIX_PATTERN.match(line_clean)
+        if line_match:
+            role_label = (line_match.group(1) or "credit").lower()
+            if not is_credit_role_matching(role_label, user_role):
+                continue
+            rest = line_match.group(2)
+            specified_platform = detect_specified_platform(line_clean)
+            for at_match in AT_MENTION_REGEX.finditer(rest):
+                h = clean_and_normalize_username(at_match.group(1))
+                if h and h not in seen_users:
+                    seen_users.add(h)
+                    results.append({
+                        "username": h,
+                        "role": role_label,
+                        "specified_platform": specified_platform
+                    })
+
+    # Strategy C: Reverse credit mentions (e.g. "@UMMER.04 was the editor on this video")
+    for match in REVERSE_CREDIT_PATTERN.finditer(raw_text):
+        h = clean_and_normalize_username(match.group(1))
+        role_label = (match.group(2) or "editor").lower()
+        if not is_credit_role_matching(role_label, user_role):
+            continue
+        if h and h not in seen_users:
+            seen_users.add(h)
             start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
             end_idx = raw_text.find("\n", match.end())
             if end_idx == -1:
                 end_idx = len(raw_text)
             line_context = raw_text[start_idx:end_idx]
             specified_platform = detect_specified_platform(line_context)
-
             results.append({
-                "username": handle,
-                "role": "mention",
+                "username": h,
+                "role": role_label,
                 "specified_platform": specified_platform
             })
 
@@ -277,9 +392,14 @@ def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]
 async def extract_verified_contributor_accounts(
     description: Optional[str],
     linked_platform: Optional[str] = None,
-    linked_account: Optional[str] = None
+    linked_account: Optional[str] = None,
+    user_role: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """Extract credit candidate usernames and verify which platforms they exist on.
+    
+    Filters candidates to only explicit credits matching user_role.
+    Strictly verifies candidate existence on target platforms before including them.
+    If a username does not exist on the platform, it is omitted.
     
     If an account is linked (e.g. Instagram '@ummer.04' or X '@user') and the description
     does not mention which platform, it assumes that linked platform and checks it exclusively.
@@ -295,7 +415,7 @@ async def extract_verified_contributor_accounts(
             }, ...
         ]
     """
-    candidates = extract_credit_candidates(description)
+    candidates = extract_credit_candidates(description, user_role=user_role)
     if not candidates:
         return []
 
@@ -327,11 +447,8 @@ async def extract_verified_contributor_accounts(
             if specified:
                 target_platforms = [specified]
             elif eff_platform:
-                # User's platform is linked and description did not specify a platform:
-                # Assume the linked platform and verify on that platform ONLY.
                 target_platforms = [eff_platform]
             else:
-                # Unlinked: check across all supported platforms
                 target_platforms = ["Instagram", "X", "Facebook", "Twitch", "Discord"]
 
             plat_results = await verify_username_on_platforms(
@@ -339,25 +456,27 @@ async def extract_verified_contributor_accounts(
             )
 
             existing_platforms = [p for p, exists in plat_results.items() if exists]
-            urls = {}
-            for p in existing_platforms:
-                if p == "Instagram":
-                    urls[p] = f"https://instagram.com/{username}"
-                elif p == "X":
-                    urls[p] = f"https://x.com/{username}"
-                elif p == "Facebook":
-                    urls[p] = f"https://facebook.com/{username}"
-                elif p == "Twitch":
-                    urls[p] = f"https://twitch.tv/{username}"
-                elif p == "Discord":
-                    urls[p] = f"https://discord.gg/{username}"
+            # ONLY include candidates that actually exist on at least one target platform!
+            if existing_platforms:
+                urls = {}
+                for p in existing_platforms:
+                    if p == "Instagram":
+                        urls[p] = f"https://instagram.com/{username}"
+                    elif p == "X":
+                        urls[p] = f"https://x.com/{username}"
+                    elif p == "Facebook":
+                        urls[p] = f"https://facebook.com/{username}"
+                    elif p == "Twitch":
+                        urls[p] = f"https://twitch.tv/{username}"
+                    elif p == "Discord":
+                        urls[p] = f"https://discord.gg/{username}"
 
-            verified_list.append({
-                "username": username,
-                "role": role,
-                "platforms": existing_platforms,
-                "urls": urls
-            })
+                verified_list.append({
+                    "username": username,
+                    "role": role,
+                    "platforms": existing_platforms,
+                    "urls": urls
+                })
 
     return verified_list
 

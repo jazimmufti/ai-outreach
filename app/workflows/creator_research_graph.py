@@ -461,7 +461,11 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
     )
 
 
-async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Dict[str, Any], None]:
+async def execute_creator_research_stream(
+    youtube_url: str,
+    user_role: Optional[str] = None,
+    linked_account: Optional[str] = None
+) -> AsyncGenerator[Dict[str, Any], None]:
     """Execute LangGraph step-by-step and yield real-time progress events for SSE."""
     state: CreatorResearchState = {
         "video_url": youtube_url,
@@ -504,16 +508,24 @@ async def execute_creator_research_stream(youtube_url: str) -> AsyncGenerator[Di
         yield {"step": 2, "name": "fetch_metadata", "status": "error", "error": state["errors"][-1]}
         return
 
-    # Early credit detection for live processing UI
+    # Early credit detection for live processing UI (strictly explicit credits matching user_role & verified to exist)
     extracted_cand_handles = []
     try:
-        from app.services.youtube_description_parser import extract_credit_candidates
+        from app.services.youtube_description_parser import extract_verified_contributor_accounts
         desc_parts = [state.get("video_description") or "", state.get("description") or "", state.get("channel_description") or ""]
         combined_desc = "\n".join(p for p in desc_parts if p.strip())
-        candidates = extract_credit_candidates(combined_desc)
-        extracted_cand_handles = [c["username"] for c in candidates if c.get("username")]
-    except Exception:
-        pass
+        verified_contribs = await extract_verified_contributor_accounts(
+            combined_desc,
+            linked_platform="Instagram",
+            linked_account=linked_account,
+            user_role=user_role
+        )
+        extracted_cand_handles = [
+            c["username"] for c in verified_contribs
+            if "Instagram" in c.get("platforms", []) and c.get("username")
+        ]
+    except Exception as e:
+        logger.debug(f"Credit extraction error in stream step 2: {e}")
 
     yield {
         "step": 2,

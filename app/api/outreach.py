@@ -36,7 +36,10 @@ from app.services.session_manager import (
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
 from app.services.linked_account import normalize_instagram_username
-from app.services.auto_verification import verify_contribution_from_description
+from app.services.auto_verification import (
+    verify_contribution_from_description,
+    verify_contribution_from_description_async
+)
 from app.workflows.creator_research_graph import execute_creator_research_stream, execute_creator_research
 
 logger = logging.getLogger(__name__)
@@ -84,9 +87,10 @@ async def discover_creator_endpoint(payload: ResearchRequest):
             raw_result.channel_description or ""
         ]
         desc_to_check = "\n".join(p for p in desc_parts if p.strip())
-        auto_verify_result = verify_contribution_from_description(
+        auto_verify_result = await verify_contribution_from_description_async(
             desc_to_check,
-            linked_account=payload.linked_instagram_account
+            linked_account=payload.linked_instagram_account,
+            user_role=session.user_role
         )
         session.auto_verification = auto_verify_result
 
@@ -148,7 +152,11 @@ async def stream_discovery_endpoint(
 
     async def event_generator():
         try:
-            async for event in execute_creator_research_stream(youtube_url):
+            async for event in execute_creator_research_stream(
+                youtube_url,
+                user_role=session.user_role,
+                linked_account=linked_account
+            ):
                 event["session_id"] = session.session_id
                 # When finalized, save to session
                 if event.get("step") == 6 and event.get("status") == "completed" and event.get("data"):
@@ -182,9 +190,10 @@ async def stream_discovery_endpoint(
                         raw.get("channel_description") or ""
                     ]
                     desc_to_check = "\n".join(p for p in desc_parts if p.strip())
-                    auto_verify_result = verify_contribution_from_description(
+                    auto_verify_result = await verify_contribution_from_description_async(
                         desc_to_check,
-                        linked_account=linked_account
+                        linked_account=linked_account,
+                        user_role=session.user_role
                     )
                     session.auto_verification = auto_verify_result
 
