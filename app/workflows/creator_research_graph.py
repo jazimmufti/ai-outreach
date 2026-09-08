@@ -6,13 +6,14 @@ from langgraph.graph import StateGraph, START, END
 
 from app.models.schemas import SocialProfile, EmailCandidate, RawCreatorResearchResult
 from app.services.youtube_service import parse_youtube_target, extract_video_id, get_youtube_metadata
-from app.services.social_discovery import extract_social_profiles, extract_website_urls, rank_social_profiles
+from app.services.social_discovery import extract_social_profiles, extract_website_urls, rank_social_profiles, discover_credits_social_profiles
 from app.services.email_discovery import extract_emails_from_text, crawl_website_for_emails
 from app.services.mistral_service import classify_and_verify_with_mistral
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_PLATFORMS = {"Instagram", "X", "X/Twitter", "Discord", "Reddit", "Facebook"}
+ALLOWED_PLATFORMS = {"Instagram", "X", "X/Twitter", "Discord", "Reddit", "Facebook", "Twitch"}
+
 
 
 class CreatorResearchState(TypedDict):
@@ -160,6 +161,28 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
             if key not in seen_keys:
                 seen_keys.add(key)
                 all_socials.append(s)
+
+    # 5. Check contributor / credit mentions without specified platform (e.g. "editor: @ummer.04")
+    # Verify existence on Instagram, X, Facebook, Twitch, and Discord
+    desc_for_credits = video_desc or full_desc or ""
+    if desc_for_credits:
+        try:
+            from app.services.linked_account import get_linked_platform, get_linked_instagram_account
+            lp = state.get("linked_platform") or get_linked_platform()
+            la = state.get("linked_account") or get_linked_instagram_account()
+            credit_socials = await discover_credits_social_profiles(
+                desc_for_credits,
+                source_label="YouTube Description (Credits)",
+                linked_platform=lp,
+                linked_account=la
+            )
+            for s in credit_socials:
+                key = (s.platform, s.url.lower())
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    all_socials.append(s)
+        except Exception as e:
+            logger.debug(f"Credit social profiles discovery note: {e}")
 
     # Strictly filter allowed platforms and rank by authenticity
     ranked_socials = rank_social_profiles(

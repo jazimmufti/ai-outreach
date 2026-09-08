@@ -13,7 +13,7 @@ Handles edge cases such as:
 
 import re
 import urllib.parse
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict, Any
 
 # System keywords, platform names, and URL paths that should not be treated as user handles
 EXCLUDED_INSTAGRAM_PATHS: Set[str] = {
@@ -180,3 +180,184 @@ def extract_instagram_accounts(description: Optional[str]) -> List[str]:
         add_candidate(match.group(1))
 
     return discovered_usernames
+
+
+CREDIT_ROLE_PATTERN = re.compile(
+    r"\b(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|thumbnail by|thumbnail)\b"
+    r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
+    r"(?:"
+        r"@([a-zA-Z0-9_\.]{2,30})"
+        r"|"
+        r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am|x\.com|twitter\.com|facebook\.com|twitch\.tv)\/([a-zA-Z0-9_\.]{1,30})"
+        r"|"
+        r"(?!https?:\/\/)([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})"
+    r")\b",
+    re.IGNORECASE
+)
+
+
+def detect_specified_platform(text_snippet: str) -> Optional[str]:
+    """Detect if a specific social platform name or URL domain is explicitly mentioned in the snippet."""
+    if not text_snippet:
+        return None
+    lower = text_snippet.lower()
+    if "instagram.com" in lower or "instagr.am" in lower or re.search(r"\b(instagram|insta|ig)\b", lower):
+        return "Instagram"
+    if "x.com" in lower or "twitter.com" in lower or re.search(r"\b(twitter)\b", lower) or re.search(r"(?:^|\s)x\s*[:\-\—]", lower):
+        return "X"
+    if "twitch.tv" in lower or re.search(r"\b(twitch)\b", lower):
+        return "Twitch"
+    if "facebook.com" in lower or re.search(r"\b(facebook|fb)\b", lower):
+        return "Facebook"
+    if "discord.gg" in lower or "discord.com" in lower or re.search(r"\b(discord)\b", lower):
+        return "Discord"
+    return None
+
+
+def extract_credit_candidates(description: Optional[str]) -> List[Dict[str, Any]]:
+    """Extract candidate usernames and their associated role/credit labels from a description.
+    
+    Returns:
+        List of dicts: [{"username": "ummer.04", "role": "editor", "specified_platform": None}, ...]
+    """
+    if not description or not description.strip():
+        return []
+
+    raw_text = urllib.parse.unquote(description)
+    results: List[Dict[str, Any]] = []
+    seen_users: Set[str] = set()
+
+    for match in CREDIT_ROLE_PATTERN.finditer(raw_text):
+        role_label = (match.group(1) or "credit").lower()
+        # The username is in groups 2, 3, or 4
+        handle = None
+        for g in match.groups()[1:]:
+            if g:
+                handle = clean_and_normalize_username(g)
+                if handle:
+                    break
+
+        if handle and handle not in seen_users:
+            seen_users.add(handle)
+            # Find the line context to detect if a specific platform was explicitly mentioned
+            start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
+            end_idx = raw_text.find("\n", match.end())
+            if end_idx == -1:
+                end_idx = len(raw_text)
+            line_context = raw_text[start_idx:end_idx]
+            specified_platform = detect_specified_platform(line_context)
+
+            results.append({
+                "username": handle,
+                "role": role_label,
+                "specified_platform": specified_platform
+            })
+
+    # Also capture any standalone @mentions that haven't been captured yet
+    for match in AT_MENTION_REGEX.finditer(raw_text):
+        handle = clean_and_normalize_username(match.group(1))
+        if handle and handle not in seen_users:
+            seen_users.add(handle)
+            start_idx = max(0, raw_text.rfind("\n", 0, match.start()))
+            end_idx = raw_text.find("\n", match.end())
+            if end_idx == -1:
+                end_idx = len(raw_text)
+            line_context = raw_text[start_idx:end_idx]
+            specified_platform = detect_specified_platform(line_context)
+
+            results.append({
+                "username": handle,
+                "role": "mention",
+                "specified_platform": specified_platform
+            })
+
+    return results
+
+
+async def extract_verified_contributor_accounts(
+    description: Optional[str],
+    linked_platform: Optional[str] = None,
+    linked_account: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Extract credit candidate usernames and verify which platforms they exist on.
+    
+    If an account is linked (e.g. Instagram '@ummer.04' or X '@user') and the description
+    does not mention which platform, it assumes that linked platform and checks it exclusively.
+    If no platform is linked, it checks across all supported platforms.
+    
+    Returns:
+        List of dicts: [
+            {
+                "username": "ummer.04",
+                "role": "editor",
+                "platforms": ["Instagram"],
+                "urls": {"Instagram": "https://instagram.com/ummer.04"}
+            }, ...
+        ]
+    """
+    candidates = extract_credit_candidates(description)
+    if not candidates:
+        return []
+
+    from app.services.platform_verifier import verify_username_on_platforms
+    from app.services.linked_account import (
+        get_linked_platform,
+        get_linked_instagram_account,
+        normalize_instagram_username
+    )
+    import httpx
+
+    # Determine effective linked platform
+    if linked_account is not None:
+        norm_acc = normalize_instagram_username(linked_account)
+        eff_platform = (linked_platform or "Instagram") if norm_acc else None
+    else:
+        active_acc = get_linked_instagram_account()
+        eff_platform = linked_platform or (get_linked_platform() if active_acc else None)
+
+    verified_list: List[Dict[str, Any]] = []
+
+    async with httpx.AsyncClient(timeout=6.0) as client:
+        for cand in candidates:
+            username = cand["username"]
+            role = cand["role"]
+            specified = cand.get("specified_platform")
+
+            # Determine platforms to verify for this candidate
+            if specified:
+                target_platforms = [specified]
+            elif eff_platform:
+                # User's platform is linked and description did not specify a platform:
+                # Assume the linked platform and verify on that platform ONLY.
+                target_platforms = [eff_platform]
+            else:
+                # Unlinked: check across all supported platforms
+                target_platforms = ["Instagram", "X", "Facebook", "Twitch", "Discord"]
+
+            plat_results = await verify_username_on_platforms(
+                username, client=client, platforms=target_platforms
+            )
+
+            existing_platforms = [p for p, exists in plat_results.items() if exists]
+            urls = {}
+            for p in existing_platforms:
+                if p == "Instagram":
+                    urls[p] = f"https://instagram.com/{username}"
+                elif p == "X":
+                    urls[p] = f"https://x.com/{username}"
+                elif p == "Facebook":
+                    urls[p] = f"https://facebook.com/{username}"
+                elif p == "Twitch":
+                    urls[p] = f"https://twitch.tv/{username}"
+                elif p == "Discord":
+                    urls[p] = f"https://discord.gg/{username}"
+
+            verified_list.append({
+                "username": username,
+                "role": role,
+                "platforms": existing_platforms,
+                "urls": urls
+            })
+
+    return verified_list
+

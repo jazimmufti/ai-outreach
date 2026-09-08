@@ -11,7 +11,7 @@ from app.models.schemas import EmailCandidate, SocialProfile
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_PLATFORMS = {"Instagram", "X", "Discord", "Reddit", "Facebook"}
+ALLOWED_PLATFORMS = {"Instagram", "X", "Discord", "Reddit", "Facebook", "Twitch"}
 
 
 class EmailEvidenceClassification(BaseModel):

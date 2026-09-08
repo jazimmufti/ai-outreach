@@ -31,9 +31,9 @@
                     <button id="header-disconnect-btn" class="btn-micro btn-micro-danger" style="display: none;">Disconnect</button>
                 </div>
 
-                <div id="instagram-status-pill" class="status-pill status-connected font-mono" title="Click to change your linked Instagram handle" style="cursor: pointer; background: #ECFDF5; border-color: #059669;">
-                    <span class="status-dot" style="background: #10B981;"></span>
-                    <span id="instagram-status-text" style="color: #065F46; font-weight: 700;">IG: @ummer.04 ✎</span>
+                <div id="instagram-status-pill" class="status-pill font-mono" title="Click to connect or change your linked Instagram handle" style="cursor: pointer; background: #FEF3C7; border-color: #D97706;">
+                    <span class="status-dot" style="background: #F59E0B;"></span>
+                    <span id="instagram-status-text" style="color: #92400E; font-weight: 700;">Connect Instagram +</span>
                 </div>
 
                 <div class="progress-segments" aria-label="Step Progress">
@@ -163,6 +163,17 @@
                     </div>
                 </div>
 
+                <!-- Notice Banner: Credits Detected in Description (when unlinked) -->
+                <div id="banner-credits-detected" class="notice-banner-credits hidden">
+                    <div class="notice-banner-icon">⚡</div>
+                    <div class="notice-banner-content">
+                        <div class="notice-banner-title">Credits are already mentioned in the description!</div>
+                        <div class="notice-banner-sub">
+                            Found for <strong id="banner-credits-handles">@contributor</strong>. To get auto-verified instantly, 
+                            <button type="button" id="btn-banner-connect-ig" class="notice-banner-btn-link">connect your Instagram account</button>.
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Dynamic Creator Meta Inset -->
                 <div class="content-card" id="email-step-content-card">
@@ -578,7 +589,7 @@
                  ================================================================ -->
             <section id="screen-delivery-success" class="retro-card result-success-card hidden">
                 <div class="delivery-header-row" id="delivery-header-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                    <button type="button" class="btn-retro-back" id="btn-back-delivery" title="Back to Outreach Hub">
+                    <button type="button" class="btn-retro-back hidden" id="btn-back-delivery" title="Back to Outreach Hub">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                         <span>Back to Hub</span>
                     </button>
@@ -682,12 +693,6 @@
                             No further outreach steps needed. Your username matches the creator's published credits in the video description.
                         </div>
                     </div>
-
-                    <div style="margin-top: 18px; text-align: center;">
-                        <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 10px 20px; font-size: 13px; font-weight: 700;">
-                            + Link Another Work
-                        </button>
-                    </div>
                 </div>
 
                 <!-- State 2: Confirmed by Creator (Exact UI matching user prompt) -->
@@ -755,6 +760,58 @@
             </section>
 
         </main>
+
+        <!-- Pop-up Modal: Connect Instagram to Auto-Verify -->
+        <div id="modal-connect-instagram" class="modal-backdrop hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-ci-title">
+                <button type="button" class="modal-close-btn" id="btn-modal-ci-close" aria-label="Close modal">✕</button>
+                
+                <div class="modal-badge-row">
+                    <span class="modal-badge font-mono">⚡ CREDITS DETECTED IN DESCRIPTION</span>
+                </div>
+
+                <h2 class="modal-heading" id="modal-ci-title">Credits are already mentioned!</h2>
+                
+                <p class="modal-desc" id="modal-ci-desc">
+                    Credits for <strong id="modal-detected-handles-list">@ummer.04</strong> were found in the video description. 
+                    To get <strong>auto-verified</strong>, connect your Instagram account.
+                </p>
+
+                <!-- Suggested chips -->
+                <div id="modal-ci-chips-container" class="modal-chips-container hidden">
+                    <span class="modal-chips-label font-mono">Suggested handle:</span>
+                    <div id="modal-ci-chips-row" class="modal-chips-row"></div>
+                </div>
+
+                <form id="modal-ci-form">
+                    <div class="modal-input-group">
+                        <label for="modal-ci-input" class="retro-label font-mono">Your Instagram Username</label>
+                        <div class="input-wrapper modal-input-wrapper">
+                            <span class="input-prefix font-mono">@</span>
+                            <input 
+                                type="text" 
+                                id="modal-ci-input" 
+                                class="retro-input font-mono" 
+                                placeholder="your_username"
+                                autocomplete="off"
+                                autocapitalize="none"
+                                spellcheck="false"
+                            >
+                        </div>
+                        <span id="modal-ci-err" class="input-error-msg hidden">Please enter your Instagram username</span>
+                    </div>
+
+                    <div class="modal-actions-row">
+                        <button type="submit" id="btn-modal-ci-submit" class="btn-primary" style="flex: 1;">
+                            <span>Connect & Auto-Verify ⚡</span>
+                        </button>
+                        <button type="button" id="btn-modal-ci-skip" class="btn-secondary">
+                            <span>Continue to Manual Outreach</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Toast Notifications Container -->
         <div id="toast-container" class="toast-container"></div>

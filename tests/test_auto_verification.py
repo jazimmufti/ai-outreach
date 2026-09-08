@@ -336,3 +336,55 @@ class TestParserExclusionsAndEdgeCases(unittest.TestCase):
 
         desc5 = "Credits: - @ummer.04"
         self.assertEqual(extract_instagram_accounts(desc5), ["ummer.04"])
+
+
+class TestVerifyLinkedAccountDynamicEndpoint(unittest.TestCase):
+    """Tests for the dynamic account connecting and verification endpoint."""
+
+    def setUp(self):
+        clear_all_sessions()
+        self.client = TestClient(app)
+
+    def tearDown(self):
+        clear_all_sessions()
+
+    @patch("app.api.outreach.execute_creator_research")
+    def test_unlinked_user_gets_detected_credits_and_can_verify_later(self, mock_research):
+        mock_research.return_value = RawCreatorResearchResult(
+            video_url="https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            creator_name="Test Creator",
+            channel_name="Test Channel",
+            video_title="Collab Video",
+            video_description="Editor: @ummer.04",
+            description="Editor: @ummer.04"
+        )
+
+        # 1. User starts workflow without linked account
+        res = self.client.post("/api/outreach/discover", json={
+            "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
+            "user_role": "Video editor",
+            "linked_instagram_account": ""
+        })
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertFalse(data["auto_verification"]["verified"])
+        self.assertEqual(data["auto_verification"]["status"], "fallback_no_linked_account")
+        self.assertIn("ummer.04", data["auto_verification"]["extracted_accounts"])
+
+        session_id = data["session_id"]
+
+        # 2. User connects their Instagram handle via pop-up modal
+        verify_res = self.client.post("/api/outreach/verify-linked-account", json={
+            "session_id": session_id,
+            "instagram_account": "@ummer.04"
+        })
+        self.assertEqual(verify_res.status_code, 200)
+        verify_data = verify_res.json()
+        self.assertTrue(verify_data["verified"])
+        self.assertEqual(verify_data["matched_account"], "ummer.04")
+
+        # 3. Check session stage is updated to AUTO_VERIFIED
+        session = get_session(session_id)
+        self.assertEqual(session.stage, OutreachStage.AUTO_VERIFIED)
+        self.assertEqual(session.creator_response, "confirmed")
+

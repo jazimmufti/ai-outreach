@@ -27,10 +27,21 @@ def verify_contribution_from_description(
         AutoVerificationResult with detailed match info, status, and human-readable explanation.
     """
     # 1. Check if linked account is available
-    active_linked = normalize_instagram_username(linked_account) if linked_account else get_linked_instagram_account()
+    if linked_account is not None:
+        active_linked = normalize_instagram_username(linked_account)
+    else:
+        active_linked = get_linked_instagram_account()
     
     if not active_linked:
         extracted = extract_instagram_accounts(description) if description else []
+        try:
+            from app.services.youtube_description_parser import extract_credit_candidates
+            for c in extract_credit_candidates(description):
+                u = c["username"]
+                if u and u not in extracted:
+                    extracted.append(u)
+        except Exception:
+            pass
         return AutoVerificationResult(
             verified=False,
             status="fallback_no_linked_account",
@@ -53,8 +64,16 @@ def verify_contribution_from_description(
             reason="YouTube description is empty or unavailable. Continuing to existing verification."
         )
 
-    # 3. Extract Instagram usernames
+    # 3. Extract candidate handles from Instagram links, prefixes, and credit mentions (editor: @username, etc.)
     extracted_accounts = extract_instagram_accounts(description)
+    try:
+        from app.services.youtube_description_parser import extract_credit_candidates
+        for c in extract_credit_candidates(description):
+            u = c["username"]
+            if u and u not in extracted_accounts:
+                extracted_accounts.append(u)
+    except Exception:
+        pass
 
     # 4. Check if any accounts were found
     if not extracted_accounts:

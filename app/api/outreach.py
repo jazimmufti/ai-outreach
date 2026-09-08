@@ -23,7 +23,8 @@ from app.models.schemas import (
     GenerateMessageRequest,
     SendEmailWorkflowRequest,
     SendEmailResponse,
-    RecordSocialOutreachRequest
+    RecordSocialOutreachRequest,
+    AutoVerificationResult
 )
 from datetime import datetime, timezone
 
@@ -34,6 +35,7 @@ from app.services.session_manager import (
 )
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
+from app.services.linked_account import normalize_instagram_username
 from app.services.auto_verification import verify_contribution_from_description
 from app.workflows.creator_research_graph import execute_creator_research_stream, execute_creator_research
 
@@ -1235,6 +1237,57 @@ async def handle_creator_verification_response(
 
 
 
+
+
+class VerifyLinkedAccountRequest(BaseModel):
+    session_id: str
+    instagram_account: str
+
+
+@router.post("/verify-linked-account")
+async def verify_linked_account_endpoint(payload: VerifyLinkedAccountRequest):
+    """Dynamically verify an unlinked user when they connect their Instagram account."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    clean_handle = normalize_instagram_username(payload.instagram_account)
+    if not clean_handle:
+        raise HTTPException(status_code=400, detail="Invalid Instagram handle provided.")
+
+    extracted = []
+    if session.auto_verification and session.auto_verification.extracted_accounts:
+        extracted = [h.lower().lstrip("@") for h in session.auto_verification.extracted_accounts]
+
+    if clean_handle.lower() in extracted:
+        auto_result = AutoVerificationResult(
+            verified=True,
+            status="auto_verified",
+            method="youtube_description_instagram_match",
+            matched_account=clean_handle,
+            linked_account=clean_handle,
+            extracted_accounts=extracted,
+            reason=f"Connected Instagram account @{clean_handle} matches contributor credits published in the video description."
+        )
+        session.auto_verification = auto_result
+        session.stage = OutreachStage.AUTO_VERIFIED
+        session.creator_response = "confirmed"
+        session.verified_at = datetime.now(timezone.utc).isoformat()
+        save_session(session)
+        return {
+            "verified": True,
+            "matched_account": clean_handle,
+            "session_id": session.session_id,
+            "auto_verification": auto_result
+        }
+
+    return {
+        "verified": False,
+        "matched_account": None,
+        "session_id": session.session_id,
+        "extracted_accounts": extracted,
+        "message": f"Connected @{clean_handle}, but credits in description were for: {', '.join(f'@{a}' for a in extracted)}"
+    }
 
 
 @router.get("/session-status")

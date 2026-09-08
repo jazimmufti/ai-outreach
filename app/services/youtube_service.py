@@ -158,60 +158,91 @@ async def scrape_channel_links_and_about(
     discovered_avatar = None
     seen_links = set()
 
-    async with httpx.AsyncClient(timeout=6.0, follow_redirects=True, headers=headers) as client:
+    async with httpx.AsyncClient(timeout=10.0, follow_redirects=True, headers=headers) as client:
         for t_url in target_urls:
             try:
                 resp = await client.get(t_url)
                 if resp.status_code != 200:
                     continue
 
-                m = re.search(r"var ytInitialData = ({.*?});</script>", resp.text)
+                # 1. Parse ytInitialData if present
+                m = re.search(r"(?:var\s+|window\[\")?ytInitialData(?:\"\])?\s*=\s*({.*?});(?:<\/script>|var|window)", resp.text)
                 if not m:
-                    continue
+                    m = re.search(r"var ytInitialData = ({.*?});</script>", resp.text)
 
-                data = json.loads(m.group(1))
+                if m:
+                    try:
+                        data = json.loads(m.group(1))
 
-                # 1. Extract metadata description & avatar
-                meta = data.get("metadata", {}).get("channelMetadataRenderer", {})
-                if meta:
-                    desc = meta.get("description", "")
-                    if desc and not discovered_description:
-                        discovered_description = desc
-                    avatars = meta.get("avatar", {}).get("thumbnails", [])
-                    if avatars and not discovered_avatar:
-                        discovered_avatar = avatars[-1].get("url")
+                        # Extract metadata description & avatar
+                        meta = data.get("metadata", {}).get("channelMetadataRenderer", {})
+                        if meta:
+                            desc = meta.get("description", "")
+                            if desc and not discovered_description:
+                                discovered_description = desc
+                            avatars = meta.get("avatar", {}).get("thumbnails", [])
+                            if avatars and not discovered_avatar:
+                                discovered_avatar = avatars[-1].get("url")
 
-                # 2. Extract all strings and redirect URLs from ytInitialData
-                def collect_strings(obj):
-                    if isinstance(obj, dict):
-                        for k, v in obj.items():
-                            yield from collect_strings(v)
-                    elif isinstance(obj, list):
-                        for item in obj:
-                            yield from collect_strings(item)
-                    elif isinstance(obj, str):
-                        yield obj
+                        def collect_strings(obj):
+                            if isinstance(obj, dict):
+                                for k, v in obj.items():
+                                    yield from collect_strings(v)
+                            elif isinstance(obj, list):
+                                for item in obj:
+                                    yield from collect_strings(item)
+                            elif isinstance(obj, str):
+                                yield obj
 
-                for s in collect_strings(data):
-                    if "youtube.com/redirect" in s or "q=" in s:
-                        try:
-                            parsed = urllib.parse.urlparse(s)
-                            q_vals = urllib.parse.parse_qs(parsed.query).get("q", [])
-                            for q_val in q_vals:
-                                target_link = urllib.parse.unquote(q_val).strip()
-                                if target_link.startswith("http") and target_link.lower() not in seen_links:
+                        for s in collect_strings(data):
+                            if "youtube.com/redirect" in s or "q=" in s:
+                                try:
+                                    clean_s = s.replace("&amp;", "&")
+                                    parsed = urllib.parse.urlparse(clean_s)
+                                    q_vals = urllib.parse.parse_qs(parsed.query).get("q", [])
+                                    for q_val in q_vals:
+                                        target_link = urllib.parse.unquote(q_val).strip()
+                                        if target_link.startswith("http") and target_link.lower() not in seen_links:
+                                            seen_links.add(target_link.lower())
+                                            discovered_links.append(target_link)
+                                except Exception:
+                                    pass
+                            elif s.startswith("http") and any(plat in s.lower() for plat in [
+                                "instagram.com", "x.com", "twitter.com", "facebook.com", "fb.com", 
+                                "discord.gg", "discord.com", "linkedin.com", "reddit.com", "tiktok.com", "twitch.tv"
+                            ]):
+                                target_link = s.strip()
+                                if target_link.lower() not in seen_links:
                                     seen_links.add(target_link.lower())
                                     discovered_links.append(target_link)
-                        except Exception:
-                            pass
-                    elif s.startswith("http") and any(plat in s.lower() for plat in [
-                        "instagram.com", "x.com", "twitter.com", "facebook.com", "fb.com", 
-                        "discord.gg", "discord.com", "linkedin.com", "reddit.com", "tiktok.com"
-                    ]):
-                        target_link = s.strip()
-                        if target_link.lower() not in seen_links:
-                            seen_links.add(target_link.lower())
-                            discovered_links.append(target_link)
+                    except Exception as e:
+                        logger.debug(f"ytInitialData parse note for {t_url}: {e}")
+
+                # 2. Resilient fallback: extract redirect URLs and direct social URLs from raw HTML resp.text
+                raw_redirects = re.findall(r"https?:\/\/(?:www\.)?youtube\.com\/redirect\?[^\s<>\"']+", resp.text)
+                for r_url in raw_redirects:
+                    clean_r_url = r_url.replace("&amp;", "&")
+                    try:
+                        parsed = urllib.parse.urlparse(clean_r_url)
+                        q_vals = urllib.parse.parse_qs(parsed.query).get("q", [])
+                        for q_val in q_vals:
+                            target_link = urllib.parse.unquote(q_val).strip()
+                            if target_link.startswith("http") and target_link.lower() not in seen_links:
+                                seen_links.add(target_link.lower())
+                                discovered_links.append(target_link)
+                    except Exception:
+                        pass
+
+                direct_socials = re.findall(
+                    r"https?:\/\/(?:www\.)?(?:instagram\.com|x\.com|twitter\.com|facebook\.com|fb\.com|twitch\.tv|discord\.gg|discord\.com\/invite|linkedin\.com|reddit\.com)\/[a-zA-Z0-9_\.\-]{1,50}",
+                    resp.text,
+                    re.IGNORECASE
+                )
+                for d_url in direct_socials:
+                    d_url = d_url.rstrip(".,;)>\"'")
+                    if d_url.lower() not in seen_links:
+                        seen_links.add(d_url.lower())
+                        discovered_links.append(d_url)
 
                 if discovered_links:
                     break
@@ -561,6 +592,14 @@ async def fetch_via_public_fallback(target: Dict[str, Any]) -> Dict[str, Any]:
             except Exception as e:
                 logger.debug(f"Watch page scrape error: {e}")
 
+        # Resolve creator and channel identity before scraping channel links
+        channel_name = creator_name or "YouTube Creator"
+        if not channel_handle:
+            if channel_url and "@" in channel_url:
+                channel_handle = "@" + channel_url.split("@")[-1].split("/")[0]
+            else:
+                channel_handle = f"@{channel_name.lower().replace(' ', '')}"
+
         # 2. Scrape Channel Page (About / Links / Metadata)
         try:
             scraped_info = await scrape_channel_links_and_about(
@@ -574,14 +613,6 @@ async def fetch_via_public_fallback(target: Dict[str, Any]) -> Dict[str, Any]:
                 profile_image = scraped_info.get("scraped_avatar")
         except Exception as e:
             logger.debug(f"Channel scrape note: {e}")
-
-        # Fallbacks
-        channel_name = creator_name or "YouTube Creator"
-        if not channel_handle:
-            if channel_url and "@" in channel_url:
-                channel_handle = "@" + channel_url.split("@")[-1].split("/")[0]
-            else:
-                channel_handle = f"@{channel_name.lower().replace(' ', '')}"
 
         desc_sections = []
         if channel_description:

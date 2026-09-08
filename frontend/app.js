@@ -51,6 +51,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 icon: `<svg width="18" height="18" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`
             };
         }
+        if (p.includes("twitch")) {
+            return {
+                name: "Twitch",
+                color: "#FFFFFF",
+                bgColor: "#9146FF",
+                icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>`
+            };
+        }
         if (p.includes("discord")) {
             return {
                 name: "Discord",
@@ -227,7 +235,19 @@ document.addEventListener("DOMContentLoaded", () => {
             return `https://discord.com/channels/@me`;
         }
 
-        // 9. TikTok
+        // 9. Twitch
+        if (p.includes("twitch")) {
+            const cleanTwitch = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/(www\.)?twitch\.tv\//i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            if (!cleanTwitch) return "https://www.twitch.tv/";
+            return `https://www.twitch.tv/popout/${encodeURIComponent(cleanTwitch)}/chat`;
+        }
+
+        // 10. TikTok
         if (p.includes("tiktok")) {
             const cleanTt = String(rawHandleOrUrl || "")
                 .split("?")[0]
@@ -279,9 +299,13 @@ document.addEventListener("DOMContentLoaded", () => {
         })(),
         linkedInstagramAccount: (() => {
             try {
-                return (localStorage.getItem("arclent_linked_instagram") || "ummer.04").replace(/^@+/, "");
+                const stored = localStorage.getItem("arclent_linked_instagram");
+                if (stored !== null && stored !== undefined && stored.trim() !== "") {
+                    return stored.replace(/^@+/, "").trim().toLowerCase();
+                }
+                return null;
             } catch (_) {
-                return "ummer.04";
+                return null;
             }
         })(),
         isSending: false,
@@ -322,24 +346,34 @@ document.addEventListener("DOMContentLoaded", () => {
     const instagramStatusText = document.getElementById("instagram-status-text");
 
     function updateInstagramPill() {
-        if (instagramStatusText) {
+        if (!instagramStatusText) return;
+        const dot = instagramStatusPill ? instagramStatusPill.querySelector(".status-dot") : null;
+        if (state.linkedInstagramAccount) {
             instagramStatusText.textContent = `IG: @${state.linkedInstagramAccount} ✎`;
+            instagramStatusText.style.color = "#065F46";
+            if (instagramStatusPill) {
+                instagramStatusPill.style.background = "#ECFDF5";
+                instagramStatusPill.style.borderColor = "#059669";
+                instagramStatusPill.title = `Linked Instagram: @${state.linkedInstagramAccount} (Click to change)`;
+            }
+            if (dot) dot.style.background = "#10B981";
+        } else {
+            instagramStatusText.textContent = `Connect Instagram +`;
+            instagramStatusText.style.color = "#92400E";
+            if (instagramStatusPill) {
+                instagramStatusPill.style.background = "#FEF3C7";
+                instagramStatusPill.style.borderColor = "#D97706";
+                instagramStatusPill.title = "Connect your Instagram account to auto-verify video description credits";
+            }
+            if (dot) dot.style.background = "#F59E0B";
         }
     }
     updateInstagramPill();
 
     if (instagramStatusPill) {
         instagramStatusPill.addEventListener("click", () => {
-            const current = state.linkedInstagramAccount || "ummer.04";
-            const updated = prompt("Enter your Arclent linked Instagram username (for automatic video credits matching):", current);
-            if (updated && updated.trim()) {
-                state.linkedInstagramAccount = updated.trim().replace(/^@+/, "").toLowerCase();
-                try {
-                    localStorage.setItem("arclent_linked_instagram", state.linkedInstagramAccount);
-                } catch (_) {}
-                updateInstagramPill();
-                showToast(`✓ Linked Instagram set to @${state.linkedInstagramAccount}`);
-            }
+            const extracted = (state.autoVerification && state.autoVerification.extracted_accounts) || [];
+            showConnectInstagramModal(extracted);
         });
     }
 
@@ -545,6 +579,184 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const toastContainer = document.getElementById("toast-container");
     const resetButtons = document.querySelectorAll(".reset-workflow-btn");
+
+    // Modal & Banner Elements for Connecting Instagram (when description credits are detected)
+    const modalConnectInstagram = document.getElementById("modal-connect-instagram");
+    const btnModalCiClose = document.getElementById("btn-modal-ci-close");
+    const modalCiTitle = document.getElementById("modal-ci-title");
+    const modalCiDesc = document.getElementById("modal-ci-desc");
+    const modalDetectedHandlesList = document.getElementById("modal-detected-handles-list");
+    const modalCiChipsContainer = document.getElementById("modal-ci-chips-container");
+    const modalCiChipsRow = document.getElementById("modal-ci-chips-row");
+    const modalCiForm = document.getElementById("modal-ci-form");
+    const modalCiInput = document.getElementById("modal-ci-input");
+    const modalCiErr = document.getElementById("modal-ci-err");
+    const btnModalCiSubmit = document.getElementById("btn-modal-ci-submit");
+    const btnModalCiSkip = document.getElementById("btn-modal-ci-skip");
+
+    const bannerCreditsDetected = document.getElementById("banner-credits-detected");
+    const bannerCreditsHandles = document.getElementById("banner-credits-handles");
+    const btnBannerConnectIg = document.getElementById("btn-banner-connect-ig");
+
+    let currentModalExtractedHandles = [];
+
+    function showCreditsDetectedBanner(handles) {
+        if (!bannerCreditsDetected) return;
+        const list = handles && handles.length > 0 ? handles : [];
+        if (list.length === 0) {
+            bannerCreditsDetected.classList.add("hidden");
+            return;
+        }
+        const formatted = list.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
+        if (bannerCreditsHandles) bannerCreditsHandles.textContent = formatted;
+        bannerCreditsDetected.classList.remove("hidden");
+    }
+
+    function hideCreditsDetectedBanner() {
+        if (bannerCreditsDetected) bannerCreditsDetected.classList.add("hidden");
+    }
+
+    function showConnectInstagramModal(handles = [], discoveryData = null) {
+        if (!modalConnectInstagram) return;
+        currentModalExtractedHandles = Array.isArray(handles) ? handles : [];
+
+        if (currentModalExtractedHandles.length > 0) {
+            const formatted = currentModalExtractedHandles.map(h => `@${h.replace(/^@+/, '')}`).join(", ");
+            if (modalDetectedHandlesList) modalDetectedHandlesList.textContent = formatted;
+            if (modalCiTitle) modalCiTitle.textContent = "Credits are already mentioned!";
+            if (modalCiDesc) {
+                modalCiDesc.innerHTML = `Credits for <strong>${escapeHtml(formatted)}</strong> were found in the video description. To get <strong>auto-verified</strong>, connect your Instagram account.`;
+            }
+
+            if (modalCiChipsRow && modalCiChipsContainer) {
+                modalCiChipsRow.innerHTML = "";
+                currentModalExtractedHandles.forEach(h => {
+                    const cleanH = h.replace(/^@+/, "");
+                    const chip = document.createElement("button");
+                    chip.type = "button";
+                    chip.className = "modal-chip-btn";
+                    chip.textContent = `@${cleanH}`;
+                    chip.addEventListener("click", () => {
+                        if (modalCiInput) {
+                            modalCiInput.value = cleanH;
+                            modalCiInput.focus();
+                        }
+                        modalCiChipsRow.querySelectorAll(".modal-chip-btn").forEach(c => c.classList.remove("selected"));
+                        chip.classList.add("selected");
+                    });
+                    modalCiChipsRow.appendChild(chip);
+                });
+                modalCiChipsContainer.classList.remove("hidden");
+            }
+
+            // Pre-fill input if only 1 handle
+            if (currentModalExtractedHandles.length === 1 && modalCiInput) {
+                modalCiInput.value = currentModalExtractedHandles[0].replace(/^@+/, "");
+            } else if (modalCiInput && !modalCiInput.value && state.linkedInstagramAccount) {
+                modalCiInput.value = state.linkedInstagramAccount;
+            }
+        } else {
+            if (modalCiTitle) modalCiTitle.textContent = "Connect Your Instagram Account";
+            if (modalCiDesc) {
+                modalCiDesc.textContent = "Connect your Instagram account to automatically match contributor credits in video descriptions.";
+            }
+            if (modalCiChipsContainer) modalCiChipsContainer.classList.add("hidden");
+            if (modalCiInput) {
+                modalCiInput.value = state.linkedInstagramAccount || "";
+            }
+        }
+
+        if (modalCiErr) modalCiErr.classList.add("hidden");
+        modalConnectInstagram.classList.remove("hidden");
+        setTimeout(() => {
+            if (modalCiInput) modalCiInput.focus();
+        }, 60);
+    }
+
+    function hideConnectInstagramModal() {
+        if (modalConnectInstagram) {
+            modalConnectInstagram.classList.add("hidden");
+        }
+    }
+
+    if (btnBannerConnectIg) {
+        btnBannerConnectIg.addEventListener("click", () => {
+            const extracted = (state.autoVerification && state.autoVerification.extracted_accounts) || [];
+            showConnectInstagramModal(extracted);
+        });
+    }
+
+    if (modalCiForm) {
+        modalCiForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const rawVal = modalCiInput ? modalCiInput.value.trim() : "";
+            const cleanHandle = rawVal.replace(/^@+/, "").trim().toLowerCase();
+
+            if (!cleanHandle) {
+                if (modalCiErr) {
+                    modalCiErr.textContent = "Please enter your Instagram username";
+                    modalCiErr.classList.remove("hidden");
+                }
+                return;
+            }
+
+            state.linkedInstagramAccount = cleanHandle;
+            try {
+                localStorage.setItem("arclent_linked_instagram", cleanHandle);
+            } catch (_) {}
+            updateInstagramPill();
+
+            const isMatch = currentModalExtractedHandles.map(h => h.replace(/^@+/, '').toLowerCase()).includes(cleanHandle);
+
+            if (isMatch) {
+                if (state.sessionId) {
+                    try {
+                        await fetch("/api/outreach/verify-linked-account", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                session_id: state.sessionId,
+                                instagram_account: cleanHandle
+                            })
+                        });
+                    } catch (_) {}
+                }
+
+                hideConnectInstagramModal();
+                hideCreditsDetectedBanner();
+                renderAutoVerifiedSuccess({
+                    verified: true,
+                    matched_account: cleanHandle,
+                    linked_account: cleanHandle,
+                    extracted_accounts: currentModalExtractedHandles
+                });
+                showToast(`✓ Instagram @${cleanHandle} connected! Collaboration automatically verified.`);
+            } else {
+                hideConnectInstagramModal();
+                showToast(`✓ Instagram @${cleanHandle} connected.`);
+            }
+        });
+    }
+
+    if (btnModalCiClose) {
+        btnModalCiClose.addEventListener("click", () => {
+            hideConnectInstagramModal();
+        });
+    }
+
+    if (btnModalCiSkip) {
+        btnModalCiSkip.addEventListener("click", () => {
+            hideConnectInstagramModal();
+        });
+    }
+
+    if (modalConnectInstagram) {
+        modalConnectInstagram.addEventListener("click", (e) => {
+            if (e.target === modalConnectInstagram) {
+                hideConnectInstagramModal();
+            }
+        });
+    }
 
     let verificationPollInterval = null;
 
@@ -817,7 +1029,7 @@ document.addEventListener("DOMContentLoaded", () => {
         showScreen("analyzing", 2);
         updateStepper(1, "running");
 
-        const linkedAccountParam = encodeURIComponent(state.linkedInstagramAccount || "ummer.04");
+        const linkedAccountParam = encodeURIComponent(state.linkedInstagramAccount || "");
         const sseUrl = `/api/outreach/stream?youtube_url=${encodeURIComponent(youtubeUrl)}&user_role=${encodeURIComponent(state.userRole)}&linked_account=${linkedAccountParam}`;
         let eventSource = null;
         let isFinalized = false;
@@ -868,7 +1080,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     youtube_url: youtubeUrl,
                     user_role: state.userRole,
-                    linked_instagram_account: state.linkedInstagramAccount || "ummer.04"
+                    linked_instagram_account: state.linkedInstagramAccount || ""
                 })
             });
 
@@ -945,14 +1157,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // CASE 1: Automatically Verified via YouTube Description Match
         if (data.auto_verification && data.auto_verification.verified) {
+            hideCreditsDetectedBanner();
             renderAutoVerifiedSuccess(data.auto_verification);
             return;
         }
 
-        // CASE 2: Not automatically verified -> silently hide any fallback banner and continue directly to verification
+        const extracted = (data.auto_verification && data.auto_verification.extracted_accounts) || [];
+        const isUnlinked = !state.linkedInstagramAccount;
+
+        // CASE 2: Credits are already mentioned in the description and user hasn't linked Instagram
+        if (isUnlinked && extracted.length > 0) {
+            state.stage = "verify_email";
+            renderVerifyEmailStep();
+            showScreen("verifyEmail", 3);
+            showCreditsDetectedBanner(extracted);
+            showConnectInstagramModal(extracted, data);
+            return;
+        }
+
+        // CASE 3: Not automatically verified -> silently hide any fallback banner and continue directly to verification
         if (autoVerifyFallbackBanner) {
             autoVerifyFallbackBanner.classList.add("hidden");
         }
+        hideCreditsDetectedBanner();
 
         // START SPECIFICALLY FROM 1 · EMAIL (Existing Verification Workflow)
         state.stage = "verify_email";
@@ -2616,8 +2843,14 @@ document.addEventListener("DOMContentLoaded", () => {
             vShieldAudienceText.textContent = `Collaboration verified against ${audText}`;
         }
 
-        if (deliveryHeaderRow) deliveryHeaderRow.classList.add("hidden");
-        if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
+        if (deliveryHeaderRow) {
+            deliveryHeaderRow.classList.add("hidden");
+            deliveryHeaderRow.style.display = "none";
+        }
+        if (btnBackDelivery) {
+            btnBackDelivery.classList.add("hidden");
+            btnBackDelivery.style.display = "none";
+        }
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
@@ -2642,7 +2875,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const role = state.userRole || "Video editor";
         const matchedAccount = (autoVerify && autoVerify.matched_account) 
             ? autoVerify.matched_account 
-            : (state.linkedInstagramAccount || "ummer.04");
+            : (state.linkedInstagramAccount || "contributor");
         const cleanHandle = matchedAccount.replace(/^@+/, "");
         const matchedHandle = `@${cleanHandle}`;
 
@@ -2666,8 +2899,14 @@ document.addEventListener("DOMContentLoaded", () => {
         if (vAutoVideoTitle) vAutoVideoTitle.textContent = `"${videoTitle}"`;
         if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Verified Contributor)`;
 
-        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
-        if (btnBackDelivery) btnBackDelivery.classList.add("hidden");
+        if (deliveryHeaderRow) {
+            deliveryHeaderRow.classList.add("hidden");
+            deliveryHeaderRow.style.display = "none";
+        }
+        if (btnBackDelivery) {
+            btnBackDelivery.classList.add("hidden");
+            btnBackDelivery.style.display = "none";
+        }
         if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
         if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
         if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
@@ -2908,7 +3147,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 state.autoVerification = data.auto_verification || null;
 
                 if (data.stage === "auto_verified" || (data.auto_verification && data.auto_verification.verified)) {
-                    renderAutoVerifiedSuccess(data.auto_verification || { matched_account: "ummer.04" });
+                    renderAutoVerifiedSuccess(data.auto_verification || { matched_account: state.linkedInstagramAccount || "contributor" });
                 } else if (data.creator_response === "confirmed" || data.stage === "verified") {
                     renderVerificationSuccess();
                 } else if (data.creator_response === "rejected" || data.stage === "rejected") {

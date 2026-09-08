@@ -44,7 +44,7 @@ class ResearchRequest(BaseModel):
 
 class SocialProfile(BaseModel):
     """Discovered social media account."""
-    platform: str = Field(..., description="Social platform name (Instagram, X, Discord, Reddit, Facebook)")
+    platform: str = Field(..., description="Social platform name (Instagram, X, Discord, Reddit, Facebook, Twitch)")
     username: str = Field(..., description="Handle or username")
     url: str = Field(..., description="Full URL to public profile")
     source: str = Field(default="YouTube description", description="Source where profile was identified")

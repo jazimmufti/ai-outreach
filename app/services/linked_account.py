@@ -13,9 +13,11 @@ from typing import Optional
 # Default dummy linked account for testing and demonstration.
 # In production with account-linking enabled, this will be retrieved from the user session/DB.
 LINKED_INSTAGRAM_ACCOUNT: str = "ummer.04"
+DEFAULT_LINKED_PLATFORM: str = "Instagram"
 
 # Internal mutable holder allowing overrides during testing without modifying production code.
 _current_linked_account: Optional[str] = LINKED_INSTAGRAM_ACCOUNT
+_current_linked_platform: Optional[str] = DEFAULT_LINKED_PLATFORM
 
 
 def normalize_instagram_username(username: Optional[str]) -> Optional[str]:
@@ -31,22 +33,33 @@ def get_linked_instagram_account() -> Optional[str]:
     
     Returns:
         Normalized Instagram username (e.g. 'ummer.04'), or None if not linked.
-        
-    Note:
-        To integrate with real Arclent user authentication in the future, replace the
-        return statement below with:
-            return normalize_instagram_username(current_user.instagram_username)
     """
     return normalize_instagram_username(_current_linked_account)
 
 
+def get_linked_platform() -> Optional[str]:
+    """Retrieve the platform of the linked Arclent account ('Instagram', 'X', etc.)."""
+    if not _current_linked_account:
+        return None
+    return _current_linked_platform or "Instagram"
+
+
 def set_dummy_linked_instagram_account(username: Optional[str]) -> None:
     """Helper function to override the dummy linked Instagram account for unit testing."""
-    global _current_linked_account
+    global _current_linked_account, _current_linked_platform
     _current_linked_account = username
+    _current_linked_platform = "Instagram" if username else None
+
+
+def set_dummy_linked_account(username: Optional[str], platform: Optional[str] = "Instagram") -> None:
+    """Helper function to override the dummy linked account and its platform for testing."""
+    global _current_linked_account, _current_linked_platform
+    _current_linked_account = username
+    _current_linked_platform = platform if username else None
 
 
 def reset_dummy_linked_instagram_account() -> None:
-    """Reset the dummy linked Instagram account back to the default 'ummer.04'."""
-    global _current_linked_account
+    """Reset the dummy linked account back to the default 'ummer.04' on 'Instagram'."""
+    global _current_linked_account, _current_linked_platform
     _current_linked_account = LINKED_INSTAGRAM_ACCOUNT
+    _current_linked_platform = DEFAULT_LINKED_PLATFORM

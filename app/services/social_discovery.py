@@ -12,7 +12,7 @@ Restricted strictly to supported platforms:
 import re
 import logging
 import urllib.parse
-from typing import List, Set
+from typing import List, Set, Optional
 from urllib.parse import urlparse
 
 from app.models.schemas import SocialProfile
@@ -50,6 +50,12 @@ URL_PATTERNS = [
         "platform": "X",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]{1,20})", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
+    },
+    {
+        "platform": "Twitch",
+        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([a-zA-Z0-9_]{3,25})", re.I),
+        "format_url": lambda u: f"https://twitch.tv/{u.rstrip('/')}",
         "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
     },
     {
@@ -93,6 +99,12 @@ TEXT_HANDLE_PATTERNS = [
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
+        "platform": "Twitch",
+        "pattern": re.compile(r"\btwitch\b(?!\.tv|\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{3,25})\b", re.I),
+        "format_url": lambda u: f"https://twitch.tv/{u.rstrip('/')}",
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+    },
+    {
         "platform": "Discord",
         "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_-]{2,32})\b", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
@@ -124,7 +136,9 @@ def clean_social_text(text: str) -> str:
     if not text:
         return ""
     
-    unquoted = urllib.parse.unquote(text)
+    # Pre-clean HTML entities like &amp; so parse_qs can properly parse parameters
+    normalized = text.replace("&amp;", "&")
+    unquoted = urllib.parse.unquote(normalized)
     
     def replace_redirect(match):
         full_url = match.group(0)
@@ -339,3 +353,62 @@ def extract_website_urls(text: str) -> List[str]:
             continue
 
     return website_urls
+
+
+async def discover_credits_social_profiles(
+    text: str,
+    source_label: str = "YouTube description",
+    linked_platform: Optional[str] = None,
+    linked_account: Optional[str] = None
+) -> List[SocialProfile]:
+    """Find contributor/credit mentions without specified platform (e.g. 'editor: @ummer.04'),
+    verify which platforms they exist on (Instagram, X, Facebook, Twitch, Discord),
+    and construct SocialProfile objects.
+    
+    If an account is linked on a specific platform (e.g. Instagram '@ummer.04' or X '@user'),
+    and the description does not mention a platform, it assumes the linked platform.
+    """
+    if not text:
+        return []
+
+    from app.services.youtube_description_parser import extract_verified_contributor_accounts
+
+    try:
+        verified_contributors = await extract_verified_contributor_accounts(
+            text,
+            linked_platform=linked_platform,
+            linked_account=linked_account
+        )
+    except Exception as e:
+        logger.debug(f"Contributor account verification note: {e}")
+        return []
+
+    discovered: List[SocialProfile] = []
+    seen = set()
+
+    for item in verified_contributors:
+        username = item["username"]
+        role = item.get("role", "credit")
+        platforms = item.get("platforms", [])
+        urls = item.get("urls", {})
+
+        for plat in platforms:
+            url = urls.get(plat)
+            if not url:
+                continue
+            key = (plat, url.lower())
+            if key not in seen:
+                seen.add(key)
+                src = f"{source_label} ({role}: @{username})"
+                discovered.append(
+                    SocialProfile(
+                        platform=plat,
+                        username=username,
+                        url=url,
+                        source=src,
+                        confidence="high"
+                    )
+                )
+
+    return discovered
+
