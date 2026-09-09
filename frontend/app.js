@@ -754,7 +754,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --------------------------------------------------------------------------
     // Toast Utility
     // --------------------------------------------------------------------------
-    function showToast(message, type = "success") {
+    function showToast(message, type = "success", durationMs = 3500) {
         const toast = document.createElement("div");
         toast.className = `toast toast-${type}`;
         const icon = type === "success" ? "✓" : type === "error" ? "✕" : "!";
@@ -766,7 +766,8 @@ document.addEventListener("DOMContentLoaded", () => {
             toast.style.transform = "translateY(8px)";
             toast.style.transition = "all 0.25s ease";
             setTimeout(() => toast.remove(), 250);
-        }, 3500);
+        }, durationMs);
+        return toast;
     }
 
     // --------------------------------------------------------------------------
@@ -1580,35 +1581,54 @@ document.addEventListener("DOMContentLoaded", () => {
             await copyTextToClipboard(text);
 
             // Step 2: Immediate visual button & UI feedback
-            if (clickedBtn) {
-                clickedBtn.disabled = true;
-                clickedBtn.innerHTML = `<span>📋 Copied! Redirecting to ${meta.name}...</span>`;
-            }
-
             if (btnIgCopyText) {
                 btnIgCopyText.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 3500);
+                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 4500);
             }
             if (btnIgCopyDraft) {
                 btnIgCopyDraft.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 3500);
+                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 4500);
             }
             if (copyInstaBtnText) {
                 copyInstaBtnText.textContent = "✓ Message Copied!";
-                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
+                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 4500);
             }
 
-            showToast(`📋 Message copied to clipboard! Redirecting to ${meta.name}...`);
+            if (clickedBtn) {
+                clickedBtn.disabled = true;
+                clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
+            }
 
-            // Step 3: Short delay (900ms) before opening Instagram so user clearly sees the copy confirmation
-            await new Promise(resolve => setTimeout(resolve, 900));
+            const toastEl = showToast(`📋 Message copied to clipboard! Opening ${meta.name} in 2 seconds...`, "success", 4500);
+
+            // Second 1 of delay:
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (clickedBtn) {
+                clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
+            }
+            if (toastEl) {
+                const spanLast = toastEl.querySelector("span:last-child");
+                if (spanLast) {
+                    spanLast.innerHTML = `📋 Message copied to clipboard! Opening ${meta.name} in 1 second...`;
+                }
+            }
+
+            // Second 2 of delay:
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            if (clickedBtn) {
+                clickedBtn.innerHTML = `<span>🚀 Opening ${meta.name}...</span>`;
+            }
         }
 
-        // Restore button state
-        if (clickedBtn) {
-            clickedBtn.disabled = false;
-            clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
-        }
+        // Restore button state after navigation completes
+        setTimeout(() => {
+            if (clickedBtn) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
+            }
+        }, 3000);
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
         const isDesktop = !(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
