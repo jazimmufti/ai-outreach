@@ -1566,14 +1566,25 @@ document.addEventListener("DOMContentLoaded", () => {
             text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
         }
 
+        const clickedBtn = options.button || 
+            (btnIgOpenSend && !btnIgOpenSend.closest(".hidden") ? btnIgOpenSend : 
+            (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null));
+        const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
+
         // ----------------------------------------------------------------------
         // Universal Auto-Copy on Any Device (Desktop, iOS Safari, Android)
-        // Awaited immediately so document.hasFocus() is true during writeText before window.open!
+        // Shows clear feedback and pauses briefly before opening Instagram
         // ----------------------------------------------------------------------
         if (text) {
+            // Step 1: Copy message to clipboard
             await copyTextToClipboard(text);
 
-            // Immediate visual button feedback
+            // Step 2: Immediate visual button & UI feedback
+            if (clickedBtn) {
+                clickedBtn.disabled = true;
+                clickedBtn.innerHTML = `<span>📋 Copied! Redirecting to ${meta.name}...</span>`;
+            }
+
             if (btnIgCopyText) {
                 btnIgCopyText.textContent = "✓ Copied!";
                 setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 3500);
@@ -1587,7 +1598,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
             }
 
-            showToast(`📋 Message auto-copied to clipboard! Opening ${meta.name}...`);
+            showToast(`📋 Message copied to clipboard! Redirecting to ${meta.name}...`);
+
+            // Step 3: Short delay (900ms) before opening Instagram so user clearly sees the copy confirmation
+            await new Promise(resolve => setTimeout(resolve, 900));
+        }
+
+        // Restore button state
+        if (clickedBtn) {
+            clickedBtn.disabled = false;
+            clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
         }
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
@@ -2625,7 +2645,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnIgOpenSend) {
         btnIgOpenSend.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "verify_instagram" });
+            dispatchSocialOutreach({ returnScreen: "verify_instagram", button: btnIgOpenSend });
         };
     }
 
@@ -2883,7 +2903,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (openInstagramBtn) {
         openInstagramBtn.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "outreach_hub" });
+            dispatchSocialOutreach({ returnScreen: "outreach_hub", button: openInstagramBtn });
         };
     }
 
