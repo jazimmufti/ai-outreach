@@ -1570,6 +1570,17 @@ document.addEventListener("DOMContentLoaded", () => {
         // Universal Auto-Copy on Any Device (Desktop, iOS Safari, Android)
         // Awaited immediately so document.hasFocus() is true during writeText before window.open!
         // ----------------------------------------------------------------------
+        const triggerBtn = options.triggerBtn ||
+            (btnIgOpenSend && !btnIgOpenSend.closest(".hidden") ? btnIgOpenSend :
+            (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null));
+
+        let origBtnContent = null;
+        if (triggerBtn) {
+            origBtnContent = triggerBtn.innerHTML;
+            triggerBtn.innerHTML = `<span>✓ Message Copied! Redirecting to ${meta.name}...</span>`;
+            triggerBtn.disabled = true;
+        }
+
         if (text) {
             await copyTextToClipboard(text);
 
@@ -1587,7 +1598,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
             }
 
-            showToast(`📋 Message auto-copied to clipboard! Opening ${meta.name}...`);
+            showToast(`📋 Message copied to clipboard! Redirecting to ${meta.name}...`);
+        }
+
+        // Deliberate delay (800ms) so user clearly perceives the copied state before opening Instagram
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        if (triggerBtn && origBtnContent) {
+            triggerBtn.innerHTML = origBtnContent;
+            triggerBtn.disabled = false;
         }
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
@@ -2625,7 +2644,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnIgOpenSend) {
         btnIgOpenSend.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "verify_instagram" });
+            dispatchSocialOutreach({ returnScreen: "verify_instagram", triggerBtn: btnIgOpenSend });
         };
     }
 
@@ -2883,7 +2902,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (openInstagramBtn) {
         openInstagramBtn.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "outreach_hub" });
+            dispatchSocialOutreach({ returnScreen: "outreach_hub", triggerBtn: openInstagramBtn });
         };
     }
 
