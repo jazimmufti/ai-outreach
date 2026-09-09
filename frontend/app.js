@@ -702,9 +702,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const isMatch = currentModalExtractedHandles.map(h => h.replace(/^@+/, '').toLowerCase()).includes(cleanHandle);
 
+            let verifyData = null;
             if (state.sessionId) {
                 try {
-                    await fetch("/api/outreach/verify-linked-account", {
+                    const res = await fetch("/api/outreach/verify-linked-account", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
@@ -712,6 +713,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             instagram_account: cleanHandle
                         })
                     });
+                    if (res.ok) {
+                        verifyData = await res.json();
+                    }
                 } catch (_) {}
             }
 
@@ -1225,57 +1229,62 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --------------------------------------------------------------------------
-    // Universal Mobile & Desktop Clipboard Copy Support
+    // Universal Cross-Browser Clipboard Copy Engine (Chrome, Edge, Firefox, Safari, Mobile)
     // --------------------------------------------------------------------------
     function execCommandCopy(text) {
         if (!text) return false;
         let successful = false;
+        const prevActive = document.activeElement;
         try {
             const textarea = document.createElement("textarea");
             textarea.value = text;
-            // Crucial for iOS: Do NOT set readonly, as iOS Safari refuses selection on readonly inputs
-            textarea.removeAttribute("readonly");
-            textarea.setAttribute("contenteditable", "true");
-            // Keep element in-viewport so iOS selection does not abort
+            textarea.readOnly = false;
+            // Native, clean off-screen element without contenteditable
             textarea.style.position = "fixed";
             textarea.style.top = "0";
             textarea.style.left = "0";
-            textarea.style.width = "2em";
-            textarea.style.height = "2em";
+            textarea.style.width = "1px";
+            textarea.style.height = "1px";
             textarea.style.padding = "0";
+            textarea.style.margin = "0";
             textarea.style.border = "none";
             textarea.style.outline = "none";
             textarea.style.boxShadow = "none";
             textarea.style.background = "transparent";
-            textarea.style.opacity = "0.01";
-            textarea.style.fontSize = "16px"; // Prevents iOS automatic zoom on focus
+            textarea.style.opacity = "0";
+            textarea.style.fontSize = "16px";
             document.body.appendChild(textarea);
 
-            textarea.focus();
+            textarea.focus({ preventScroll: true });
             textarea.select();
-            textarea.setSelectionRange(0, textarea.value.length);
+            textarea.setSelectionRange(0, text.length);
 
             successful = document.execCommand("copy");
             document.body.removeChild(textarea);
         } catch (e) {
-            console.warn("Universal execCommand copy fallback failed:", e);
+            console.warn("Cross-browser execCommand copy fallback failed:", e);
+        }
+        if (prevActive && typeof prevActive.focus === "function") {
+            try { prevActive.focus({ preventScroll: true }); } catch (_) {}
         }
         return successful;
     }
 
-    function copyTextToClipboard(text) {
-        if (!text) return Promise.resolve(false);
-        // Step 1: Immediately execute synchronous fallback within the active user gesture
-        execCommandCopy(text);
+    async function copyTextToClipboard(text) {
+        if (!text) return false;
+        // Step 1: Immediately execute synchronous fallback within user gesture
+        let copied = execCommandCopy(text);
 
-        // Step 2: Also trigger modern async Clipboard API if supported
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-            return navigator.clipboard.writeText(text).then(() => true).catch((err) => {
+        // Step 2: Also trigger modern async Clipboard API if supported and document has focus
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function" && window.isSecureContext !== false) {
+            try {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (err) {
                 console.warn("navigator.clipboard.writeText warning (fallback already executed):", err);
-                return true;
-            });
+            }
         }
-        return Promise.resolve(true);
+        return copied;
     }
 
     function fallbackClipboardCopy(text) {
@@ -1547,12 +1556,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const subject = `Collaboration confirmation for "${videoTitle}"`;
 
         let text = options.text;
-        if (!text) {
-            if (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden")) {
-                text = igConfirmedMessageDraft.value.trim();
-            } else if (instaMessageBody && !instaMessageBody.closest(".hidden")) {
-                text = instaMessageBody.value.trim();
-            }
+        if (!text && igConfirmedMessageDraft && igConfirmedMessageDraft.value.trim()) {
+            text = igConfirmedMessageDraft.value.trim();
+        }
+        if (!text && instaMessageBody && instaMessageBody.value.trim()) {
+            text = instaMessageBody.value.trim();
         }
         if (!text) {
             text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
@@ -1560,10 +1568,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // ----------------------------------------------------------------------
         // Universal Auto-Copy on Any Device (Desktop, iOS Safari, Android)
-        // Must be initiated immediately within the synchronous click gesture!
+        // Awaited immediately so document.hasFocus() is true during writeText before window.open!
         // ----------------------------------------------------------------------
         if (text) {
-            copyTextToClipboard(text);
+            await copyTextToClipboard(text);
 
             // Immediate visual button feedback
             if (btnIgCopyText) {

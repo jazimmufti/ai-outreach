@@ -3,6 +3,12 @@
   "name": "Arclent Instagram Assistant",
   "version": "1.0.0",
   "description": "Automates opening Instagram creator DMs and populating outreach messages for Arclent collaboration verification.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "arclent-assistant@arclent.com",
+      "strict_min_version": "109.0"
+    }
+  },
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -16,6 +22,8 @@
     "https://www.instagram.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
+    "https://*.arclent.com/*",
+    "https://arclent.com/*",
     "https://*.up.railway.app/*",
     "https://ai-outreach-production-8dcc.up.railway.app/*"
   ],

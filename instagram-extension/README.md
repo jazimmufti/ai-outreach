@@ -39,22 +39,33 @@ Arclent Dashboard updates to "Instagram DM Ready" → Real-time Verification Pol
 
 ---
 
-## 📦 Installation (Developer Mode)
+## 📦 Universal Browser Installation Guide
 
-To install and use the extension locally in Google Chrome:
+This extension works across **all modern desktop browsers** (Windows, macOS, Linux). Follow the steps below for your browser:
 
-1. Open Google Chrome.
-2. In the URL address bar, navigate to:
-   ```text
-   chrome://extensions
-   ```
-3. Enable **Developer mode** using the toggle in the top-right corner.
-4. Click the **Load unpacked** button in the top-left corner.
-5. Select the `instagram-extension/` directory from this project repository:
-   ```text
-   ai-outreach/instagram-extension
-   ```
-6. The extension **"Arclent Instagram Assistant"** will now appear in your list of active extensions with its green Arclent icon.
+### 1. Google Chrome & Brave Browser
+1. In the URL bar, go to `chrome://extensions` (or `brave://extensions`).
+2. Toggle **Developer mode** on (top-right corner).
+3. Click **Load unpacked** (top-left).
+4. Select the `ai-outreach/instagram-extension` folder.
+
+### 2. Microsoft Edge
+1. In the URL bar, go to `edge://extensions`.
+2. Toggle **Developer mode** on (bottom-left sidebar or top-right).
+3. Click **Load unpacked**.
+4. Select the `ai-outreach/instagram-extension` folder.
+
+### 3. Mozilla Firefox
+1. In the URL bar, go to `about:debugging#/runtime/this-firefox`.
+2. Click **Load Temporary Add-on...**.
+3. Select the `manifest.json` file inside the `ai-outreach/instagram-extension` folder.
+4. The extension is now active in Firefox!
+
+### 4. Opera & Opera GX
+1. In the URL bar, go to `opera://extensions`.
+2. Turn on **Developer mode** (top-right).
+3. Click **Load unpacked extension**.
+4. Select the `ai-outreach/instagram-extension` folder.
 
 ---
 
