@@ -266,6 +266,33 @@ document.addEventListener("DOMContentLoaded", () => {
         return "https://www.instagram.com/direct/inbox/";
     }
 
+    // Helper: Safely open URL in a new tab without navigating away the original tab
+    function openInNewTab(url) {
+        if (!url) return;
+        let openedWin = null;
+        try {
+            openedWin = window.open(url, "_blank", "noopener,noreferrer");
+        } catch (e) {
+            console.warn("window.open failed:", e);
+        }
+
+        if (!openedWin || openedWin.closed || typeof openedWin.closed === "undefined") {
+            try {
+                const a = document.createElement("a");
+                a.href = url;
+                a.target = "_blank";
+                a.rel = "noopener noreferrer";
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    try { document.body.removeChild(a); } catch (_) {}
+                }, 200);
+            } catch (err) {
+                console.warn("Anchor click fallback failed:", err);
+            }
+        }
+    }
+
     // --------------------------------------------------------------------------
     // State Management
     // --------------------------------------------------------------------------
@@ -305,10 +332,23 @@ document.addEventListener("DOMContentLoaded", () => {
         pendingExtensionSession: null
     };
 
-    // Ensure stale linked account is removed on fresh initialization
+    // Default assumed connected account for the user (@ummer.04)
+    // Allows testing unlinked cases via ?unlinked=true or localStorage
     try {
-        localStorage.removeItem("arclent_linked_instagram");
-    } catch (_) {}
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceUnlinked = urlParams.get("unlinked") === "true" || urlParams.get("unlinked") === "1" || urlParams.get("connected") === "false";
+        const storedLinked = localStorage.getItem("arclent_linked_instagram");
+        if (forceUnlinked || storedLinked === "unlinked" || storedLinked === "none") {
+            state.linkedInstagramAccount = null;
+        } else if (storedLinked) {
+            state.linkedInstagramAccount = storedLinked.replace(/^@+/, "");
+        } else {
+            // Assume @ummer.04 Instagram account is already connected by default
+            state.linkedInstagramAccount = "ummer.04";
+        }
+    } catch (_) {
+        state.linkedInstagramAccount = "ummer.04";
+    }
 
     function saveSessionState() {
         if (!state.sessionId) return;
@@ -1553,20 +1593,20 @@ document.addEventListener("DOMContentLoaded", () => {
         const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
         if (clickedBtn) {
             clickedBtn.disabled = true;
-            clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
+            clickedBtn.innerHTML = `<span>📋 Copied! Opening in 4s...</span>`;
         }
 
         if (btnIgCopyText) {
             btnIgCopyText.textContent = "✓ Copied!";
-            setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 4500);
+            setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 5000);
         }
         if (btnIgCopyDraft) {
             btnIgCopyDraft.textContent = "✓ Copied!";
-            setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 4500);
+            setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 5000);
         }
         if (copyInstaBtnText) {
             copyInstaBtnText.textContent = "✓ Message Copied!";
-            setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 4500);
+            setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 5000);
         }
 
         const overlay = document.getElementById("copy-redirect-overlay");
@@ -1576,24 +1616,38 @@ document.addEventListener("DOMContentLoaded", () => {
         const timerEl = document.getElementById("copy-redirect-timer");
 
         if (titleEl) titleEl.textContent = "Message Copied to Clipboard!";
-        if (timerEl) timerEl.textContent = "2";
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (timerEl) timerEl.textContent = "4";
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">4</strong>s... Just paste (Ctrl+V) into the chat.`;
         if (previewEl && text) {
             const previewClean = text.replace(/\s+/g, " ").trim();
             previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
         }
         if (overlay) overlay.classList.add("active");
 
-        showToast(`📋 Message copied to clipboard! Opening ${meta.name} in 2 seconds...`, "success", 4000);
+        // Bottom right corner toast removed per user request (top overlay already informs user)
 
-        // Tick second 1
+        // Tick second 1 (3 seconds remaining)
+        await new Promise(r => setTimeout(r, 1000));
+        const timer3 = document.getElementById("copy-redirect-timer");
+        if (timer3) timer3.textContent = "3";
+        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 3s...</span>`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">3</strong>s... Just paste (Ctrl+V) into the chat.`;
+
+        // Tick second 2 (2 seconds remaining)
+        await new Promise(r => setTimeout(r, 1000));
+        const timer2 = document.getElementById("copy-redirect-timer");
+        if (timer2) timer2.textContent = "2";
+        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... Just paste (Ctrl+V) into the chat.`;
+
+        // Tick second 3 (1 second remaining)
         await new Promise(r => setTimeout(r, 1000));
         const timer1 = document.getElementById("copy-redirect-timer");
         if (timer1) timer1.textContent = "1";
         if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
         if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">1</strong>s... Just paste (Ctrl+V) into the chat.`;
 
-        // Tick second 2
+        // Tick second 4 (0s -> opening)
         await new Promise(r => setTimeout(r, 1000));
         if (clickedBtn) clickedBtn.innerHTML = `<span>🚀 Opening ${meta.name}...</span>`;
         if (subEl) subEl.innerHTML = `Opening ${meta.name} now...`;
@@ -1661,73 +1715,53 @@ document.addEventListener("DOMContentLoaded", () => {
                         sessionId: state.sessionId
                     });
                 } else {
-                    let openedWin = null;
-                    try {
-                        openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
-                        if (!openedWin) {
-                            window.location.href = dmUrl;
-                        }
-                    } catch (err) {
-                        console.warn("Failed to open DM window, falling back to window.location:", err);
-                        window.location.href = dmUrl;
+                    // Open Instagram in a new tab
+                    openInNewTab(dmUrl);
+
+                    // Transition original tab to Confirmation Status
+                    state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
+                    state.stage = "sent";
+                    state.selectedChannel = platformName.toLowerCase();
+                    saveSessionState();
+
+                    if (vDmReadySub) {
+                        vDmReadySub.textContent = `Your draft message was copied to clipboard and ${meta.name} was opened in a new tab.`;
                     }
+                    if (vDmReadyGuideText) {
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name} in a new tab. Just paste (Ctrl+V) your message and click Send. <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">If the new tab was blocked by your browser, <a href="${dmUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">click here to open ${meta.name} ↗</a></span>`;
+                    }
+
+                    if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+                    if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
+                    if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
+                    if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+                    if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                    if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+                    showScreen("deliverySuccess", 4);
+
+                    // Notify backend of social outreach dispatch
+                    if (state.sessionId) {
+                        const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
+                        fetch("/api/outreach/record-social-outreach", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                session_id: state.sessionId,
+                                platform: platformName,
+                                handle: handle,
+                                sender_handle: state.senderHandle || null,
+                                sender_identity: senderIdentity,
+                                message: text
+                            })
+                        }).catch(() => {});
+                    }
+
+                    // Start live verification polling
+                    startVerificationPolling();
                 }
             }
         });
-
-        if (extensionInstalled) {
-            return;
-        }
-
-        // Notify backend of social outreach dispatch
-        if (state.sessionId) {
-            const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
-            fetch("/api/outreach/record-social-outreach", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    session_id: state.sessionId,
-                    platform: platformName,
-                    handle: handle,
-                    sender_handle: state.senderHandle || null,
-                    sender_identity: senderIdentity,
-                    message: text
-                })
-            }).catch(() => {});
-        }
-
-        // Update state and transition to Live Delivery / Status Screen
-        state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
-        state.stage = "sent";
-        state.selectedChannel = platformName.toLowerCase();
-        saveSessionState();
-
-        if (vPendingRecipientSub) {
-            vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on ${meta.name}`;
-        }
-        if (vSuccessRecipientSub) {
-            vSuccessRecipientSub.textContent = `Message delivered to ${creatorName} (${handle}) on ${meta.name}`;
-        }
-        if (vRejectedRecipientSub) {
-            vRejectedRecipientSub.textContent = `Message delivered to ${creatorName} (${handle}) on ${meta.name}`;
-        }
-
-        const pendingSub = document.querySelector("#verification-pending-box .v-step-card:nth-child(2) .v-step-sub");
-        if (pendingSub) {
-            pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your ${meta.name} message.`;
-        }
-
-        if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
-        if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
-        if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
-        if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
-        if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
-        if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
-
-        showScreen("deliverySuccess", 4);
-
-        // Start live verification polling
-        startVerificationPolling();
     }
 
     // --------------------------------------------------------------------------
@@ -2190,16 +2224,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     meta: meta,
                     clickedBtn: igFoundLink,
                     openAction: () => {
-                        let openedWin = null;
-                        try {
-                            openedWin = window.open(url, "_blank", "noopener,noreferrer");
-                            if (!openedWin) {
-                                window.location.href = url;
-                            }
-                        } catch (err) {
-                            console.warn("Failed to open profile window, falling back to window.location:", err);
-                            window.location.href = url;
-                        }
+                        openInNewTab(url);
                     }
                 });
             };
