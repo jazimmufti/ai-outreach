@@ -1224,22 +1224,62 @@ document.addEventListener("DOMContentLoaded", () => {
         return generateSocialDmDraft(creatorName, videoTitle, role, "Instagram");
     }
 
-    function fallbackClipboardCopy(text) {
+    // --------------------------------------------------------------------------
+    // Universal Mobile & Desktop Clipboard Copy Support
+    // --------------------------------------------------------------------------
+    function execCommandCopy(text) {
+        if (!text) return false;
+        let successful = false;
         try {
             const textarea = document.createElement("textarea");
             textarea.value = text;
+            // Crucial for iOS: Do NOT set readonly, as iOS Safari refuses selection on readonly inputs
+            textarea.removeAttribute("readonly");
+            textarea.setAttribute("contenteditable", "true");
+            // Keep element in-viewport so iOS selection does not abort
             textarea.style.position = "fixed";
-            textarea.style.left = "-9999px";
             textarea.style.top = "0";
-            textarea.setAttribute("readonly", "");
+            textarea.style.left = "0";
+            textarea.style.width = "2em";
+            textarea.style.height = "2em";
+            textarea.style.padding = "0";
+            textarea.style.border = "none";
+            textarea.style.outline = "none";
+            textarea.style.boxShadow = "none";
+            textarea.style.background = "transparent";
+            textarea.style.opacity = "0.01";
+            textarea.style.fontSize = "16px"; // Prevents iOS automatic zoom on focus
             document.body.appendChild(textarea);
+
             textarea.focus();
             textarea.select();
-            document.execCommand("copy");
+            textarea.setSelectionRange(0, textarea.value.length);
+
+            successful = document.execCommand("copy");
             document.body.removeChild(textarea);
         } catch (e) {
-            console.warn("Fallback clipboard copy failed:", e);
+            console.warn("Universal execCommand copy fallback failed:", e);
         }
+        return successful;
+    }
+
+    function copyTextToClipboard(text) {
+        if (!text) return Promise.resolve(false);
+        // Step 1: Immediately execute synchronous fallback within the active user gesture
+        execCommandCopy(text);
+
+        // Step 2: Also trigger modern async Clipboard API if supported
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+            return navigator.clipboard.writeText(text).then(() => true).catch((err) => {
+                console.warn("navigator.clipboard.writeText warning (fallback already executed):", err);
+                return true;
+            });
+        }
+        return Promise.resolve(true);
+    }
+
+    function fallbackClipboardCopy(text) {
+        return copyTextToClipboard(text);
     }
 
     // --------------------------------------------------------------------------
@@ -1518,12 +1558,38 @@ document.addEventListener("DOMContentLoaded", () => {
             text = generateSocialDmDraft(creatorName, videoTitle, role, meta.name);
         }
 
+        // ----------------------------------------------------------------------
+        // Universal Auto-Copy on Any Device (Desktop, iOS Safari, Android)
+        // Must be initiated immediately within the synchronous click gesture!
+        // ----------------------------------------------------------------------
+        if (text) {
+            copyTextToClipboard(text);
+
+            // Immediate visual button feedback
+            if (btnIgCopyText) {
+                btnIgCopyText.textContent = "✓ Copied!";
+                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 3500);
+            }
+            if (btnIgCopyDraft) {
+                btnIgCopyDraft.textContent = "✓ Copied!";
+                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 3500);
+            }
+            if (copyInstaBtnText) {
+                copyInstaBtnText.textContent = "✓ Message Copied!";
+                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
+            }
+
+            showToast(`📋 Message auto-copied to clipboard! Opening ${meta.name}...`);
+        }
+
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
         const isDesktop = !(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-        const extensionInstalled = await isInstagramExtensionInstalled();
+        
+        // Check extension presence synchronously without adding async delays on mobile or non-extension browsers
+        const extensionInstalled = isInstagram && isDesktop && (checkDirectDomPresence() || !!state.extensionInstalled);
 
         // Branch 1: Desktop Chrome with Extension Installed for Instagram
-        if (isInstagram && isDesktop && extensionInstalled) {
+        if (extensionInstalled) {
             await dispatchInstagramWithExtension({
                 username: handle,
                 message: text,
@@ -1532,23 +1598,21 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Branch 2: Mobile or Desktop without Extension -> Direct Message URL + Clipboard Fallback
+        // Branch 2: Mobile or Desktop without Extension -> Direct Message URL (e.g. ig.me/m/<username>)
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
-        // Open DM URL immediately in the user gesture callstack
+        // Open DM URL synchronously within the active user gesture callstack so popup blockers never block it
         let openedWin = null;
         try {
             openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
             if (!openedWin) {
-                showToast(`Please allow popups to open ${meta.name} messaging.`, "warning");
+                window.location.href = dmUrl;
             }
         } catch (err) {
-            console.warn("Failed to open DM window:", err);
+            console.warn("Failed to open DM window, falling back to window.location:", err);
+            window.location.href = dmUrl;
         }
-
-        // Robust clipboard copy
-        fallbackClipboardCopy(text);
 
         // Notify backend of social outreach dispatch
         if (state.sessionId) {
@@ -1596,7 +1660,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
 
         showScreen("deliverySuccess", 4);
-        showToast(`✓ Message copied! Opening ${meta.name} DM... Paste the message and click Send.`);
 
         // Start live verification polling
         startVerificationPolling();
@@ -2051,6 +2114,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (igFoundLink) {
             igFoundLink.href = url;
             igFoundLink.innerHTML = `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+            igFoundLink.onclick = () => {
+                const draftText = (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden") ? igConfirmedMessageDraft.value.trim() : "") ||
+                                  (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
+                                  generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
+                if (draftText) {
+                    copyTextToClipboard(draftText);
+                    showToast(`📋 Message auto-copied to clipboard! Opening ${meta.name} profile...`);
+                }
+            };
         }
 
         // 3. Step 2 Fallback View
@@ -2526,14 +2598,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function handleCopyConfirmedDraft() {
         const text = igConfirmedMessageDraft ? igConfirmedMessageDraft.value.trim() : "";
         if (!text) return;
-        try {
-            await navigator.clipboard.writeText(text);
-        } catch (err) {
-            if (igConfirmedMessageDraft) {
-                igConfirmedMessageDraft.select();
-                document.execCommand("copy");
-            }
-        }
+        await copyTextToClipboard(text);
         if (btnIgCopyText) btnIgCopyText.textContent = "✓ Copied!";
         if (btnIgCopyDraft) btnIgCopyDraft.textContent = "✓ Copied!";
         setTimeout(() => {
@@ -2799,20 +2864,12 @@ document.addEventListener("DOMContentLoaded", () => {
         copyInstaMsgBtn.onclick = async () => {
             const text = instaMessageBody ? instaMessageBody.value.trim() : "";
             if (!text) return;
-            try {
-                await navigator.clipboard.writeText(text);
-                if (copyInstaBtnText) {
-                    copyInstaBtnText.textContent = "✓ Message Copied!";
-                    setTimeout(() => { copyInstaBtnText.textContent = "📋 Copy Message"; }, 2500);
-                }
-                showToast("✓ Message copied to clipboard!");
-            } catch (err) {
-                if (instaMessageBody) {
-                    instaMessageBody.select();
-                    document.execCommand("copy");
-                }
-                showToast("✓ Message copied to clipboard!");
+            await copyTextToClipboard(text);
+            if (copyInstaBtnText) {
+                copyInstaBtnText.textContent = "✓ Message Copied!";
+                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 2500);
             }
+            showToast("✓ Message copied to clipboard!");
         };
     }
 
