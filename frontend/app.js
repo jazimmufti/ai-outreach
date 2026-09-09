@@ -1543,6 +1543,76 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --------------------------------------------------------------------------
+    // Copy & 2-Second Redirect Countdown Notification Engine
+    // --------------------------------------------------------------------------
+    async function showCopyAndRedirectCountdown({ text, meta, clickedBtn, openAction }) {
+        if (text) {
+            await copyTextToClipboard(text);
+        }
+
+        const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
+        if (clickedBtn) {
+            clickedBtn.disabled = true;
+            clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
+        }
+
+        if (btnIgCopyText) {
+            btnIgCopyText.textContent = "✓ Copied!";
+            setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 4500);
+        }
+        if (btnIgCopyDraft) {
+            btnIgCopyDraft.textContent = "✓ Copied!";
+            setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 4500);
+        }
+        if (copyInstaBtnText) {
+            copyInstaBtnText.textContent = "✓ Message Copied!";
+            setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 4500);
+        }
+
+        const overlay = document.getElementById("copy-redirect-overlay");
+        const titleEl = document.getElementById("copy-redirect-title");
+        const subEl = document.getElementById("copy-redirect-sub");
+        const previewEl = document.getElementById("copy-redirect-preview");
+        const timerEl = document.getElementById("copy-redirect-timer");
+
+        if (titleEl) titleEl.textContent = "Message Copied to Clipboard!";
+        if (timerEl) timerEl.textContent = "2";
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (previewEl && text) {
+            const previewClean = text.replace(/\s+/g, " ").trim();
+            previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
+        }
+        if (overlay) overlay.classList.add("active");
+
+        showToast(`📋 Message copied to clipboard! Opening ${meta.name} in 2 seconds...`, "success", 4000);
+
+        // Tick second 1
+        await new Promise(r => setTimeout(r, 1000));
+        const timer1 = document.getElementById("copy-redirect-timer");
+        if (timer1) timer1.textContent = "1";
+        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">1</strong>s... Just paste (Ctrl+V) into the chat.`;
+
+        // Tick second 2
+        await new Promise(r => setTimeout(r, 1000));
+        if (clickedBtn) clickedBtn.innerHTML = `<span>🚀 Opening ${meta.name}...</span>`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} now...`;
+
+        // Execute navigation
+        if (typeof openAction === "function") {
+            await openAction();
+        }
+
+        setTimeout(() => {
+            if (overlay) overlay.classList.remove("active");
+            if (clickedBtn) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
+            }
+        }, 1500);
+    }
+
+    // --------------------------------------------------------------------------
     // Unified Social Outreach Dispatcher
     // --------------------------------------------------------------------------
     async function dispatchSocialOutreach(options = {}) {
@@ -1570,96 +1640,43 @@ document.addEventListener("DOMContentLoaded", () => {
         const clickedBtn = options.button || 
             (btnIgOpenSend && !btnIgOpenSend.closest(".hidden") ? btnIgOpenSend : 
             (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null));
-        const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
-
-        // ----------------------------------------------------------------------
-        // Universal Auto-Copy on Any Device (Desktop, iOS Safari, Android)
-        // Shows clear feedback and pauses briefly before opening Instagram
-        // ----------------------------------------------------------------------
-        if (text) {
-            // Step 1: Copy message to clipboard
-            await copyTextToClipboard(text);
-
-            // Step 2: Immediate visual button & UI feedback
-            if (btnIgCopyText) {
-                btnIgCopyText.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 4500);
-            }
-            if (btnIgCopyDraft) {
-                btnIgCopyDraft.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 4500);
-            }
-            if (copyInstaBtnText) {
-                copyInstaBtnText.textContent = "✓ Message Copied!";
-                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 4500);
-            }
-
-            if (clickedBtn) {
-                clickedBtn.disabled = true;
-                clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
-            }
-
-            const toastEl = showToast(`📋 Message copied to clipboard! Opening ${meta.name} in 2 seconds...`, "success", 4500);
-
-            // Second 1 of delay:
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (clickedBtn) {
-                clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
-            }
-            if (toastEl) {
-                const spanLast = toastEl.querySelector("span:last-child");
-                if (spanLast) {
-                    spanLast.innerHTML = `📋 Message copied to clipboard! Opening ${meta.name} in 1 second...`;
-                }
-            }
-
-            // Second 2 of delay:
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (clickedBtn) {
-                clickedBtn.innerHTML = `<span>🚀 Opening ${meta.name}...</span>`;
-            }
-        }
-
-        // Restore button state after navigation completes
-        setTimeout(() => {
-            if (clickedBtn) {
-                clickedBtn.disabled = false;
-                clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
-            }
-        }, 3000);
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
         const isDesktop = !(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
-        
-        // Check extension presence synchronously without adding async delays on mobile or non-extension browsers
         const extensionInstalled = isInstagram && isDesktop && (checkDirectDomPresence() || !!state.extensionInstalled);
 
-        // Branch 1: Desktop Chrome with Extension Installed for Instagram
-        if (extensionInstalled) {
-            await dispatchInstagramWithExtension({
-                username: handle,
-                message: text,
-                sessionId: state.sessionId
-            });
-            return;
-        }
-
-        // Branch 2: Mobile or Desktop without Extension -> Direct Message URL (e.g. ig.me/m/<username>)
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
-        // Open DM URL synchronously within the active user gesture callstack so popup blockers never block it
-        let openedWin = null;
-        try {
-            openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
-            if (!openedWin) {
-                window.location.href = dmUrl;
+        // Run the 2-second countdown with visual banner & button feedback before opening
+        await showCopyAndRedirectCountdown({
+            text: text,
+            meta: meta,
+            clickedBtn: clickedBtn,
+            openAction: async () => {
+                if (extensionInstalled) {
+                    await dispatchInstagramWithExtension({
+                        username: handle,
+                        message: text,
+                        sessionId: state.sessionId
+                    });
+                } else {
+                    let openedWin = null;
+                    try {
+                        openedWin = window.open(dmUrl, "_blank", "noopener,noreferrer");
+                        if (!openedWin) {
+                            window.location.href = dmUrl;
+                        }
+                    } catch (err) {
+                        console.warn("Failed to open DM window, falling back to window.location:", err);
+                        window.location.href = dmUrl;
+                    }
+                }
             }
-        } catch (err) {
-            console.warn("Failed to open DM window, falling back to window.location:", err);
-            window.location.href = dmUrl;
+        });
+
+        if (extensionInstalled) {
+            return;
         }
 
         // Notify backend of social outreach dispatch
@@ -2162,14 +2179,29 @@ document.addEventListener("DOMContentLoaded", () => {
         if (igFoundLink) {
             igFoundLink.href = url;
             igFoundLink.innerHTML = `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-            igFoundLink.onclick = () => {
+            igFoundLink.onclick = async (e) => {
+                if (e) e.preventDefault();
                 const draftText = (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden") ? igConfirmedMessageDraft.value.trim() : "") ||
                                   (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
                                   generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
-                if (draftText) {
-                    copyTextToClipboard(draftText);
-                    showToast(`📋 Message auto-copied to clipboard! Opening ${meta.name} profile...`);
-                }
+                
+                await showCopyAndRedirectCountdown({
+                    text: draftText,
+                    meta: meta,
+                    clickedBtn: igFoundLink,
+                    openAction: () => {
+                        let openedWin = null;
+                        try {
+                            openedWin = window.open(url, "_blank", "noopener,noreferrer");
+                            if (!openedWin) {
+                                window.location.href = url;
+                            }
+                        } catch (err) {
+                            console.warn("Failed to open profile window, falling back to window.location:", err);
+                            window.location.href = url;
+                        }
+                    }
+                });
             };
         }
 
@@ -2269,6 +2301,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         platform: s.platform,
                         handle: s.username || s.platform,
                         url: s.url,
+                        button: dmBtn,
                         returnScreen: "verify_instagram"
                     });
                 };
@@ -2827,6 +2860,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 platform: s.platform,
                                 handle: s.username,
                                 url: s.url,
+                                button: sendBtn,
                                 returnScreen: "outreach_hub"
                             });
                         };
