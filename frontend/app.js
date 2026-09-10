@@ -266,9 +266,41 @@ document.addEventListener("DOMContentLoaded", () => {
         return "https://www.instagram.com/direct/inbox/";
     }
 
-    // Helper: Safely open URL in a new tab without navigating away the original tab
-    function openInNewTab(url) {
+    // Detect mobile touch devices (iOS Safari, Android Chrome, etc.)
+    function isMobileDevice() {
+        if (typeof navigator === "undefined") return false;
+        const ua = navigator.userAgent || navigator.vendor || window.opera || "";
+        const isMobileUA = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+        const isTouchMac = navigator.maxTouchPoints > 1 && /Macintosh/i.test(ua);
+        const isNarrowTouch = typeof window !== "undefined" && window.innerWidth <= 768 && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+        return isMobileUA || isTouchMac || isNarrowTouch;
+    }
+
+    // Helper: Safely open URL. On mobile, direct navigation triggers OS Universal Links into the native app,
+    // avoids mobile browser popup blockers, and preserves session. On desktop, opens in a new tab.
+    function openPlatformUrl(url) {
         if (!url) return;
+        const isMobile = isMobileDevice();
+
+        if (isMobile) {
+            // Direct navigation on mobile triggers OS Universal Links into the native app (e.g. Instagram)
+            // without being blocked by Safari or Chrome popup blockers.
+            try {
+                window.location.href = url;
+            } catch (e) {
+                console.warn("window.location navigation failed:", e);
+                const a = document.createElement("a");
+                a.href = url;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    try { document.body.removeChild(a); } catch (_) {}
+                }, 100);
+            }
+            return;
+        }
+
+        // On Desktop:
         let openedWin = null;
         try {
             openedWin = window.open(url, "_blank", "noopener,noreferrer");
@@ -289,8 +321,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 200);
             } catch (err) {
                 console.warn("Anchor click fallback failed:", err);
+                window.location.href = url;
             }
         }
+    }
+
+    // Backwards-compatibility alias
+    function openInNewTab(url) {
+        openPlatformUrl(url);
     }
 
     // --------------------------------------------------------------------------
@@ -1583,7 +1621,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --------------------------------------------------------------------------
-    // Copy & 2-Second Redirect Countdown Notification Engine
+    // Copy & Countdown Notification Engine (Mobile-Instant, Desktop-Countdown)
     // --------------------------------------------------------------------------
     async function showCopyAndRedirectCountdown({ text, meta, clickedBtn, openAction }) {
         if (text) {
@@ -1591,6 +1629,47 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
+        const isMobile = isMobileDevice();
+
+        if (isMobile) {
+            // Mobile: Fast, reactive feedback without a blocking 4-second delay
+            // that causes mobile popup blockers to kill navigation or ruins user experience.
+            if (clickedBtn) {
+                clickedBtn.disabled = true;
+                clickedBtn.innerHTML = `<span>📋 Copied! Opening ${meta.name}...</span>`;
+            }
+
+            if (btnIgCopyText) {
+                btnIgCopyText.textContent = "✓ Copied!";
+                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 3500);
+            }
+            if (btnIgCopyDraft) {
+                btnIgCopyDraft.textContent = "✓ Copied!";
+                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 3500);
+            }
+            if (copyInstaBtnText) {
+                copyInstaBtnText.textContent = "✓ Message Copied!";
+                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
+            }
+
+            showToast(`📋 Message copied to clipboard! Opening ${meta.name}...`, "success", 2500);
+
+            // Execute navigation promptly (150ms) to preserve user activation token
+            await new Promise(r => setTimeout(r, 150));
+            if (typeof openAction === "function") {
+                await openAction();
+            }
+
+            setTimeout(() => {
+                if (clickedBtn) {
+                    clickedBtn.disabled = false;
+                    clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
+                }
+            }, 2000);
+            return;
+        }
+
+        // Desktop Countdown Flow
         if (clickedBtn) {
             clickedBtn.disabled = true;
             clickedBtn.innerHTML = `<span>📋 Copied! Opening in 4s...</span>`;
@@ -1623,8 +1702,6 @@ document.addEventListener("DOMContentLoaded", () => {
             previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
         }
         if (overlay) overlay.classList.add("active");
-
-        // Bottom right corner toast removed per user request (top overlay already informs user)
 
         // Tick second 1 (3 seconds remaining)
         await new Promise(r => setTimeout(r, 1000));
@@ -1696,13 +1773,13 @@ document.addEventListener("DOMContentLoaded", () => {
             (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null));
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
-        const isDesktop = !(/Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        const isDesktop = !isMobileDevice();
         const extensionInstalled = isInstagram && isDesktop && (checkDirectDomPresence() || !!state.extensionInstalled);
 
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
-        // Run the 2-second countdown with visual banner & button feedback before opening
+        // Run countdown notification (or instant on mobile) before opening
         await showCopyAndRedirectCountdown({
             text: text,
             meta: meta,
@@ -1715,20 +1792,20 @@ document.addEventListener("DOMContentLoaded", () => {
                         sessionId: state.sessionId
                     });
                 } else {
-                    // Open Instagram in a new tab
-                    openInNewTab(dmUrl);
-
                     // Transition original tab to Confirmation Status
                     state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
                     state.stage = "sent";
                     state.selectedChannel = platformName.toLowerCase();
                     saveSessionState();
 
+                    const isMob = isMobileDevice();
                     if (vDmReadySub) {
-                        vDmReadySub.textContent = `Your draft message was copied to clipboard and ${meta.name} was opened in a new tab.`;
+                        vDmReadySub.textContent = `Your draft message was copied to clipboard. Ready to paste and send in ${meta.name}.`;
                     }
                     if (vDmReadyGuideText) {
-                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name} in a new tab. Just paste (Ctrl+V) your message and click Send. <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">If the new tab was blocked by your browser, <a href="${dmUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">click here to open ${meta.name} ↗</a></span>`;
+                        const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
+                        const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
                     }
 
                     if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
@@ -1759,6 +1836,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Start live verification polling
                     startVerificationPolling();
+
+                    // Open Instagram or destination platform
+                    openPlatformUrl(dmUrl);
                 }
             }
         });
@@ -2224,7 +2304,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     meta: meta,
                     clickedBtn: igFoundLink,
                     openAction: () => {
-                        openInNewTab(url);
+                        openPlatformUrl(url);
                     }
                 });
             };
