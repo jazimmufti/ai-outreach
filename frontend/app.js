@@ -1621,7 +1621,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --------------------------------------------------------------------------
-    // Copy & Countdown Notification Engine (Mobile-Instant, Desktop-Countdown)
+    // Copy & 4-Second Redirect Countdown Notification Engine (Mobile & Desktop)
     // --------------------------------------------------------------------------
     async function showCopyAndRedirectCountdown({ text, meta, clickedBtn, openAction }) {
         if (text) {
@@ -1630,46 +1630,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
         const isMobile = isMobileDevice();
+        const pasteHint = isMobile ? "Just paste into the chat." : "Just paste (Ctrl+V) into the chat.";
 
-        if (isMobile) {
-            // Mobile: Fast, reactive feedback without a blocking 4-second delay
-            // that causes mobile popup blockers to kill navigation or ruins user experience.
-            if (clickedBtn) {
-                clickedBtn.disabled = true;
-                clickedBtn.innerHTML = `<span>📋 Copied! Opening ${meta.name}...</span>`;
-            }
-
-            if (btnIgCopyText) {
-                btnIgCopyText.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyText) btnIgCopyText.textContent = "📋 Copy Message"; }, 3500);
-            }
-            if (btnIgCopyDraft) {
-                btnIgCopyDraft.textContent = "✓ Copied!";
-                setTimeout(() => { if (btnIgCopyDraft) btnIgCopyDraft.textContent = "📋 Copy Text"; }, 3500);
-            }
-            if (copyInstaBtnText) {
-                copyInstaBtnText.textContent = "✓ Message Copied!";
-                setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 3500);
-            }
-
-            showToast(`📋 Message copied to clipboard! Opening ${meta.name}...`, "success", 2500);
-
-            // Execute navigation promptly (150ms) to preserve user activation token
-            await new Promise(r => setTimeout(r, 150));
-            if (typeof openAction === "function") {
-                await openAction();
-            }
-
-            setTimeout(() => {
-                if (clickedBtn) {
-                    clickedBtn.disabled = false;
-                    clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
-                }
-            }, 2000);
-            return;
-        }
-
-        // Desktop Countdown Flow
         if (clickedBtn) {
             clickedBtn.disabled = true;
             clickedBtn.innerHTML = `<span>📋 Copied! Opening in 4s...</span>`;
@@ -1696,7 +1658,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (titleEl) titleEl.textContent = "Message Copied to Clipboard!";
         if (timerEl) timerEl.textContent = "4";
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">4</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">4</strong>s... ${pasteHint}`;
         if (previewEl && text) {
             const previewClean = text.replace(/\s+/g, " ").trim();
             previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
@@ -1708,21 +1670,21 @@ document.addEventListener("DOMContentLoaded", () => {
         const timer3 = document.getElementById("copy-redirect-timer");
         if (timer3) timer3.textContent = "3";
         if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 3s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">3</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">3</strong>s... ${pasteHint}`;
 
         // Tick second 2 (2 seconds remaining)
         await new Promise(r => setTimeout(r, 1000));
         const timer2 = document.getElementById("copy-redirect-timer");
         if (timer2) timer2.textContent = "2";
         if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... ${pasteHint}`;
 
         // Tick second 3 (1 second remaining)
         await new Promise(r => setTimeout(r, 1000));
         const timer1 = document.getElementById("copy-redirect-timer");
         if (timer1) timer1.textContent = "1";
         if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">1</strong>s... Just paste (Ctrl+V) into the chat.`;
+        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">1</strong>s... ${pasteHint}`;
 
         // Tick second 4 (0s -> opening)
         await new Promise(r => setTimeout(r, 1000));
