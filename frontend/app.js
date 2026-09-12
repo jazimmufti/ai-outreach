@@ -2992,28 +2992,28 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isSendable) {
                 state.finalDiscordUserId = discUserId;
                 if (discordStatusBadge) {
-                    discordStatusBadge.textContent = "SENDABLE · BOT READY";
+                    discordStatusBadge.textContent = "READY · BOT ACTIVE";
                     discordStatusBadge.style.background = "#DCFCE7";
                     discordStatusBadge.style.color = "#166534";
                     discordStatusBadge.style.borderColor = "#22C55E";
                 }
                 if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
                 if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to Discord User ID ${discUserId}`;
+                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
             } else {
                 if (discordStatusBadge) {
-                    discordStatusBadge.textContent = "DISCOVERED · ID REQUIRED";
+                    discordStatusBadge.textContent = "USER ID NEEDED";
                     discordStatusBadge.style.background = "#FEF3C7";
                     discordStatusBadge.style.color = "#92400E";
                     discordStatusBadge.style.borderColor = "#F59E0B";
                 }
                 if (discordIdentificationBanner) {
                     discordIdentificationBanner.classList.remove("hidden");
-                    const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite / public mention";
+                    const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
                     if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
                 }
-                if (btnSendDiscordBot) btnSendDiscordBot.disabled = !state.finalDiscordUserId;
-                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message from Arclent Bot";
+                if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
             }
         } else {
             if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.add("hidden");
@@ -3169,12 +3169,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function sendDiscordOutreachMessage(opts = {}) {
-        const userId = opts.recipientId || state.finalDiscordUserId;
+        let userId = opts.recipientId || state.finalDiscordUserId;
+        if (!userId && discordUserIdInput && discordUserIdInput.value.trim()) {
+            const raw = discordUserIdInput.value.trim();
+            if (/^[0-9]{17,20}$/.test(raw)) {
+                userId = raw;
+                state.finalDiscordUserId = raw;
+            }
+        }
         if (!userId || !/^[0-9]{17,20}$/.test(String(userId).trim())) {
-            showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+            showToast("Please enter the creator's 17-20 digit Discord User ID above.", "info");
+            if (discordIdentificationBanner) discordIdentificationBanner.classList.remove("hidden");
             if (discordUserIdInput) {
                 discordUserIdInput.focus();
-                discordUserIdInput.style.borderColor = "var(--red)";
+                discordUserIdInput.style.borderColor = "var(--amber)";
             }
             return;
         }
@@ -3287,7 +3295,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = "SENDABLE · BOT READY";
+                discordStatusBadge.textContent = "READY · BOT ACTIVE";
                 discordStatusBadge.style.background = "#DCFCE7";
                 discordStatusBadge.style.color = "#166534";
                 discordStatusBadge.style.borderColor = "#22C55E";
@@ -3297,10 +3305,29 @@ document.addEventListener("DOMContentLoaded", () => {
                 hubSummaryDiscordVal.style.color = "var(--green)";
             }
             if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
-            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to Discord User ID ${rawId}`;
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${rawId}`;
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-            showToast("✓ Discord User ID set. Ready to send via Arclent Bot!");
+            showToast("✓ Discord User ID saved. Ready to send!");
         };
+
+        discordUserIdInput.addEventListener("input", () => {
+            const val = discordUserIdInput.value.trim();
+            if (/^[0-9]{17,20}$/.test(val)) {
+                discordUserIdInput.style.borderColor = "var(--green)";
+                state.finalDiscordUserId = val;
+                if (discordStatusBadge) {
+                    discordStatusBadge.textContent = "READY · BOT ACTIVE";
+                    discordStatusBadge.style.background = "#DCFCE7";
+                    discordStatusBadge.style.color = "#166534";
+                    discordStatusBadge.style.borderColor = "#22C55E";
+                }
+                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${val}`;
+            } else if (val.length > 0) {
+                discordUserIdInput.style.borderColor = "var(--amber)";
+            } else {
+                discordUserIdInput.style.borderColor = "";
+            }
+        });
     }
 
     if (btnSendDiscordBot) {
