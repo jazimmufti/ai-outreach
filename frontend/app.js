@@ -1814,69 +1814,79 @@ document.addEventListener("DOMContentLoaded", () => {
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
-        // Run countdown notification (or instant on mobile) before opening
-        await showCopyAndRedirectCountdown({
-            text: text,
-            meta: meta,
-            clickedBtn: clickedBtn,
-            openAction: async () => {
-                if (extensionInstalled) {
-                    await dispatchInstagramWithExtension({
-                        username: handle,
-                        message: text,
-                        sessionId: state.sessionId
-                    });
-                } else {
-                    // Transition original tab to Confirmation Status
-                    state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
-                    state.stage = "sent";
-                    state.selectedChannel = platformName.toLowerCase();
-                    saveSessionState();
+        const executeOpen = async () => {
+            if (extensionInstalled) {
+                await dispatchInstagramWithExtension({
+                    username: handle,
+                    message: text,
+                    sessionId: state.sessionId
+                });
+            } else {
+                // Transition original tab to Confirmation Status
+                state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
+                state.stage = "sent";
+                state.selectedChannel = platformName.toLowerCase();
+                saveSessionState();
 
-                    const isMob = isMobileDevice();
-                    if (vDmReadySub) {
-                        vDmReadySub.textContent = `Your draft message was copied to clipboard. Ready to paste and send in ${meta.name}.`;
-                    }
-                    if (vDmReadyGuideText) {
-                        const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
-                        const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
-                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
-                    }
-
-                    if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
-                    if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
-                    if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
-                    if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
-                    if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
-                    if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
-
-                    showScreen("deliverySuccess", 4);
-
-                    // Notify backend of social outreach dispatch
-                    if (state.sessionId) {
-                        const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
-                        fetch("/api/outreach/record-social-outreach", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                session_id: state.sessionId,
-                                platform: platformName,
-                                handle: handle,
-                                sender_handle: state.senderHandle || null,
-                                sender_identity: senderIdentity,
-                                message: text
-                            })
-                        }).catch(() => {});
-                    }
-
-                    // Start live verification polling
-                    startVerificationPolling();
-
-                    // Open Instagram or destination platform
-                    openPlatformUrl(dmUrl);
+                const isMob = isMobileDevice();
+                if (vDmReadySub) {
+                    vDmReadySub.textContent = `Your draft message was copied to clipboard. Ready to paste and send in ${meta.name}.`;
                 }
+                if (vDmReadyGuideText) {
+                    const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
+                    const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
+                    vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                }
+
+                if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+                if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
+                if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
+                if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+                if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+                showScreen("deliverySuccess", 4);
+
+                // Notify backend of social outreach dispatch
+                if (state.sessionId) {
+                    const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
+                    fetch("/api/outreach/record-social-outreach", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            platform: platformName,
+                            handle: handle,
+                            sender_handle: state.senderHandle || null,
+                            sender_identity: senderIdentity,
+                            message: text
+                        })
+                    }).catch(() => {});
+                }
+
+                // Start live verification polling
+                startVerificationPolling();
+
+                // Open Instagram or destination platform
+                openPlatformUrl(dmUrl);
             }
-        });
+        };
+
+        // Only add delay and countdown popup for Instagram
+        if (isInstagram) {
+            await showCopyAndRedirectCountdown({
+                text: text,
+                meta: meta,
+                clickedBtn: clickedBtn,
+                openAction: executeOpen
+            });
+        } else {
+            if (text) {
+                await copyTextToClipboard(text);
+                showToast(`✓ Copied message for ${meta.name}!`);
+            }
+            await executeOpen();
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -2334,14 +2344,23 @@ document.addEventListener("DOMContentLoaded", () => {
                                   (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
                                   generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
                 
-                await showCopyAndRedirectCountdown({
-                    text: draftText,
-                    meta: meta,
-                    clickedBtn: igFoundLink,
-                    openAction: () => {
-                        openPlatformUrl(url);
+                const isIg = (platformKey || "").toLowerCase().includes("instagram") || (platformKey || "").toLowerCase() === "ig";
+                if (isIg) {
+                    await showCopyAndRedirectCountdown({
+                        text: draftText,
+                        meta: meta,
+                        clickedBtn: igFoundLink,
+                        openAction: () => {
+                            openPlatformUrl(url);
+                        }
+                    });
+                } else {
+                    if (draftText) {
+                        await copyTextToClipboard(draftText);
+                        showToast(`✓ Copied message for ${meta.name}!`);
                     }
-                });
+                    openPlatformUrl(url);
+                }
             };
         }
 
