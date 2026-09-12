@@ -674,13 +674,24 @@ async def recheck_discord_bot_endpoint(payload: RecheckDiscordBotRequest):
     if not guild_id and session and session.discord_profile and session.discord_profile.guild_id:
         guild_id = session.discord_profile.guild_id
 
+    existing_invite = (
+        payload.invite or
+        (session.discord_profile.discord_invite if (session and session.discord_profile) else "")
+    )
+
+    if not guild_id and existing_invite:
+        inv_code = discord_service.extract_invite_code(existing_invite)
+        if inv_code:
+            resolved = await discord_service.resolve_discord_invite(inv_code)
+            if resolved and resolved.get("guild"):
+                guild_id = str(resolved["guild"].get("id"))
+
     if not guild_id:
         raise HTTPException(status_code=400, detail="No Discord guild_id available to re-check.")
 
     creator_name = session.creator.name if (session and session.creator) else ""
     channel_name = session.creator.channel_name if (session and session.creator) else creator_name
     channel_handle = session.creator.channel_handle if (session and session.creator) else ""
-    existing_invite = session.discord_profile.discord_invite if (session and session.discord_profile) else ""
 
     profile = await discord_service.recheck_bot_in_guild(
         guild_id=guild_id,

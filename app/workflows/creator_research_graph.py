@@ -236,6 +236,7 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
                 discord_info.bot_in_guild = server_profile.bot_in_guild
                 discord_info.discovery_status = server_profile.discovery_status
                 discord_info.discovery_note = server_profile.discovery_note
+                discord_info.bot_invite_url = server_profile.bot_invite_url
                 if server_profile.url and server_profile.discord_user_id:
                     discord_info.url = server_profile.url
         except Exception as e:

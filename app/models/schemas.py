@@ -374,6 +374,7 @@ class RecheckDiscordBotRequest(BaseModel):
     """Request payload to recheck whether the Arclent bot has joined a Discord server."""
     session_id: Optional[str] = None
     guild_id: Optional[str] = Field(default=None, description="Optional Discord guild / server snowflake ID")
+    invite: Optional[str] = Field(default=None, description="Optional Discord server invite URL or code")
 
 
 class RecheckDiscordBotResponse(BaseModel):

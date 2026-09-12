@@ -2749,8 +2749,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 let extraBotActionsHtml = "";
-                if (cfg.key === "discord" && detectedProfile.bot_in_guild === false) {
-                    const oauthUrl = detectedProfile.bot_invite_url || (`https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands` + (detectedProfile.guild_id ? `&guild_id=${detectedProfile.guild_id}` : ''));
+                const hasInviteOrGuildDetected = !!(
+                    (detectedProfile.discord_invite && detectedProfile.discord_invite.length > 2) ||
+                    (detectedProfile.guild_id && detectedProfile.guild_id.length > 2) ||
+                    (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) ||
+                    (detectedProfile.username && !/^[0-9]{17,20}$/.test(detectedProfile.username))
+                );
+                if (cfg.key === "discord" && (detectedProfile.bot_in_guild === false || hasInviteOrGuildDetected) && !detectedProfile.discord_user_id) {
+                    const targetGuildParam = detectedProfile.guild_id ? `&guild_id=${detectedProfile.guild_id}` : '';
+                    const oauthUrl = detectedProfile.bot_invite_url || `https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands${targetGuildParam}`;
                     extraBotActionsHtml = `
                         <a href="${oauthUrl}" target="_blank" rel="noopener" class="other-social-add-bot-link" style="background: #5865F2; color: #FFF; padding: 4px 8px; border: 1.5px solid var(--black); font-size: 11px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; border-radius: 2px;" title="Invite Arclent Bot to this server">Add Bot ↗</a>
                         <button type="button" class="other-social-recheck-btn" style="background: var(--bg-cream); border: 1.5px solid var(--black); padding: 4px 6px; font-size: 11px; font-weight: 700; cursor: pointer;" title="Re-check if bot has joined">↻</button>
@@ -3443,18 +3450,27 @@ document.addEventListener("DOMContentLoaded", () => {
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
         } else if (disc) {
+            const hasInviteOrGuild = !!(
+                (disc.discord_invite && disc.discord_invite.length > 2) ||
+                (disc.guild_id && disc.guild_id.length > 2) ||
+                (disc.url && (disc.url.includes("discord.gg") || disc.url.includes("discord.com/invite") || disc.url.includes("discord.io") || disc.url.includes("discord.me"))) ||
+                (disc.username && !/^[0-9]{17,20}$/.test(disc.username) && disc.username.toLowerCase() !== "discord")
+            );
+            const isBotAbsent = (disc.bot_in_guild === false) || hasInviteOrGuild;
+
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = disc.bot_in_guild === false ? "BOT NOT IN SERVER" : "USER ID NEEDED";
+                discordStatusBadge.textContent = isBotAbsent ? "BOT NOT IN SERVER" : "USER ID NEEDED";
                 discordStatusBadge.style.background = "#FEF3C7";
                 discordStatusBadge.style.color = "#92400E";
                 discordStatusBadge.style.borderColor = "#F59E0B";
             }
-            if (disc.bot_in_guild === false && discordAddBotBanner) {
+            if (isBotAbsent && discordAddBotBanner) {
                 discordAddBotBanner.classList.remove("hidden");
-                const oauthUrl = disc.bot_invite_url || (`https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands` + (disc.guild_id ? `&guild_id=${disc.guild_id}` : ''));
+                const targetGuildParam = disc.guild_id ? `&guild_id=${disc.guild_id}` : '';
+                const oauthUrl = disc.bot_invite_url || `https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands${targetGuildParam}`;
                 if (btnAddBotOauth) btnAddBotOauth.href = oauthUrl;
-                if (discordAddBotTitle && disc.guild_name) {
-                    discordAddBotTitle.textContent = `Arclent Bot not in "${disc.guild_name}"`;
+                if (discordAddBotTitle) {
+                    discordAddBotTitle.textContent = disc.guild_name ? `Arclent Bot not in "${disc.guild_name}"` : "Arclent Bot Not in Server";
                 }
             } else if (discordAddBotBanner) {
                 discordAddBotBanner.classList.add("hidden");
@@ -3656,6 +3672,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Helper: Discord Draft and Dispatch Handlers
     async function recheckDiscordBotPresence(guildId) {
         const targetGuildId = guildId || (state.discordProfile && state.discordProfile.guild_id) || null;
+        const targetInvite = (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url)) || null;
         if (btnRecheckText) btnRecheckText.innerHTML = `<span class="analyzing-spinner" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 4px;"></span> Checking...`;
         if (btnRecheckDiscordBot) btnRecheckDiscordBot.disabled = true;
 
@@ -3666,7 +3683,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     session_id: state.sessionId,
-                    guild_id: targetGuildId
+                    guild_id: targetGuildId,
+                    invite: targetInvite
                 })
             });
             const data = await resp.json().catch(() => ({}));
