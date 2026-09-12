@@ -2383,80 +2383,356 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!igOtherSocialsList) return;
         igOtherSocialsList.innerHTML = "";
 
-        const allSocials = filterCleanSocials(state.socialProfiles || []);
+        const cleanSocials = filterCleanSocials(state.socialProfiles || []);
         const activeProfile = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile;
         const activePlatform = (activeProfile ? activeProfile.platform : "Instagram").toLowerCase();
         const activeHandle = (state.finalInstagramHandle || (activeProfile ? formatHandle(activeProfile.username) : "")).toLowerCase();
-        
-        if (igOtherSocialsCount) {
-            igOtherSocialsCount.textContent = allSocials.length;
-        }
 
-        if (allSocials.length === 0) {
-            igOtherSocialsList.innerHTML = `<div class="other-socials-empty">No additional social media profiles found in channel metadata.</div>`;
-            return;
-        }
-
-        allSocials.forEach(s => {
-            const meta = getSocialMediaMeta(s.platform);
-            const formatted = formatHandle(s.username || s.platform);
-            const sPlatform = (s.platform || "").toLowerCase();
-            
-            // Mark selected if matching active social profile
-            let isSelected = false;
-            if (state.selectedSocialProfile) {
-                isSelected = (s === state.selectedSocialProfile) || 
-                             (s.url && state.selectedSocialProfile.url && s.url === state.selectedSocialProfile.url) ||
-                             (sPlatform === (state.selectedSocialProfile.platform || "").toLowerCase() && formatted.toLowerCase() === formatHandle(state.selectedSocialProfile.username || state.selectedSocialProfile.platform).toLowerCase());
-            } else {
-                isSelected = (sPlatform === activePlatform) && (formatted.toLowerCase() === activeHandle);
+        // Strictly target and display only these 4 platforms
+        const platformsConfig = [
+            {
+                key: "instagram",
+                platformName: "Instagram",
+                displayName: "INSTAGRAM",
+                enterButtonLabel: "Enter Handle",
+                placeholder: "Enter Instagram handle (e.g. @creator)",
+                getProfile: () => {
+                    if (state.instagramProfile && (state.instagramProfile.username || state.finalInstagramHandle)) {
+                        const uname = state.finalInstagramHandle || formatHandle(state.instagramProfile.username);
+                        return {
+                            platform: "Instagram",
+                            username: uname,
+                            url: state.finalInstagramUrl || state.instagramProfile.url || `https://instagram.com/${uname.replace('@', '')}`
+                        };
+                    }
+                    const found = cleanSocials.find(s => (s.platform || "").toLowerCase().includes("instagram"));
+                    if (found && (found.username || found.url)) {
+                        return found;
+                    }
+                    return null;
+                },
+                save: (val) => {
+                    const clean = formatHandle(val);
+                    if (!clean || clean.length < 2) {
+                        showToast("Please enter a valid Instagram handle.", "error");
+                        return false;
+                    }
+                    state.finalInstagramHandle = clean;
+                    state.finalInstagramUrl = `https://instagram.com/${clean.replace('@', '')}`;
+                    state.instagramProfile = {
+                        platform: "Instagram",
+                        username: clean,
+                        url: state.finalInstagramUrl,
+                        source: "Manual entry"
+                    };
+                    if (!state.socialProfiles) state.socialProfiles = [];
+                    const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase().includes("instagram"));
+                    if (idx >= 0) state.socialProfiles[idx] = state.instagramProfile;
+                    else state.socialProfiles.push(state.instagramProfile);
+                    updateStep2PlatformUI(state.instagramProfile);
+                    showToast(`✓ Instagram handle ${clean} saved!`);
+                    return true;
+                }
+            },
+            {
+                key: "x",
+                platformName: "X (Twitter)",
+                displayName: "X (TWITTER)",
+                enterButtonLabel: "Enter Handle",
+                placeholder: "Enter X handle (e.g. @creator)",
+                getProfile: () => {
+                    const found = cleanSocials.find(s => {
+                        const p = (s.platform || "").toLowerCase();
+                        return p === "x" || p.includes("twitter") || p.includes("x/");
+                    });
+                    if (found && (found.username || found.url)) {
+                        return found;
+                    }
+                    return null;
+                },
+                save: (val) => {
+                    const raw = val.trim().replace(/^@+/, "");
+                    if (!raw || raw.length < 2) {
+                        showToast("Please enter a valid X (Twitter) handle.", "error");
+                        return false;
+                    }
+                    const xObj = {
+                        platform: "X",
+                        username: `@${raw}`,
+                        url: `https://x.com/${raw}`,
+                        source: "Manual entry",
+                        confidence: "high"
+                    };
+                    if (!state.socialProfiles) state.socialProfiles = [];
+                    const idx = state.socialProfiles.findIndex(s => {
+                        const p = (s.platform || "").toLowerCase();
+                        return p === "x" || p.includes("twitter") || p.includes("x/");
+                    });
+                    if (idx >= 0) state.socialProfiles[idx] = xObj;
+                    else state.socialProfiles.push(xObj);
+                    showToast(`✓ X profile @${raw} saved!`);
+                    return true;
+                }
+            },
+            {
+                key: "facebook",
+                platformName: "Facebook",
+                displayName: "FACEBOOK",
+                enterButtonLabel: "Enter Profile",
+                placeholder: "Enter Facebook handle or profile URL",
+                getProfile: () => {
+                    const found = cleanSocials.find(s => {
+                        const p = (s.platform || "").toLowerCase();
+                        return p.includes("facebook") || p === "fb";
+                    });
+                    if (found && (found.username || found.url)) {
+                        return found;
+                    }
+                    return null;
+                },
+                save: (val) => {
+                    const clean = val.trim().replace(/^https?:\/\/(www\.)?facebook\.com\//i, '').replace(/^@+/, '').replace(/\/$/, '');
+                    if (!clean || clean.length < 2) {
+                        showToast("Please enter a valid Facebook profile or handle.", "error");
+                        return false;
+                    }
+                    const fbObj = {
+                        platform: "Facebook",
+                        username: `@${clean}`,
+                        url: `https://facebook.com/${clean}`,
+                        source: "Manual entry",
+                        confidence: "high"
+                    };
+                    if (!state.socialProfiles) state.socialProfiles = [];
+                    const idx = state.socialProfiles.findIndex(s => {
+                        const p = (s.platform || "").toLowerCase();
+                        return p.includes("facebook") || p === "fb";
+                    });
+                    if (idx >= 0) state.socialProfiles[idx] = fbObj;
+                    else state.socialProfiles.push(fbObj);
+                    showToast(`✓ Facebook profile @${clean} saved!`);
+                    return true;
+                }
+            },
+            {
+                key: "discord",
+                platformName: "Discord",
+                displayName: "DISCORD",
+                enterButtonLabel: "Enter User ID",
+                placeholder: "Enter 17-20 digit Discord User ID (e.g. 1029384756...)",
+                getProfile: () => {
+                    const discUserId = state.finalDiscordUserId || (state.discordProfile && state.discordProfile.discord_user_id);
+                    if (discUserId) {
+                        return {
+                            platform: "Discord",
+                            username: discUserId,
+                            discord_user_id: discUserId,
+                            url: `https://discord.com/users/${discUserId}`
+                        };
+                    }
+                    const found = cleanSocials.find(s => (s.platform || "").toLowerCase() === "discord");
+                    if (found) {
+                        const uid = found.discord_user_id || (/^[0-9]{17,20}$/.test(String(found.username || '').replace(/^@+/, '')) ? String(found.username).replace(/^@+/, '') : null);
+                        if (uid) {
+                            return {
+                                platform: "Discord",
+                                username: uid,
+                                discord_user_id: uid,
+                                url: `https://discord.com/users/${uid}`
+                            };
+                        }
+                    }
+                    return null;
+                },
+                save: (val) => {
+                    const trimmed = val.trim().replace(/[^0-9]/g, "");
+                    if (!/^[0-9]{17,20}$/.test(trimmed)) {
+                        showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                        return false;
+                    }
+                    state.finalDiscordUserId = trimmed;
+                    state.discordProfile = {
+                        status: "sendable",
+                        discord_user_id: trimmed,
+                        url: `https://discord.com/users/${trimmed}`,
+                        source: "Manual entry"
+                    };
+                    const discObj = {
+                        platform: "Discord",
+                        username: trimmed,
+                        discord_user_id: trimmed,
+                        url: `https://discord.com/users/${trimmed}`,
+                        source: "Manual entry",
+                        confidence: "high"
+                    };
+                    if (!state.socialProfiles) state.socialProfiles = [];
+                    const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase() === "discord");
+                    if (idx >= 0) state.socialProfiles[idx] = discObj;
+                    else state.socialProfiles.push(discObj);
+                    showToast(`✓ Discord User ID ${trimmed} saved!`);
+                    return true;
+                }
             }
-            
+        ];
+
+        let detectedCount = 0;
+
+        platformsConfig.forEach(cfg => {
+            const detectedProfile = cfg.getProfile();
+            const meta = getSocialMediaMeta(cfg.platformName);
+            const isDetected = !!detectedProfile;
+            if (isDetected) detectedCount++;
+
+            const wrapper = document.createElement("div");
+            wrapper.className = "other-social-card-wrapper font-mono";
+
             const item = document.createElement("div");
             item.className = "other-social-item font-mono";
-            item.innerHTML = `
-                <div class="other-social-left">
-                    <div class="other-social-icon" style="background: ${meta.bgColor};">
-                        ${meta.icon}
-                    </div>
-                    <div class="other-social-meta">
-                        <span class="other-social-platform-name">${escapeHtml(meta.name)}</span>
-                        <span class="other-social-handle" title="${escapeHtml(formatted)}">${escapeHtml(formatted)}</span>
-                    </div>
-                </div>
-                <div class="other-social-actions">
-                    <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="Send DM on ${escapeHtml(meta.name)}">Send DM ↗</button>
-                    <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
-                        ${isSelected ? '✓ Selected' : 'Select'}
-                    </button>
-                </div>
-            `;
 
-            const dmBtn = item.querySelector(".other-social-open-dm-btn");
-            if (dmBtn) {
-                dmBtn.onclick = (e) => {
+            if (isDetected) {
+                const sPlatform = (detectedProfile.platform || cfg.platformName).toLowerCase();
+                const rawHandle = detectedProfile.username || detectedProfile.discord_user_id || detectedProfile.platform || "";
+                const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
+                const displayHandle = isNumericId && cfg.key === "discord"
+                    ? `User ID: ${String(rawHandle).replace(/^@+/, '')}`
+                    : formatHandle(rawHandle);
+
+                let isSelected = false;
+                if (state.selectedSocialProfile) {
+                    isSelected = (detectedProfile === state.selectedSocialProfile) ||
+                        (detectedProfile.url && state.selectedSocialProfile.url && detectedProfile.url === state.selectedSocialProfile.url) ||
+                        (sPlatform === (state.selectedSocialProfile.platform || "").toLowerCase() &&
+                         formatHandle(detectedProfile.username || '').toLowerCase() === formatHandle(state.selectedSocialProfile.username || '').toLowerCase());
+                } else {
+                    isSelected = (sPlatform === activePlatform) && (displayHandle.toLowerCase() === activeHandle);
+                }
+
+                item.innerHTML = `
+                    <div class="other-social-left">
+                        <div class="other-social-icon" style="background: ${meta.bgColor};">
+                            ${meta.icon}
+                        </div>
+                        <div class="other-social-meta">
+                            <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
+                            <span class="other-social-handle" title="${escapeHtml(displayHandle)}">${escapeHtml(displayHandle)}</span>
+                        </div>
+                    </div>
+                    <div class="other-social-actions">
+                        <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="Send DM on ${escapeHtml(meta.name)}">Send DM ↗</button>
+                        <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
+                            ${isSelected ? '✓ Selected' : 'Select'}
+                        </button>
+                    </div>
+                `;
+
+                const dmBtn = item.querySelector(".other-social-open-dm-btn");
+                if (dmBtn) {
+                    dmBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        dispatchSocialOutreach({
+                            profile: detectedProfile,
+                            platform: detectedProfile.platform || cfg.platformName,
+                            handle: detectedProfile.username || detectedProfile.discord_user_id || detectedProfile.platform,
+                            url: detectedProfile.url,
+                            button: dmBtn,
+                            returnScreen: "verify_instagram"
+                        });
+                    };
+                }
+
+                const selectBtn = item.querySelector(".other-social-select-btn");
+                if (selectBtn) {
+                    selectBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        selectActiveSocialProfile(detectedProfile);
+                    };
+                }
+            } else {
+                // Platform NOT detected
+                item.innerHTML = `
+                    <div class="other-social-left">
+                        <div class="other-social-icon" style="background: ${meta.bgColor};">
+                            ${meta.icon}
+                        </div>
+                        <div class="other-social-meta">
+                            <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
+                            <span class="other-social-handle" style="color: var(--text-muted); font-style: italic; font-weight: 500;">Not detected</span>
+                        </div>
+                    </div>
+                    <div class="other-social-actions">
+                        <button type="button" class="other-social-enter-btn" title="Enter ${escapeHtml(meta.name)} manually">
+                            <span>${escapeHtml(cfg.enterButtonLabel)}</span>
+                        </button>
+                    </div>
+                `;
+
+                const drawer = document.createElement("div");
+                drawer.className = "other-social-drawer hidden font-mono";
+                drawer.innerHTML = `
+                    <input type="text" class="retro-input font-mono other-social-manual-input" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF; border: 1.5px solid var(--black);" placeholder="${escapeHtml(cfg.placeholder)}">
+                    <button type="button" class="btn-primary other-social-drawer-save" style="font-size: 11.5px; padding: 5px 12px; height: auto; font-weight: 700;">Save</button>
+                    <button type="button" class="btn-secondary other-social-drawer-cancel" style="font-size: 11.5px; padding: 5px 9px; height: auto;">✕</button>
+                `;
+
+                const enterBtn = item.querySelector(".other-social-enter-btn");
+                const inputEl = drawer.querySelector(".other-social-manual-input");
+                const saveBtn = drawer.querySelector(".other-social-drawer-save");
+                const cancelBtn = drawer.querySelector(".other-social-drawer-cancel");
+
+                enterBtn.onclick = (e) => {
                     e.stopPropagation();
-                    dispatchSocialOutreach({
-                        profile: s,
-                        platform: s.platform,
-                        handle: s.username || s.platform,
-                        url: s.url,
-                        button: dmBtn,
-                        returnScreen: "verify_instagram"
-                    });
+                    const isHidden = drawer.classList.contains("hidden");
+                    drawer.classList.toggle("hidden", !isHidden);
+                    if (isHidden) {
+                        setTimeout(() => inputEl.focus(), 50);
+                    }
                 };
+
+                cancelBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    drawer.classList.add("hidden");
+                };
+
+                const doSave = () => {
+                    const val = inputEl.value.trim();
+                    if (!val) {
+                        inputEl.focus();
+                        inputEl.style.borderColor = "var(--red)";
+                        return;
+                    }
+                    const ok = cfg.save(val);
+                    if (ok) {
+                        renderDiscoveredOtherSocials();
+                    } else {
+                        inputEl.focus();
+                        inputEl.style.borderColor = "var(--red)";
+                    }
+                };
+
+                saveBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    doSave();
+                };
+
+                inputEl.onkeydown = (e) => {
+                    if (e.key === "Enter") {
+                        e.preventDefault();
+                        doSave();
+                    } else if (e.key === "Escape") {
+                        drawer.classList.add("hidden");
+                    }
+                };
+
+                wrapper.appendChild(drawer);
             }
 
-            const selectBtn = item.querySelector(".other-social-select-btn");
-            if (selectBtn) {
-                selectBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    selectActiveSocialProfile(s);
-                };
-            }
-
-            igOtherSocialsList.appendChild(item);
+            wrapper.insertBefore(item, wrapper.firstChild);
+            igOtherSocialsList.appendChild(wrapper);
         });
+
+        if (igOtherSocialsCount) {
+            igOtherSocialsCount.textContent = detectedCount;
+        }
     }
 
     function selectActiveSocialProfile(social) {
@@ -2464,9 +2740,25 @@ document.addEventListener("DOMContentLoaded", () => {
         state.selectedSocialProfile = social;
         state.activeSocialProfile = social;
         const meta = getSocialMediaMeta(social.platform);
-        const cleanHandle = formatHandle(social.username || social.platform);
-        const defaultBase = (social.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
+        const pLower = (social.platform || "").toLowerCase();
+        const rawHandle = social.username || social.discord_user_id || social.platform;
+        const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
+        const cleanHandle = isNumericId && pLower.includes("discord")
+            ? String(rawHandle).replace(/^@+/, '')
+            : formatHandle(rawHandle);
+
+        let defaultBase = "https://instagram.com";
+        if (pLower === "x" || pLower.includes("twitter")) defaultBase = "https://x.com";
+        else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
+        else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
+
         const url = social.url || `${defaultBase}/${cleanHandle.replace('@', '')}`;
+
+        if (pLower.includes("discord")) {
+            if (isNumericId) {
+                state.finalDiscordUserId = cleanHandle;
+            }
+        }
 
         state.instagramProfile = {
             platform: social.platform || "Instagram",
