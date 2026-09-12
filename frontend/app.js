@@ -2585,8 +2585,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (discUserId) {
                         return {
                             platform: "Discord",
-                            username: discUserId,
+                            username: (state.discordProfile && state.discordProfile.discord_username) || discUserId,
+                            discord_username: state.discordProfile ? state.discordProfile.discord_username : null,
                             discord_user_id: discUserId,
+                            guild_name: state.discordProfile ? state.discordProfile.guild_name : null,
+                            bot_in_guild: state.discordProfile ? state.discordProfile.bot_in_guild : null,
+                            discovery_status: state.discordProfile ? state.discordProfile.discovery_status : "identified",
+                            discovery_note: state.discordProfile ? state.discordProfile.discovery_note : null,
                             url: `https://discord.com/users/${discUserId}`,
                             status: "sendable"
                         };
@@ -2599,6 +2604,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: dp.discord_invite || null,
                             discord_username: dp.discord_username || null,
                             discord_user_id: dp.discord_user_id || null,
+                            guild_id: dp.guild_id || null,
+                            guild_name: dp.guild_name || null,
+                            approximate_member_count: dp.approximate_member_count || null,
+                            bot_in_guild: dp.bot_in_guild,
+                            discovery_status: dp.discovery_status || null,
+                            discovery_note: dp.discovery_note || null,
                             url: dp.url || dp.discord_invite || "https://discord.com",
                             status: dp.status || "discovered"
                         };
@@ -2611,6 +2622,11 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: found.discord_invite || (found.url && (found.url.includes("discord") || found.url.includes("discord.gg")) ? found.url : null),
                             discord_username: found.discord_username || found.username || null,
                             discord_user_id: found.discord_user_id || null,
+                            guild_id: found.guild_id || null,
+                            guild_name: found.guild_name || null,
+                            bot_in_guild: found.bot_in_guild,
+                            discovery_status: found.discovery_status || null,
+                            discovery_note: found.discovery_note || null,
                             url: found.url || found.discord_invite || "https://discord.com",
                             status: found.status || "discovered"
                         };
@@ -2669,12 +2685,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
                 
                 let displayHandle;
+                let serverBadgeHtml = "";
                 if (cfg.key === "discord") {
                     if (isNumericId || detectedProfile.discord_user_id) {
-                        displayHandle = `User ID: ${detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '')}`;
+                        const uid = detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '');
+                        const uname = detectedProfile.discord_username ? `@${detectedProfile.discord_username.replace(/^@+/, '')} · ` : "";
+                        displayHandle = `${uname}User ID: ${uid}`;
+                        if (detectedProfile.guild_name) {
+                            serverBadgeHtml = `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #16A34A; font-weight: 700; margin-top: 2px;">✓ Verified Server Owner · ${escapeHtml(detectedProfile.guild_name)}</span>`;
+                        }
                     } else if (detectedProfile.discord_invite) {
                         const m = detectedProfile.discord_invite.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
                         displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.discord_invite.replace(/^https?:\/\//i, '');
+                        if (detectedProfile.guild_name) {
+                            const botNote = detectedProfile.bot_in_guild === false
+                                ? `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #DC2626; font-weight: 700; margin-top: 2px;">${escapeHtml(detectedProfile.guild_name)} · Bot not in server</span>`
+                                : `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #D97706; font-weight: 700; margin-top: 2px;">${escapeHtml(detectedProfile.guild_name)} · Creator ID unconfirmed</span>`;
+                            serverBadgeHtml = botNote;
+                        }
                     } else if (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) {
                         const m = detectedProfile.url.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
                         displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.url.replace(/^https?:\/\//i, '');
@@ -2719,6 +2747,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <div class="other-social-meta">
                             <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
                             <span class="other-social-handle" title="${escapeHtml(displayHandle)}">${escapeHtml(displayHandle)}</span>
+                            ${serverBadgeHtml}
                         </div>
                     </div>
                     <div class="other-social-actions">
@@ -3394,7 +3423,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (discordIdentificationBanner) {
                 discordIdentificationBanner.classList.remove("hidden");
-                const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
+                let targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
+                if (disc && disc.guild_name) {
+                    const botText = disc.bot_in_guild === false ? " (Bot not in server)" : " (Server resolved)";
+                    targetStr = `${disc.guild_name}${botText} · ${targetStr}`;
+                }
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;

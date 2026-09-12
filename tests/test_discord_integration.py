@@ -12,6 +12,11 @@ from app.services.discord_service import (
     validate_snowflake,
     verify_bot_connection,
     send_dm_message,
+    resolve_discord_invite,
+    check_bot_in_guild,
+    get_guild_member,
+    search_guild_members,
+    discover_creator_in_server,
     DiscordConfigurationError,
     DiscordValidationError,
     DiscordAuthenticationError,
@@ -346,6 +351,226 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("17-20 digit numeric snowflake", response.json()["detail"])
 
+    # ------------------------------------------------------------------------
+    # 5. SERVER DISCOVERY & CREATOR IDENTIFICATION TESTS
+    # ------------------------------------------------------------------------
+
+    @patch("app.services.discord_service.httpx.AsyncClient.get")
+    async def test_resolve_discord_invite_success(self, mock_get):
+        """Test resolving an invite via GET /invites/{code}?with_counts=true."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "code": "creatorspace",
+            "guild": {
+                "id": "112233445566778899",
+                "name": "Creator Space Official",
+                "icon": "abc123iconhash"
+            },
+            "approximate_member_count": 4500,
+            "inviter": {
+                "id": "998877665544332211",
+                "username": "creator_admin"
+            }
+        }
+        mock_get.return_value = mock_resp
+
+        data = await resolve_discord_invite("https://discord.gg/creatorspace")
+        self.assertIsNotNone(data)
+        self.assertEqual(data["guild"]["name"], "Creator Space Official")
+        self.assertEqual(data["guild"]["id"], "112233445566778899")
+        self.assertEqual(data["approximate_member_count"], 4500)
+
+    @patch("app.services.discord_service.httpx.AsyncClient.get")
+    async def test_resolve_discord_invite_invalid_404(self, mock_get):
+        """Test handling expired or non-existent invite link (HTTP 404)."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_get.return_value = mock_resp
+
+        data = await resolve_discord_invite("discord.gg/expiredcode123")
+        self.assertIsNone(data)
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.httpx.AsyncClient.get")
+    async def test_check_bot_in_guild_present(self, mock_get):
+        """Test check_bot_in_guild returns guild object when bot is a member (HTTP 200)."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "id": "112233445566778899",
+            "name": "Creator Space Official",
+            "owner_id": "803511102246789123"
+        }
+        mock_get.return_value = mock_resp
+
+        guild = await check_bot_in_guild("112233445566778899")
+        self.assertIsNotNone(guild)
+        self.assertEqual(guild["owner_id"], "803511102246789123")
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.httpx.AsyncClient.get")
+    async def test_check_bot_in_guild_absent_403(self, mock_get):
+        """Test check_bot_in_guild returns None when bot is not in the server (HTTP 403 / Missing Access)."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_get.return_value = mock_resp
+
+        guild = await check_bot_in_guild("112233445566778899")
+        self.assertIsNone(guild)
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.resolve_discord_invite")
+    @patch("app.services.discord_service.check_bot_in_guild")
+    async def test_discover_creator_in_server_bot_not_in_server_fallback(self, mock_bot_in_g, mock_resolve):
+        """Test fallback status when server invite resolves but bot is not in server."""
+        mock_resolve.return_value = {
+            "code": "creatorspace",
+            "guild": {
+                "id": "112233445566778899",
+                "name": "Creator Space Official"
+            },
+            "approximate_member_count": 3000
+        }
+        mock_bot_in_g.return_value = None  # Bot is absent
+
+        profile = await discover_creator_in_server("https://discord.gg/creatorspace", creator_name="Cool Creator")
+
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile.status, "discovered")
+        self.assertEqual(profile.discovery_status, "bot_not_in_server")
+        self.assertFalse(profile.bot_in_guild)
+        self.assertEqual(profile.guild_name, "Creator Space Official")
+        self.assertIsNone(profile.discord_user_id)
+        self.assertIn("Arclent Bot is not in this server", profile.discovery_note)
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.resolve_discord_invite")
+    @patch("app.services.discord_service.check_bot_in_guild")
+    @patch("app.services.discord_service.get_guild_member")
+    async def test_discover_creator_in_server_owner_identified(self, mock_member, mock_bot_in_g, mock_resolve):
+        """Test creator identification when bot is in server and server owner matches creator."""
+        mock_resolve.return_value = {
+            "code": "creatorspace",
+            "guild": {
+                "id": "112233445566778899",
+                "name": "Creator Space Official"
+            },
+            "approximate_member_count": 1200
+        }
+        mock_bot_in_g.return_value = {
+            "id": "112233445566778899",
+            "owner_id": "803511102246789123"
+        }
+        mock_member.return_value = {
+            "user": {
+                "id": "803511102246789123",
+                "username": "coolcreator",
+                "global_name": "Cool Creator Official"
+            }
+        }
+
+        profile = await discover_creator_in_server(
+            "https://discord.gg/creatorspace",
+            creator_name="Cool Creator",
+            channel_name="Cool Creator Vlogs"
+        )
+
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile.status, "sendable")
+        self.assertEqual(profile.discovery_status, "identified")
+        self.assertTrue(profile.bot_in_guild)
+        self.assertEqual(profile.discord_user_id, "803511102246789123")
+        self.assertEqual(profile.discord_username, "coolcreator")
+        self.assertIn("Identified server owner @coolcreator", profile.discovery_note)
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.resolve_discord_invite")
+    @patch("app.services.discord_service.check_bot_in_guild")
+    @patch("app.services.discord_service.get_guild_member")
+    @patch("app.services.discord_service.search_guild_members")
+    async def test_discover_creator_in_server_member_search_identified(self, mock_search, mock_member, mock_bot_in_g, mock_resolve):
+        """Test creator identification when owner does not match, but member search finds the creator."""
+        mock_resolve.return_value = {
+            "code": "gaminghub",
+            "guild": {
+                "id": "223344556677889900",
+                "name": "Gaming Hub"
+            }
+        }
+        mock_bot_in_g.return_value = {
+            "id": "223344556677889900",
+            "owner_id": "999999999999999999"  # Some agency/alt account
+        }
+        mock_member.return_value = {
+            "user": {
+                "id": "999999999999999999",
+                "username": "server_hosting_bot",
+                "global_name": "Host Bot"
+            }
+        }
+        # Member search returns the creator
+        mock_search.return_value = [
+            {
+                "user": {
+                    "id": "702938475612345678",
+                    "username": "real_gamer",
+                    "global_name": "The Gamer"
+                }
+            }
+        ]
+
+        profile = await discover_creator_in_server(
+            "https://discord.gg/gaminghub",
+            creator_name="The Gamer"
+        )
+
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile.status, "sendable")
+        self.assertEqual(profile.discovery_status, "identified")
+        self.assertEqual(profile.discord_user_id, "702938475612345678")
+        self.assertEqual(profile.discord_username, "real_gamer")
+
+    @patch.dict("os.environ", {"DISCORD_BOT_TOKEN": "test_token"})
+    @patch("app.services.discord_service.resolve_discord_invite")
+    @patch("app.services.discord_service.check_bot_in_guild")
+    @patch("app.services.discord_service.get_guild_member")
+    @patch("app.services.discord_service.search_guild_members")
+    async def test_discover_creator_in_server_unidentified_fallback(self, mock_search, mock_member, mock_bot_in_g, mock_resolve):
+        """Test clear fallback when bot is in server but creator cannot be verified among members."""
+        mock_resolve.return_value = {
+            "code": "randomserver",
+            "guild": {
+                "id": "334455667788990011",
+                "name": "General Community"
+            }
+        }
+        mock_bot_in_g.return_value = {
+            "id": "334455667788990011",
+            "owner_id": "888888888888888888"
+        }
+        mock_member.return_value = {
+            "user": {
+                "id": "888888888888888888",
+                "username": "random_moderator",
+                "global_name": "Mod"
+            }
+        }
+        mock_search.return_value = []
+
+        profile = await discover_creator_in_server(
+            "https://discord.gg/randomserver",
+            creator_name="Completely Different Creator"
+        )
+
+        self.assertIsNotNone(profile)
+        self.assertEqual(profile.status, "discovered")
+        self.assertEqual(profile.discovery_status, "creator_not_identified")
+        self.assertTrue(profile.bot_in_guild)
+        self.assertIsNone(profile.discord_user_id)
+        self.assertIn("could not be unambiguously identified", profile.discovery_note)
+
 
 if __name__ == "__main__":
     unittest.main()
+

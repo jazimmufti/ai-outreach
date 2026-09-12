@@ -53,6 +53,16 @@ class DiscordProfile(BaseModel):
         description="Whether a valid Discord User ID is available for official bot DM dispatch"
     )
     url: Optional[str] = Field(default=None, description="Direct URL to invite or user profile")
+    guild_id: Optional[str] = Field(default=None, description="Resolved Discord guild / server snowflake ID")
+    guild_name: Optional[str] = Field(default=None, description="Resolved Discord guild / server name")
+    guild_icon: Optional[str] = Field(default=None, description="Discord server icon hash if available")
+    approximate_member_count: Optional[int] = Field(default=None, description="Approximate member count in server")
+    bot_in_guild: Optional[bool] = Field(default=None, description="Whether the Arclent Discord Bot is a member of this server")
+    discovery_status: Optional[str] = Field(
+        default=None, 
+        description="Detailed discovery status: 'identified', 'bot_not_in_server', 'creator_not_identified', 'invalid_invite', 'bot_unconfigured', 'server_resolved'"
+    )
+    discovery_note: Optional[str] = Field(default=None, description="Human-readable discovery status note")
 
 
 class SocialProfile(BaseModel):
@@ -67,6 +77,12 @@ class SocialProfile(BaseModel):
     discord_user_id: Optional[str] = Field(default=None, description="Discovered Discord snowflake user ID if applicable")
     discord_source: Optional[str] = Field(default=None, description="Source origin of Discord information")
     status: Optional[str] = Field(default=None, description="Profile outreach status ('sendable' or 'discovered')")
+    guild_id: Optional[str] = Field(default=None, description="Resolved Discord guild / server snowflake ID")
+    guild_name: Optional[str] = Field(default=None, description="Resolved Discord guild / server name")
+    approximate_member_count: Optional[int] = Field(default=None, description="Approximate member count in server")
+    bot_in_guild: Optional[bool] = Field(default=None, description="Whether the Arclent Discord Bot is a member of this server")
+    discovery_status: Optional[str] = Field(default=None, description="Detailed discovery status")
+    discovery_note: Optional[str] = Field(default=None, description="Human-readable discovery status note")
 
 
 class EmailCandidate(BaseModel):
