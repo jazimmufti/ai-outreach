@@ -580,6 +580,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnCopyDiscordMsg = document.getElementById("btn-copy-discord-msg");
     const btnCopyDiscordText = document.getElementById("btn-copy-discord-text");
 
+    // Manual X Elements
+    const manualXContainer = document.getElementById("manual-x-container");
+    const manualXInput = document.getElementById("manual-x-input");
+    const btnAddXManual = document.getElementById("btn-add-x-manual");
+
     // Helper: Automatically Update Sender Handle (from Extension or Context)
     function setSenderHandle(handle, syncBackend = true) {
         if (!handle) return;
@@ -2928,145 +2933,158 @@ document.addEventListener("DOMContentLoaded", () => {
             hubSummaryIgVal.style.color = state.finalInstagramHandle ? "var(--green)" : "var(--text-muted)";
         }
 
-        // 1. Email Section
-        if (state.finalEmail) {
-            if (hubEmailBlock) hubEmailBlock.classList.remove("hidden");
-            if (workflowEmailRecipient) workflowEmailRecipient.value = state.finalEmail;
-            if (composerRecipientSourceTag) {
-                composerRecipientSourceTag.textContent = state.emailConfirmed ? "Verified Contact" : "User Provided";
-            }
-            if (workflowEmailSubject) {
-                workflowEmailSubject.value = `Collaboration confirmation for "${videoTitle}"`;
-            }
-            if (workflowEmailBody) {
-                workflowEmailBody.value = generateConfirmationDraft(creatorName, videoTitle, state.userRole);
-            }
-            validateSendButton();
-        } else {
-            if (hubEmailBlock) hubEmailBlock.classList.add("hidden");
-        }
+        // 1. Email Section - Hidden (Focus on Discord Bot Outreach)
+        if (hubEmailBlock) hubEmailBlock.classList.add("hidden");
 
-        // 2. Instagram Section
-        if (state.finalInstagramHandle) {
-            if (hubInstagramBlock) hubInstagramBlock.classList.remove("hidden");
-            if (hubDmHeadHandle) hubDmHeadHandle.textContent = `Direct message to ${state.finalInstagramHandle}`;
-            if (instaMessageBody) {
-                instaMessageBody.value = generateInstagramDmDraft(creatorName, videoTitle, state.userRole);
-            }
-        } else {
-            if (hubInstagramBlock) hubInstagramBlock.classList.add("hidden");
-        }
+        // 2. Instagram Section - Hidden (Focus on Discord Bot Outreach)
+        if (hubInstagramBlock) hubInstagramBlock.classList.add("hidden");
 
-        // 3. Discord Bot Section
+        // 3. Discord Bot Section - Always show in Outreach Hub
+        if (hubDiscordBlock) hubDiscordBlock.classList.remove("hidden");
+        if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.remove("hidden");
+
         const disc = state.discordProfile || (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
-        if (disc || state.finalDiscordUserId) {
-            if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.remove("hidden");
-            if (hubDiscordBlock) hubDiscordBlock.classList.remove("hidden");
+        const discUserId = state.finalDiscordUserId || (disc ? (disc.discord_user_id || (/^[0-9]{17,20}$/.test(disc.username || '') ? disc.username : null)) : null);
+        const isSendable = !!discUserId;
 
-            const discUserId = state.finalDiscordUserId || (disc ? (disc.discord_user_id || (/^[0-9]{17,20}$/.test(disc.username || '') ? disc.username : null)) : null);
-            const isSendable = !!discUserId;
-
-            if (hubSummaryDiscordVal) {
-                if (discUserId) {
-                    hubSummaryDiscordVal.textContent = `User ID: ${discUserId}`;
-                    hubSummaryDiscordVal.style.color = "var(--green)";
-                } else if (disc && (disc.discord_username || disc.username)) {
-                    hubSummaryDiscordVal.textContent = `Handle: ${disc.discord_username || disc.username}`;
-                    hubSummaryDiscordVal.style.color = "var(--text-main)";
-                } else if (disc && (disc.discord_invite || disc.url)) {
-                    hubSummaryDiscordVal.textContent = `Invite: ${disc.discord_invite || disc.url}`;
-                    hubSummaryDiscordVal.style.color = "var(--text-main)";
-                } else {
-                    hubSummaryDiscordVal.textContent = "Discovered";
-                    hubSummaryDiscordVal.style.color = "var(--text-muted)";
-                }
-            }
-
-            if (discordMessageBody) {
-                const currentVal = discordMessageBody.value ? discordMessageBody.value.trim() : "";
-                if (!currentVal || !currentVal.includes("/verify")) {
-                    discordMessageBody.value = generateDiscordDmDraft(creatorName, videoTitle, state.userRole);
-                }
-            }
-
-            if (isSendable) {
-                state.finalDiscordUserId = discUserId;
-                if (discordStatusBadge) {
-                    discordStatusBadge.textContent = "READY · BOT ACTIVE";
-                    discordStatusBadge.style.background = "#DCFCE7";
-                    discordStatusBadge.style.color = "#166534";
-                    discordStatusBadge.style.borderColor = "#22C55E";
-                }
-                if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
-                if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
+        if (hubSummaryDiscordVal) {
+            if (discUserId) {
+                hubSummaryDiscordVal.textContent = `User ID: ${discUserId}`;
+                hubSummaryDiscordVal.style.color = "var(--green)";
+            } else if (disc && (disc.discord_username || disc.username)) {
+                hubSummaryDiscordVal.textContent = `Handle: ${disc.discord_username || disc.username}`;
+                hubSummaryDiscordVal.style.color = "var(--text-main)";
+            } else if (disc && (disc.discord_invite || disc.url)) {
+                hubSummaryDiscordVal.textContent = `Invite: ${disc.discord_invite || disc.url}`;
+                hubSummaryDiscordVal.style.color = "var(--text-main)";
             } else {
-                if (discordStatusBadge) {
-                    discordStatusBadge.textContent = "USER ID NEEDED";
-                    discordStatusBadge.style.background = "#FEF3C7";
-                    discordStatusBadge.style.color = "#92400E";
-                    discordStatusBadge.style.borderColor = "#F59E0B";
-                }
-                if (discordIdentificationBanner) {
-                    discordIdentificationBanner.classList.remove("hidden");
-                    const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
-                    if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
-                }
-                if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
+                hubSummaryDiscordVal.textContent = "Not detected (Manual)";
+                hubSummaryDiscordVal.style.color = "var(--text-muted)";
             }
-        } else {
-            if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.add("hidden");
-            if (hubDiscordBlock) hubDiscordBlock.classList.add("hidden");
         }
 
-        // 3. Other Socials Grid (Displays all other channels including other Instagram profiles)
-        const currentIg = (state.finalInstagramHandle || "").toLowerCase().replace('@', '');
+        if (discordMessageBody) {
+            const currentVal = discordMessageBody.value ? discordMessageBody.value.trim() : "";
+            if (!currentVal || !currentVal.includes("/verify")) {
+                discordMessageBody.value = generateDiscordDmDraft(creatorName, videoTitle, state.userRole);
+            }
+        }
+
+        if (isSendable) {
+            state.finalDiscordUserId = discUserId;
+            if (discordStatusBadge) {
+                discordStatusBadge.textContent = "READY · BOT ACTIVE";
+                discordStatusBadge.style.background = "#DCFCE7";
+                discordStatusBadge.style.color = "#166534";
+                discordStatusBadge.style.borderColor = "#22C55E";
+            }
+            if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
+        } else if (disc) {
+            if (discordStatusBadge) {
+                discordStatusBadge.textContent = "USER ID NEEDED";
+                discordStatusBadge.style.background = "#FEF3C7";
+                discordStatusBadge.style.color = "#92400E";
+                discordStatusBadge.style.borderColor = "#F59E0B";
+            }
+            if (discordIdentificationBanner) {
+                discordIdentificationBanner.classList.remove("hidden");
+                const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
+                if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
+            }
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
+        } else {
+            // Discord NOT detected from video description -> show clean manual entry
+            if (discordStatusBadge) {
+                discordStatusBadge.textContent = "ENTER USER ID";
+                discordStatusBadge.style.background = "#FEF3C7";
+                discordStatusBadge.style.color = "#92400E";
+                discordStatusBadge.style.borderColor = "#F59E0B";
+            }
+            if (discordIdentificationBanner) {
+                discordIdentificationBanner.classList.remove("hidden");
+                if (discordFoundDetails) {
+                    discordFoundDetails.innerHTML = `<span style="color: var(--text-muted);">Discord not detected in description</span>`;
+                }
+            }
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Enter creator Discord User ID to send via bot";
+        }
+
+        // 4. Other Socials Grid (Displays all other channels including Instagram, X, Reddit, LinkedIn, Facebook)
+        if (hubOtherSocialsBlock) hubOtherSocialsBlock.classList.remove("hidden");
+        
+        // Exclude Discord (already featured in the main bot card above)
         const otherSocials = (state.socialProfiles || []).filter(s => {
-            const isCurrentIg = (s.platform || "").toLowerCase() === "instagram" && (s.username || "").toLowerCase().replace('@', '') === currentIg;
-            return !isCurrentIg;
+            const p = (s.platform || "").toLowerCase();
+            return p !== "discord";
         });
 
-        if (hubOtherSocialsBlock && hubSocialsGrid) {
-            if (otherSocials.length > 0) {
-                hubOtherSocialsBlock.classList.remove("hidden");
-                hubSocialsGrid.innerHTML = "";
-                otherSocials.forEach(s => {
-                    const meta = getSocialMediaMeta(s.platform);
-                    const card = document.createElement("div");
-                    card.className = "social-card font-mono";
-                    card.innerHTML = `
-                        <div class="social-card-left">
-                            <div class="social-icon-wrapper" style="background: ${meta.bgColor};">
-                                ${meta.icon}
-                            </div>
-                            <div class="social-info">
-                                <span class="social-platform-title">${escapeHtml(meta.name)}</span>
-                                <span class="social-handle-text">${escapeHtml(s.username || s.platform)}</span>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-secondary hub-social-send-btn" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap; flex: 0; cursor: pointer;">
-                            <span>Send DM ↗</span>
-                        </button>
-                    `;
-                    const sendBtn = card.querySelector(".hub-social-send-btn");
-                    if (sendBtn) {
-                        sendBtn.onclick = (e) => {
-                            e.preventDefault();
-                            dispatchSocialOutreach({
-                                profile: s,
-                                platform: s.platform,
-                                handle: s.username,
-                                url: s.url,
-                                button: sendBtn,
-                                returnScreen: "outreach_hub"
-                            });
-                        };
-                    }
-                    hubSocialsGrid.appendChild(card);
+        // If creator had an Instagram handle that wasn't already in socialProfiles, include it in the grid
+        if (state.finalInstagramHandle) {
+            const cleanIg = state.finalInstagramHandle.toLowerCase().replace(/^@+/, '');
+            const hasIgInList = otherSocials.some(s => (s.platform || "").toLowerCase() === "instagram" && (s.username || "").toLowerCase().replace(/^@+/, '') === cleanIg);
+            if (!hasIgInList) {
+                otherSocials.unshift({
+                    platform: "Instagram",
+                    username: state.finalInstagramHandle,
+                    url: `https://instagram.com/${cleanIg}`,
+                    source: "Discovered profile",
+                    confidence: "high"
                 });
+            }
+        }
+
+        if (hubSocialsGrid) {
+            hubSocialsGrid.innerHTML = "";
+            otherSocials.forEach(s => {
+                const meta = getSocialMediaMeta(s.platform);
+                const card = document.createElement("div");
+                card.className = "social-card font-mono";
+                card.innerHTML = `
+                    <div class="social-card-left">
+                        <div class="social-icon-wrapper" style="background: ${meta.bgColor};">
+                            ${meta.icon}
+                        </div>
+                        <div class="social-info">
+                            <span class="social-platform-title">${escapeHtml(meta.name)}</span>
+                            <span class="social-handle-text">${escapeHtml(s.username || s.platform)}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-secondary hub-social-send-btn" style="padding: 5px 12px; font-size: 11.5px; white-space: nowrap; flex: 0; cursor: pointer;">
+                        <span>Send DM ↗</span>
+                    </button>
+                `;
+                const sendBtn = card.querySelector(".hub-social-send-btn");
+                if (sendBtn) {
+                    sendBtn.onclick = (e) => {
+                        e.preventDefault();
+                        dispatchSocialOutreach({
+                            profile: s,
+                            platform: s.platform,
+                            handle: s.username,
+                            url: s.url,
+                            button: sendBtn,
+                            returnScreen: "outreach_hub"
+                        });
+                    };
+                }
+                hubSocialsGrid.appendChild(card);
+            });
+        }
+
+        // Check if X / Twitter is present; if not, show manual X entry option
+        const hasX = (state.socialProfiles || []).some(s => {
+            const p = (s.platform || "").toLowerCase();
+            return p === "x" || p === "twitter";
+        });
+        if (manualXContainer) {
+            if (hasX) {
+                manualXContainer.classList.add("hidden");
             } else {
-                hubOtherSocialsBlock.classList.add("hidden");
+                manualXContainer.classList.remove("hidden");
             }
         }
     }
@@ -3353,8 +3371,46 @@ document.addEventListener("DOMContentLoaded", () => {
         hubEditDiscordBtn.onclick = () => {
             if (hubDiscordBlock) {
                 hubDiscordBlock.classList.remove("hidden");
+                if (discordIdentificationBanner) discordIdentificationBanner.classList.remove("hidden");
                 hubDiscordBlock.scrollIntoView({ behavior: "smooth" });
-                if (discordUserIdInput) discordUserIdInput.focus();
+                if (discordUserIdInput) {
+                    discordUserIdInput.focus();
+                    discordUserIdInput.select();
+                }
+            }
+        };
+    }
+
+    if (btnAddXManual && manualXInput) {
+        const handleAddX = () => {
+            const raw = manualXInput.value.trim().replace(/^@+/, "");
+            if (!raw || raw.length < 2) {
+                showToast("Please enter a valid X (Twitter) username.", "error");
+                manualXInput.focus();
+                manualXInput.style.borderColor = "var(--red)";
+                return;
+            }
+            if (!state.socialProfiles) state.socialProfiles = [];
+            const exists = state.socialProfiles.some(s => (s.platform || "").toLowerCase() === "x" && (s.username || "").toLowerCase().replace(/^@+/, '') === raw.toLowerCase());
+            if (!exists) {
+                state.socialProfiles.push({
+                    platform: "X",
+                    username: `@${raw}`,
+                    url: `https://x.com/${raw}`,
+                    source: "Manual entry",
+                    confidence: "high"
+                });
+            }
+            manualXInput.value = "";
+            showToast(`✓ X (Twitter) profile @${raw} added!`);
+            renderOutreachHub();
+        };
+
+        btnAddXManual.onclick = handleAddX;
+        manualXInput.onkeydown = (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddX();
             }
         };
     }

@@ -503,8 +503,8 @@
                     </div>
                 </div>
 
-                <!-- 1. Email Outreach Block (if email verified) -->
-                <div id="hub-email-block" class="hub-action-section">
+                <!-- 1. Email Outreach Block (hidden in Discord focus view) -->
+                <div id="hub-email-block" class="hub-action-section hidden">
                     <div class="block-title-group" style="margin-bottom: 14px;">
                         <span class="field-label-tag font-mono">CHANNEL 1 · GMAIL OUTREACH</span>
                         <h2 class="sub-heading" style="font-size: 17px; margin-top: 4px; font-weight: 800;">Send Collaboration Confirmation Email</h2>
@@ -545,8 +545,8 @@
                     </form>
                 </div>
 
-                <!-- 2. Instagram Direct Message Block (if IG verified) -->
-                <div id="hub-instagram-block" class="hub-action-section" style="margin-top: 24px;">
+                <!-- 2. Instagram Direct Message Block (hidden in Discord focus view) -->
+                <div id="hub-instagram-block" class="hub-action-section hidden" style="margin-top: 24px;">
                     <div class="block-title-group" style="margin-bottom: 12px;">
                         <span class="field-label-tag font-mono">CHANNEL 2 · INSTAGRAM DIRECT MESSAGE</span>
                         <h2 class="sub-heading" style="font-size: 17px;">Send DM to Creator</h2>
@@ -636,13 +636,26 @@
                     </button>
                 </div>
 
-                <!-- 3. Other Social Profiles Grid (if found) -->
-                <div id="hub-other-socials-block" class="hub-action-section hidden" style="margin-top: 24px;">
+                <!-- 3. Other Social Profiles Grid -->
+                <div id="hub-other-socials-block" class="hub-action-section" style="margin-top: 24px;">
                     <div class="block-title-group" style="margin-bottom: 12px;">
-                        <span class="field-label-tag font-mono">ADDITIONAL SOCIAL PROFILES</span>
+                        <span class="field-label-tag font-mono">DISCOVERED SOCIAL PROFILES</span>
                         <h2 class="sub-heading" style="font-size: 16px;">Other Discovered Accounts</h2>
                     </div>
                     <div id="hub-socials-grid" class="social-cards-grid"></div>
+
+                    <!-- Manual X Entry if X not discovered -->
+                    <div id="manual-x-container" class="hidden" style="margin-top: 14px; background: #F8FAFC; border: 1.5px dashed #94A3B8; border-radius: 4px; padding: 12px 14px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 11.5px; font-weight: 700; color: #1E293B;">X (Twitter) not detected — Add handle manually:</span>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="manual-x-input" class="retro-input font-mono" placeholder="Enter X username (e.g. @creator)" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF;">
+                            <button type="button" id="btn-add-x-manual" class="btn-secondary" style="padding: 6px 14px; font-size: 11.5px; white-space: nowrap;">
+                                <span>+ Add X Profile</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </section>
 
