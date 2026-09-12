@@ -1809,6 +1809,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 return;
             } else {
+                const inviteUrl = (options.profile && (options.profile.discord_invite || options.profile.url)) ||
+                    (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url));
+                if (inviteUrl && (inviteUrl.includes("discord.gg") || inviteUrl.includes("discord.com") || inviteUrl.includes("discord.io") || inviteUrl.includes("discord.me"))) {
+                    fallbackClipboardCopy(text);
+                    window.open(inviteUrl, "_blank", "noopener,noreferrer");
+                    showToast("✓ Discord server link opened & message copied to clipboard! Enter their User ID below if you want automated bot outreach.", "info");
+                } else {
+                    showToast("Discord detected, but creator's Discord account could not be identified automatically. Enter their User ID to send.", "info");
+                }
                 state.stage = "outreach_hub";
                 renderOutreachHub();
                 showScreen("outreachHub", 4);
@@ -1816,7 +1825,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     hubDiscordBlock.classList.remove("hidden");
                     hubDiscordBlock.scrollIntoView({ behavior: "smooth" });
                 }
-                showToast("Discord found, but creator's Discord account could not be identified automatically. Enter their User ID to send.", "info");
                 return;
             }
         }
@@ -2297,9 +2305,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         return socials.filter(s => {
-            const raw = s.username || "";
+            const isDiscord = (s.platform || "").toLowerCase() === "discord";
+            const raw = isDiscord 
+                ? (s.username || s.discord_username || s.discord_invite || s.discord_user_id || s.url || "")
+                : (s.username || "");
             if (raw.includes("..") || raw.includes("...") || raw.includes("…") || raw.endsWith(".") || raw.endsWith("…")) {
                 return false;
+            }
+            if (isDiscord && (s.discord_invite || s.discord_user_id || (s.url && s.url.includes("discord")))) {
+                return true;
             }
             const clean = raw.toLowerCase().replace(/[^a-z0-9]/g, "");
             if (clean.length < 2) return false;
@@ -2573,20 +2587,33 @@ document.addEventListener("DOMContentLoaded", () => {
                             platform: "Discord",
                             username: discUserId,
                             discord_user_id: discUserId,
-                            url: `https://discord.com/users/${discUserId}`
+                            url: `https://discord.com/users/${discUserId}`,
+                            status: "sendable"
+                        };
+                    }
+                    if (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.discord_username || state.discordProfile.url)) {
+                        const dp = state.discordProfile;
+                        return {
+                            platform: "Discord",
+                            username: dp.discord_username || dp.discord_invite || dp.url || "Discord",
+                            discord_invite: dp.discord_invite || null,
+                            discord_username: dp.discord_username || null,
+                            discord_user_id: dp.discord_user_id || null,
+                            url: dp.url || dp.discord_invite || "https://discord.com",
+                            status: dp.status || "discovered"
                         };
                     }
                     const found = cleanSocials.find(s => (s.platform || "").toLowerCase() === "discord");
                     if (found) {
-                        const uid = found.discord_user_id || (/^[0-9]{17,20}$/.test(String(found.username || '').replace(/^@+/, '')) ? String(found.username).replace(/^@+/, '') : null);
-                        if (uid) {
-                            return {
-                                platform: "Discord",
-                                username: uid,
-                                discord_user_id: uid,
-                                url: `https://discord.com/users/${uid}`
-                            };
-                        }
+                        return {
+                            platform: "Discord",
+                            username: found.username || found.discord_username || found.discord_invite || found.url || "Discord",
+                            discord_invite: found.discord_invite || (found.url && (found.url.includes("discord") || found.url.includes("discord.gg")) ? found.url : null),
+                            discord_username: found.discord_username || found.username || null,
+                            discord_user_id: found.discord_user_id || null,
+                            url: found.url || found.discord_invite || "https://discord.com",
+                            status: found.status || "discovered"
+                        };
                     }
                     return null;
                 },
@@ -2609,7 +2636,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         discord_user_id: trimmed,
                         url: `https://discord.com/users/${trimmed}`,
                         source: "Manual entry",
-                        confidence: "high"
+                        confidence: "high",
+                        status: "sendable"
                     };
                     if (!state.socialProfiles) state.socialProfiles = [];
                     const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase() === "discord");
@@ -2639,9 +2667,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 const sPlatform = (detectedProfile.platform || cfg.platformName).toLowerCase();
                 const rawHandle = detectedProfile.username || detectedProfile.discord_user_id || detectedProfile.platform || "";
                 const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
-                const displayHandle = isNumericId && cfg.key === "discord"
-                    ? `User ID: ${String(rawHandle).replace(/^@+/, '')}`
-                    : formatHandle(rawHandle);
+                
+                let displayHandle;
+                if (cfg.key === "discord") {
+                    if (isNumericId || detectedProfile.discord_user_id) {
+                        displayHandle = `User ID: ${detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '')}`;
+                    } else if (detectedProfile.discord_invite) {
+                        const m = detectedProfile.discord_invite.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+                        displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.discord_invite.replace(/^https?:\/\//i, '');
+                    } else if (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) {
+                        const m = detectedProfile.url.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+                        displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.url.replace(/^https?:\/\//i, '');
+                    } else if (detectedProfile.discord_username) {
+                        displayHandle = formatHandle(detectedProfile.discord_username);
+                    } else {
+                        displayHandle = formatHandle(rawHandle);
+                    }
+                } else {
+                    displayHandle = formatHandle(rawHandle);
+                }
 
                 let isSelected = false;
                 const activeP = state.selectedSocialProfile || state.activeSocialProfile || state.instagramProfile;

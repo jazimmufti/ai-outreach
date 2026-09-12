@@ -213,6 +213,37 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
     ]))
     discord_info = extract_discord_information(combined_discord_text, source_label="youtube_description")
 
+    # Guarantee that discovered Discord info is represented in filtered_socials
+    if discord_info:
+        disc_entry = next((s for s in filtered_socials if s.get("platform") == "Discord"), None)
+        if disc_entry:
+            if discord_info.discord_invite and not disc_entry.get("discord_invite"):
+                disc_entry["discord_invite"] = discord_info.discord_invite
+            if discord_info.discord_user_id and not disc_entry.get("discord_user_id"):
+                disc_entry["discord_user_id"] = discord_info.discord_user_id
+                disc_entry["status"] = "sendable"
+            if discord_info.discord_username and not disc_entry.get("discord_username"):
+                disc_entry["discord_username"] = discord_info.discord_username
+            if discord_info.url and (not disc_entry.get("url") or disc_entry.get("url") == "https://discord.com"):
+                disc_entry["url"] = discord_info.url
+        else:
+            username_val = discord_info.discord_username or (
+                discord_info.discord_invite.replace("https://discord.gg/", "").rstrip("/")
+                if discord_info.discord_invite else (discord_info.discord_user_id or "Discord")
+            )
+            filtered_socials.append({
+                "platform": "Discord",
+                "username": username_val,
+                "url": discord_info.url or discord_info.discord_invite or "https://discord.com",
+                "source": discord_info.discord_source or "YouTube description",
+                "confidence": "high" if (discord_info.discord_user_id or discord_info.discord_invite) else "medium",
+                "discord_invite": discord_info.discord_invite,
+                "discord_username": discord_info.discord_username,
+                "discord_user_id": discord_info.discord_user_id,
+                "discord_source": discord_info.discord_source,
+                "status": discord_info.status
+            })
+
     return {
         "social_profiles": filtered_socials,
         "discord_profile": discord_info.model_dump() if discord_info else None,

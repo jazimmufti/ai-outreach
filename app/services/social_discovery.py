@@ -68,7 +68,7 @@ URL_PATTERNS = [
     },
     {
         "platform": "Discord",
-        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9_-]{2,32})", re.I),
+        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|(?:discord\.com|discordapp\.com)\/invite\/|discord\.io\/|discord\.me\/|discord\.com\/servers\/)([a-zA-Z0-9_\-]{2,40})", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
         "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
         "is_invite": True
@@ -230,15 +230,15 @@ def extract_discord_information(text: str, source_label: str = "youtube_descript
         if text_id_match:
             discovered_user_id = text_id_match.group(1)
 
-    # 3. Check for Discord Server Invites: discord.gg/<code> or discord.com/invite/<code>
+    # 3. Check for Discord Server Invites: discord.gg/<code>, discord.com/invite/<code>, discordapp.com/invite/<code>, discord.io/<code>, discord.me/<code>
     invite_match = re.search(
-        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9_\-]{2,32})",
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|(?:discord\.com|discordapp\.com)\/invite\/|discord\.io\/|discord\.me\/|discord\.com\/servers\/)([a-zA-Z0-9_\-]{2,40})",
         cleaned_text,
         re.IGNORECASE
     )
     if invite_match:
         raw_code = invite_match.group(1).rstrip("./_…-")
-        if is_valid_username(raw_code):
+        if len(raw_code) >= 2 and raw_code.lower() not in {"invite", "channels", "users"} and not (".." in raw_code or "…" in raw_code):
             discovered_invite = f"https://discord.gg/{raw_code}"
 
     # 4. Check for Discord text handles / usernames: "Discord: username", "Discord - @username", "Discord: username#1234"
@@ -247,7 +247,7 @@ def extract_discord_information(text: str, source_label: str = "youtube_descript
         if not line:
             continue
         handle_match = re.search(
-            r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b",
+            r"\bdiscord\b(?!\.com|\.gg|\.io|\.me)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b",
             line,
             re.IGNORECASE
         )
@@ -299,7 +299,13 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
 
             cleaned_user = item["clean_user"](raw_user)
             
-            if not is_valid_username(cleaned_user):
+            if item.get("is_invite"):
+                if len(cleaned_user) < 2 or cleaned_user.lower() in {"invite", "channels", "users"} or (".." in cleaned_user or "…" in cleaned_user):
+                    continue
+            elif item.get("is_user_id"):
+                if not re.match(r"^[0-9]{17,20}$", cleaned_user):
+                    continue
+            elif not is_valid_username(cleaned_user):
                 continue
 
             full_url = item["format_url"](cleaned_user)
@@ -343,7 +349,10 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
 
                 cleaned_user = item["clean_user"](raw_user)
                 
-                if not is_valid_username(cleaned_user):
+                if item.get("is_user_id"):
+                    if not re.match(r"^[0-9]{17,20}$", cleaned_user):
+                        continue
+                elif not is_valid_username(cleaned_user):
                     continue
 
                 full_url = item["format_url"](cleaned_user)

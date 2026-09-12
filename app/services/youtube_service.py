@@ -234,7 +234,7 @@ async def scrape_channel_links_and_about(
                         pass
 
                 direct_socials = re.findall(
-                    r"https?:\/\/(?:www\.)?(?:instagram\.com|x\.com|twitter\.com|facebook\.com|fb\.com|twitch\.tv|discord\.gg|discord\.com\/invite|linkedin\.com|reddit\.com)\/[a-zA-Z0-9_\.\-]{1,50}",
+                    r"https?:\/\/(?:www\.)?(?:instagram\.com|x\.com|twitter\.com|facebook\.com|fb\.com|twitch\.tv|discord\.gg|(?:discord\.com|discordapp\.com)\/(?:invite|users|servers)|discord\.io|discord\.me|linkedin\.com|reddit\.com)\/[a-zA-Z0-9_\.\-]{1,50}",
                     resp.text,
                     re.IGNORECASE
                 )

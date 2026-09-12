@@ -88,6 +88,39 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(discord_sp.status, "sendable")
         self.assertEqual(discord_sp.discord_user_id, "987654321098765432")
 
+    def test_extract_discord_invite_with_excluded_word_vanity(self):
+        """Test that invite links with vanity names like 'community', 'server', 'chat' are not rejected."""
+        text = "Join our official community: https://discord.gg/community or https://discord.gg/server"
+        discord_profile = extract_discord_information(text)
+
+        self.assertIsNotNone(discord_profile)
+        self.assertEqual(discord_profile.status, "discovered")
+        self.assertIn("discord.gg/", discord_profile.discord_invite)
+
+        socials = extract_social_profiles(text)
+        disc_socials = [s for s in socials if s.platform == "Discord"]
+        self.assertGreaterEqual(len(disc_socials), 1)
+        self.assertTrue(any(s.discord_invite for s in disc_socials))
+
+    def test_extract_discord_various_domains(self):
+        """Test extraction across discordapp.com, discord.io, discord.me, and discord.com/servers."""
+        domains_and_links = [
+            ("https://discordapp.com/invite/creative-hub", "creative-hub"),
+            ("https://discord.io/mrbeast", "mrbeast"),
+            ("https://discord.me/progamers", "progamers"),
+            ("https://discord.com/servers/community-guild-1234", "community-guild-1234"),
+        ]
+        for link, expected_code in domains_and_links:
+            text = f"Check out our Discord: {link} to talk!"
+            info = extract_discord_information(text)
+            self.assertIsNotNone(info, f"Failed for {link}")
+            self.assertEqual(info.discord_invite, f"https://discord.gg/{expected_code}")
+
+            socials = extract_social_profiles(text)
+            disc = next((s for s in socials if s.platform == "Discord"), None)
+            self.assertIsNotNone(disc, f"extract_social_profiles failed for {link}")
+            self.assertEqual(disc.discord_invite, f"https://discord.gg/{expected_code}")
+
     # ------------------------------------------------------------------------
     # 2. SNOWFLAKE VALIDATION TESTS
     # ------------------------------------------------------------------------
