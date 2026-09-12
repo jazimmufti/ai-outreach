@@ -2046,6 +2046,21 @@ body {
     box-shadow: 2px 2px 0px var(--black);
 }
 
+.other-social-not-detected {
+    font-family: var(--font-heading);
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #334155;
+    background: #F1F5F9;
+    border: 1px solid #CBD5E1;
+    padding: 1.5px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    letter-spacing: 0.2px;
+    line-height: 1.3;
+    margin-top: 2px;
+}
+
 .other-social-drawer {
     margin-top: 6px;
     padding: 8px 10px;
@@ -2055,11 +2070,74 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
     animation: fadeIn 0.15s ease-in-out;
 }
 
 .other-social-drawer.hidden {
     display: none !important;
+}
+
+.other-social-manual-input {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 12.5px !important;
+    padding: 6px 12px !important;
+    background: #FFFFFF !important;
+    border: 1.5px solid var(--black) !important;
+    border-radius: 2px !important;
+    box-sizing: border-box !important;
+    height: 32px !important;
+}
+
+.other-social-drawer-save {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    padding: 0 16px !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    height: 32px !important;
+    border: 1.5px solid var(--black) !important;
+    box-shadow: 1.5px 1.5px 0px var(--black) !important;
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.other-social-drawer-cancel {
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    background: #EF4444 !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid var(--black) !important;
+    box-shadow: 1.5px 1.5px 0px var(--black) !important;
+    border-radius: 2px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 14px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    transition: all 0.12s ease !important;
+}
+
+.other-social-drawer-cancel:hover {
+    background: #DC2626 !important;
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0px var(--black) !important;
+}
+
+.other-social-drawer-cancel:active {
+    transform: translate(1px, 1px);
+    box-shadow: 0.5px 0.5px 0px var(--black) !important;
 }
 
 @keyframes highlightFlash {

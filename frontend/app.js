@@ -2656,7 +2656,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                         <div class="other-social-meta">
                             <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
-                            <span class="other-social-handle" style="color: var(--text-muted); font-style: italic; font-weight: 500;">Not detected</span>
+                            <span class="other-social-not-detected">Not detected</span>
                         </div>
                     </div>
                     <div class="other-social-actions">
@@ -2669,9 +2669,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const drawer = document.createElement("div");
                 drawer.className = "other-social-drawer hidden font-mono";
                 drawer.innerHTML = `
-                    <input type="text" class="retro-input font-mono other-social-manual-input" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF; border: 1.5px solid var(--black);" placeholder="${escapeHtml(cfg.placeholder)}">
-                    <button type="button" class="btn-primary other-social-drawer-save" style="font-size: 11.5px; padding: 5px 12px; height: auto; font-weight: 700;">Save</button>
-                    <button type="button" class="btn-secondary other-social-drawer-cancel" style="font-size: 11.5px; padding: 5px 9px; height: auto;">✕</button>
+                    <input type="text" class="retro-input font-mono other-social-manual-input" placeholder="${escapeHtml(cfg.placeholder)}">
+                    <button type="button" class="btn-primary other-social-drawer-save">Save</button>
+                    <button type="button" class="other-social-drawer-cancel" title="Cancel">✕</button>
                 `;
 
                 const enterBtn = item.querySelector(".other-social-enter-btn");
