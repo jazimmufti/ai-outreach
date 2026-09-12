@@ -618,6 +618,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const deliveryHeaderRow = document.getElementById("delivery-header-row") || document.querySelector(".delivery-header-row");
     const btnBackDelivery = document.getElementById("btn-back-delivery");
     const verificationDmReadyBox = document.getElementById("verification-dm-ready-box");
+    const vDmReadyTitle = document.getElementById("v-dm-ready-title");
+    const vDmReadyActionTitle = document.getElementById("v-dm-ready-action-title");
+    const vDmReadyConfirmPrompt = document.getElementById("v-dm-ready-confirm-prompt");
     const vDmReadySub = document.getElementById("v-dm-ready-sub");
     const vDmReadyGuideText = document.getElementById("v-dm-ready-guide-text");
     const btnConfirmDmSent = document.getElementById("btn-confirm-dm-sent");
@@ -1546,6 +1549,15 @@ document.addEventListener("DOMContentLoaded", () => {
         state.selectedChannel = "instagram";
         saveSessionState();
 
+        if (vDmReadyTitle) {
+            vDmReadyTitle.textContent = "Instagram DM Ready";
+        }
+        if (vDmReadyActionTitle) {
+            vDmReadyActionTitle.textContent = "Review & Click Send in Instagram";
+        }
+        if (vDmReadyConfirmPrompt) {
+            vDmReadyConfirmPrompt.textContent = "Did you click Send in Instagram?";
+        }
         if (vDmReadySub) {
             vDmReadySub.textContent = `Your message has been added to @${cleanUsername}'s Instagram composer.`;
         }
@@ -1593,7 +1605,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const c = state.creator || {};
                 const creatorName = c.name || c.channel_name || "Creator";
-                const handle = state.finalInstagramHandle || (state.pendingExtensionSession ? state.pendingExtensionSession.handle : "@creator");
+                const currentChannel = state.selectedChannel || (state.selectedSocialProfile ? state.selectedSocialProfile.platform : "Instagram");
+                const channelMeta = getSocialMediaMeta(currentChannel);
+                const handle = (state.selectedSocialProfile ? formatHandle(state.selectedSocialProfile.username || state.selectedSocialProfile.platform) : null) || state.finalInstagramHandle || (state.pendingExtensionSession ? state.pendingExtensionSession.handle : "@creator");
                 const message = (state.pendingExtensionSession ? state.pendingExtensionSession.message : "") || "";
                 const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
 
@@ -1604,7 +1618,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             session_id: state.sessionId,
-                            platform: "Instagram",
+                            platform: channelMeta.name,
                             handle: handle,
                             sender_handle: state.senderHandle || null,
                             sender_identity: senderIdentity,
@@ -1615,12 +1629,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Transition UI to Verification Pending
                 if (vPendingRecipientSub) {
-                    vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on Instagram`;
+                    vPendingRecipientSub.textContent = `Message dispatched to ${creatorName} (${handle}) on ${channelMeta.name}`;
                 }
 
                 const pendingSub = document.querySelector("#verification-pending-box .v-step-card:nth-child(2) .v-step-sub");
                 if (pendingSub) {
-                    pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your Instagram message.`;
+                    pendingSub.textContent = `Waiting for ${creatorName} to confirm collaboration via the verification link in your ${channelMeta.name} message.`;
                 }
 
                 if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
@@ -1827,6 +1841,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 state.stage = "sent";
                 state.selectedChannel = platformName.toLowerCase();
                 saveSessionState();
+
+                if (vDmReadyTitle) {
+                    vDmReadyTitle.textContent = `${meta.name} DM Ready`;
+                }
+                if (vDmReadyActionTitle) {
+                    vDmReadyActionTitle.textContent = `Review & Click Send in ${meta.name}`;
+                }
+                if (vDmReadyConfirmPrompt) {
+                    vDmReadyConfirmPrompt.textContent = `Did you click Send in ${meta.name}?`;
+                }
 
                 const isMob = isMobileDevice();
                 if (vDmReadySub) {
@@ -2403,9 +2427,9 @@ document.addEventListener("DOMContentLoaded", () => {
         igOtherSocialsList.innerHTML = "";
 
         const cleanSocials = filterCleanSocials(state.socialProfiles || []);
-        const activeProfile = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile;
-        const activePlatform = (activeProfile ? activeProfile.platform : "Instagram").toLowerCase();
-        const activeHandle = (state.finalInstagramHandle || (activeProfile ? formatHandle(activeProfile.username) : "")).toLowerCase();
+        const activeProfile = state.selectedSocialProfile || state.activeSocialProfile || state.instagramProfile;
+        const activePlatform = (activeProfile ? (activeProfile.platform || "Instagram") : "Instagram").toLowerCase();
+        const activeHandle = (activeProfile ? formatHandle(activeProfile.username || activeProfile.platform) : "").toLowerCase();
 
         // Strictly target and display only these 4 platforms
         const platformsConfig = [
@@ -2416,17 +2440,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 enterButtonLabel: "Enter Handle",
                 placeholder: "Enter Instagram handle (e.g. @creator)",
                 getProfile: () => {
-                    if (state.instagramProfile && (state.instagramProfile.username || state.finalInstagramHandle)) {
-                        const uname = state.finalInstagramHandle || formatHandle(state.instagramProfile.username);
+                    const found = cleanSocials.find(s => {
+                        const p = (s.platform || "").toLowerCase();
+                        return p.includes("instagram") || p === "ig";
+                    });
+                    if (found && (found.username || found.url)) {
+                        return found;
+                    }
+                    if (state.instagramProfile && (state.instagramProfile.platform || "").toLowerCase().includes("instagram") && (state.instagramProfile.username || state.finalInstagramHandle)) {
+                        const uname = formatHandle(state.instagramProfile.username || state.finalInstagramHandle);
                         return {
                             platform: "Instagram",
                             username: uname,
-                            url: state.finalInstagramUrl || state.instagramProfile.url || `https://instagram.com/${uname.replace('@', '')}`
+                            url: state.instagramProfile.url || state.finalInstagramUrl || `https://instagram.com/${uname.replace('@', '')}`
                         };
-                    }
-                    const found = cleanSocials.find(s => (s.platform || "").toLowerCase().includes("instagram"));
-                    if (found && (found.username || found.url)) {
-                        return found;
                     }
                     return null;
                 },
@@ -2617,13 +2644,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     : formatHandle(rawHandle);
 
                 let isSelected = false;
-                if (state.selectedSocialProfile) {
-                    isSelected = (detectedProfile === state.selectedSocialProfile) ||
-                        (detectedProfile.url && state.selectedSocialProfile.url && detectedProfile.url === state.selectedSocialProfile.url) ||
-                        (sPlatform === (state.selectedSocialProfile.platform || "").toLowerCase() &&
-                         formatHandle(detectedProfile.username || '').toLowerCase() === formatHandle(state.selectedSocialProfile.username || '').toLowerCase());
-                } else {
-                    isSelected = (sPlatform === activePlatform) && (displayHandle.toLowerCase() === activeHandle);
+                const activeP = state.selectedSocialProfile || state.activeSocialProfile || state.instagramProfile;
+                const activePlatformName = (activeP ? (activeP.platform || "Instagram") : "Instagram").toLowerCase();
+                const thisPlatformName = (detectedProfile.platform || cfg.platformName).toLowerCase();
+
+                const isPlatformMatch = (
+                    (thisPlatformName === activePlatformName) ||
+                    (thisPlatformName.includes("twitter") && (activePlatformName === "x" || activePlatformName.includes("twitter"))) ||
+                    (thisPlatformName === "x" && (activePlatformName === "x" || activePlatformName.includes("twitter"))) ||
+                    (thisPlatformName.includes("instagram") && activePlatformName.includes("instagram")) ||
+                    (thisPlatformName.includes("facebook") && activePlatformName.includes("facebook")) ||
+                    (thisPlatformName.includes("discord") && activePlatformName.includes("discord"))
+                );
+
+                if (isPlatformMatch) {
+                    if (state.selectedSocialProfile) {
+                        isSelected = (detectedProfile === state.selectedSocialProfile) ||
+                            (detectedProfile.url && state.selectedSocialProfile.url && detectedProfile.url === state.selectedSocialProfile.url) ||
+                            (formatHandle(detectedProfile.username || '').toLowerCase() === formatHandle(state.selectedSocialProfile.username || '').toLowerCase());
+                    } else {
+                        isSelected = (displayHandle.toLowerCase() === activeHandle);
+                    }
                 }
 
                 item.innerHTML = `
@@ -2777,15 +2818,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (isNumericId) {
                 state.finalDiscordUserId = cleanHandle;
             }
+        } else if (pLower.includes("instagram") || pLower === "ig") {
+            state.instagramProfile = {
+                platform: "Instagram",
+                username: cleanHandle,
+                url: url
+            };
+            state.finalInstagramHandle = cleanHandle;
+            state.finalInstagramUrl = url;
         }
-
-        state.instagramProfile = {
-            platform: social.platform || "Instagram",
-            username: cleanHandle,
-            url: url
-        };
-        state.finalInstagramHandle = cleanHandle;
-        state.finalInstagramUrl = url;
 
         updateStep2PlatformUI(social);
 
@@ -2835,9 +2876,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (igConfirmedView) igConfirmedView.classList.add("hidden");
 
             const handle = formatHandle(active.username);
-            state.finalInstagramHandle = handle;
-            const defaultBase = (active.platform || "").toLowerCase() === "x" ? "https://x.com" : "https://instagram.com";
-            state.finalInstagramUrl = active.url || `${defaultBase}/${handle.replace("@", "")}`;
+            const isIg = (active.platform || "").toLowerCase().includes("instagram") || (active.platform || "").toLowerCase() === "ig";
+            if (isIg) {
+                state.finalInstagramHandle = handle;
+                state.finalInstagramUrl = active.url || `https://instagram.com/${handle.replace("@", "")}`;
+            }
 
             updateStep2PlatformUI(active);
         } else {
@@ -2907,8 +2950,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const creatorName = c.name || c.channel_name || "Creator";
         const videoTitle = c.video_title || "your video";
 
-        state.finalInstagramHandle = handle;
-        state.finalInstagramUrl = url || active.url || `https://instagram.com/${handle.replace('@', '')}`;
+        const isIg = (active.platform || "").toLowerCase().includes("instagram") || (active.platform || "").toLowerCase() === "ig";
+        if (isIg) {
+            state.finalInstagramHandle = handle;
+            state.finalInstagramUrl = url || active.url || `https://instagram.com/${handle.replace('@', '')}`;
+        }
 
         updateStep2PlatformUI(active);
 
@@ -3050,8 +3096,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const defaultBase = (active && (active.platform || "").toLowerCase() === "x") ? "https://x.com" : "https://instagram.com";
                 const url = active ? (active.url || `${defaultBase}/${handle.replace('@', '')}`) : `${defaultBase}/${handle.replace('@', '')}`;
 
-                state.finalInstagramHandle = handle;
-                state.finalInstagramUrl = url;
+                const isIg = (active ? (active.platform || "") : "Instagram").toLowerCase().includes("instagram");
+                if (isIg) {
+                    state.finalInstagramHandle = handle;
+                    state.finalInstagramUrl = url;
+                }
 
                 if (state.sessionId) {
                     await fetch("/api/outreach/confirm-instagram", {
