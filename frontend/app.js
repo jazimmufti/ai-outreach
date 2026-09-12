@@ -2982,8 +2982,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
 
-            if (discordMessageBody && !discordMessageBody.value) {
-                discordMessageBody.value = generateDiscordDmDraft(creatorName, videoTitle, state.userRole);
+            if (discordMessageBody) {
+                const currentVal = discordMessageBody.value ? discordMessageBody.value.trim() : "";
+                if (!currentVal || !currentVal.includes("/verify")) {
+                    discordMessageBody.value = generateDiscordDmDraft(creatorName, videoTitle, state.userRole);
+                }
             }
 
             if (isSendable) {
@@ -3160,8 +3163,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function generateDiscordDmDraft(creatorName, videoTitle, userRole) {
         const cName = creatorName || "Creator";
         const vTitle = videoTitle || "your video";
-        const role = userRole || "Video editor";
-        return `Hi ${cName}, your collaborator (${role}) on "${vTitle}" here via Arclent. Can you confirm our collaboration on this project?`;
+        const role = (userRole || state.userRole || "Video editor").trim();
+        const verifyUrl = getVerificationLink();
+        return `Hi ${cName}, your collaborator (${role}) on "${vTitle}" here via Arclent. Can you confirm our collaboration on this project?\n\nConfirm at: ${verifyUrl}`;
     }
 
     async function sendDiscordOutreachMessage(opts = {}) {
@@ -3186,6 +3190,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (!text) {
             text = generateDiscordDmDraft(creatorName, videoTitle, role);
+        } else if (!text.includes("/verify")) {
+            const verifyUrl = getVerificationLink();
+            text = `${text}\n\nConfirm at: ${verifyUrl}`;
         }
 
         if (discordErrorAlert) discordErrorAlert.classList.add("hidden");

@@ -277,6 +277,10 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(updated_session.selected_channel, "discord")
         self.assertEqual(updated_session.stage, OutreachStage.SENT)
         self.assertEqual(updated_session.discord_message_id, "999000111222333444")
+        
+        # Verify verification URL was embedded in the message sent by bot
+        sent_message = mock_send_dm.call_args.kwargs["message"]
+        self.assertIn(f"/verify?session_id={session.session_id}", sent_message)
 
     @patch("app.api.outreach.discord_service.send_dm_message", new_callable=AsyncMock)
     def test_api_send_discord_message_delivery_failure_403(self, mock_send_dm):

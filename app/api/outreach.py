@@ -592,7 +592,7 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
 
 
 @router.post("/send-discord-message", response_model=SendDiscordMessageResponse)
-async def send_discord_message_endpoint(payload: SendDiscordMessageRequest):
+async def send_discord_message_endpoint(payload: SendDiscordMessageRequest, request: Request):
     """Step 4 Send (Discord): Dispatch outreach message directly to creator via Arclent Discord Bot."""
     session = get_session(payload.session_id) if payload.session_id else None
     
@@ -614,6 +614,16 @@ async def send_discord_message_endpoint(payload: SendDiscordMessageRequest):
                 user_role=role
             )
             message_content = generated.body
+
+    # 1b. Ensure verification link is embedded so creator can confirm collaboration
+    if session and session.session_id and "/verify" not in message_content:
+        base_url = str(request.base_url).rstrip("/")
+        forwarded_proto = request.headers.get("x-forwarded-proto")
+        forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+        if forwarded_proto and forwarded_host:
+            base_url = f"{forwarded_proto}://{forwarded_host}"
+        verify_url = f"{base_url}/verify?session_id={session.session_id}"
+        message_content = f"{message_content}\n\nConfirm at: {verify_url}"
 
     # 2. Dispatch message using Arclent Discord Bot Service
     try:
