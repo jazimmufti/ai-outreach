@@ -54,10 +54,16 @@ class Settings(BaseSettings):
     
     # Discord Bot Integration
     DISCORD_BOT_TOKEN: str = Field(default="", description="Discord Bot Token for official API outreach")
+    DISCORD_CLIENT_ID: str = Field(default="1548199535891972136", description="Discord Bot Application/Client ID")
 
     def get_discord_bot_token(self) -> str:
         """Get sanitized Discord Bot Token stripped of whitespace and accidental quotes."""
         val = os.environ.get("DISCORD_BOT_TOKEN") or self.DISCORD_BOT_TOKEN
+        return str(val).strip().strip("'\"")
+
+    def get_discord_client_id(self) -> str:
+        """Get sanitized Discord Client ID."""
+        val = os.environ.get("DISCORD_CLIENT_ID") or self.DISCORD_CLIENT_ID
         return str(val).strip().strip("'\"")
 
     # Session & Security

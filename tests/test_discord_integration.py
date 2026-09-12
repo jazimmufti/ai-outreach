@@ -17,6 +17,9 @@ from app.services.discord_service import (
     get_guild_member,
     search_guild_members,
     discover_creator_in_server,
+    generate_bot_invite_url,
+    get_bot_client_id,
+    recheck_bot_in_guild,
     DiscordConfigurationError,
     DiscordValidationError,
     DiscordAuthenticationError,
@@ -569,6 +572,86 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(profile.bot_in_guild)
         self.assertIsNone(profile.discord_user_id)
         self.assertIn("could not be unambiguously identified", profile.discovery_note)
+
+    # ------------------------------------------------------------------------
+    # 7. BOT INVITE URL & RE-CHECK TESTS
+    # ------------------------------------------------------------------------
+
+    def test_generate_bot_invite_url(self):
+        """Test OAuth2 bot invite URL generation with and without guild_id."""
+        url_without_guild = generate_bot_invite_url()
+        self.assertIn("https://discord.com/oauth2/authorize", url_without_guild)
+        self.assertIn("client_id=1548199535891972136", url_without_guild)
+        self.assertIn("scope=bot%20applications.commands", url_without_guild)
+        self.assertNotIn("guild_id=", url_without_guild)
+
+        url_with_guild = generate_bot_invite_url("998877665544332211")
+        self.assertIn("guild_id=998877665544332211", url_with_guild)
+
+    @patch("app.services.discord_service.check_bot_in_guild")
+    async def test_recheck_bot_in_guild_not_joined(self, mock_check):
+        """Test rechecking bot presence when bot has not yet been added."""
+        mock_check.return_value = None
+        profile = await recheck_bot_in_guild("112233445566778899")
+        self.assertFalse(profile.bot_in_guild)
+        self.assertEqual(profile.discovery_status, "bot_not_in_server")
+        self.assertIn("client_id=1548199535891972136", profile.bot_invite_url)
+
+    @patch("app.services.discord_service.check_bot_in_guild")
+    @patch("app.services.discord_service.get_guild_member")
+    async def test_recheck_bot_in_guild_joined_and_identified(self, mock_member, mock_check):
+        """Test rechecking bot presence when bot has joined and creator is identified."""
+        mock_check.return_value = {
+            "id": "112233445566778899",
+            "name": "Creator Discord",
+            "owner_id": "803511102246789123"
+        }
+        mock_member.return_value = {
+            "user": {
+                "id": "803511102246789123",
+                "username": "awesomecreator"
+            }
+        }
+        profile = await recheck_bot_in_guild(
+            guild_id="112233445566778899",
+            creator_name="Awesome Creator"
+        )
+        self.assertTrue(profile.bot_in_guild)
+        self.assertEqual(profile.status, "sendable")
+        self.assertEqual(profile.discord_user_id, "803511102246789123")
+        self.assertEqual(profile.discord_username, "awesomecreator")
+
+    @patch("app.services.discord_service.recheck_bot_in_guild")
+    def test_api_recheck_discord_bot_endpoint(self, mock_recheck):
+        """Test POST /api/outreach/recheck-discord-bot endpoint."""
+        session = create_session(youtube_url="https://www.youtube.com/watch?v=bot_test_vid")
+        session.discord_profile = DiscordProfile(
+            discord_invite="https://discord.gg/testserver",
+            guild_id="554433221100998877",
+            status="discovered"
+        )
+        mock_recheck.return_value = DiscordProfile(
+            discord_invite="https://discord.gg/testserver",
+            guild_id="554433221100998877",
+            guild_name="Test Server",
+            discord_user_id="803511102246789123",
+            discord_username="testcreator",
+            bot_in_guild=True,
+            status="sendable",
+            discovery_status="identified",
+            discovery_note="Identified server owner as creator."
+        )
+
+        resp = self.client.post("/api/outreach/recheck-discord-bot", json={
+            "session_id": session.session_id,
+            "guild_id": "554433221100998877"
+        })
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["success"])
+        self.assertTrue(data["bot_in_guild"])
+        self.assertEqual(data["discord_profile"]["status"], "sendable")
+        self.assertEqual(data["discord_profile"]["discord_user_id"], "803511102246789123")
 
 
 if __name__ == "__main__":

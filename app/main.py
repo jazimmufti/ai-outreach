@@ -66,6 +66,11 @@ async def send_discord_message_top_level(payload: outreach.SendDiscordMessageReq
     """Top-level direct endpoint to send outreach message via Arclent Discord Bot."""
     return await outreach.send_discord_message_endpoint(payload)
 
+@app.post("/recheck-discord-bot", response_model=outreach.RecheckDiscordBotResponse, tags=["discord"])
+async def recheck_discord_bot_top_level(payload: outreach.RecheckDiscordBotRequest):
+    """Top-level direct endpoint to recheck Arclent Bot presence in a Discord guild."""
+    return await outreach.recheck_discord_bot_endpoint(payload)
+
 # Mount Frontend directory
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 

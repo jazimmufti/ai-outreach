@@ -63,6 +63,7 @@ class DiscordProfile(BaseModel):
         description="Detailed discovery status: 'identified', 'bot_not_in_server', 'creator_not_identified', 'invalid_invite', 'bot_unconfigured', 'server_resolved'"
     )
     discovery_note: Optional[str] = Field(default=None, description="Human-readable discovery status note")
+    bot_invite_url: Optional[str] = Field(default=None, description="OAuth2 bot authorization URL to add the Arclent bot to this server")
 
 
 class SocialProfile(BaseModel):
@@ -83,6 +84,7 @@ class SocialProfile(BaseModel):
     bot_in_guild: Optional[bool] = Field(default=None, description="Whether the Arclent Discord Bot is a member of this server")
     discovery_status: Optional[str] = Field(default=None, description="Detailed discovery status")
     discovery_note: Optional[str] = Field(default=None, description="Human-readable discovery status note")
+    bot_invite_url: Optional[str] = Field(default=None, description="OAuth2 bot authorization URL to add the Arclent bot to this server")
 
 
 class EmailCandidate(BaseModel):
@@ -366,3 +368,17 @@ class SendEmailResponse(BaseModel):
     message_id: Optional[str] = None
     sender: Optional[str] = None
     timestamp: Optional[str] = None
+
+
+class RecheckDiscordBotRequest(BaseModel):
+    """Request payload to recheck whether the Arclent bot has joined a Discord server."""
+    session_id: Optional[str] = None
+    guild_id: Optional[str] = Field(default=None, description="Optional Discord guild / server snowflake ID")
+
+
+class RecheckDiscordBotResponse(BaseModel):
+    """Response returned when re-checking Arclent bot membership in a Discord server."""
+    success: bool
+    bot_in_guild: bool
+    discord_profile: DiscordProfile
+    message: str

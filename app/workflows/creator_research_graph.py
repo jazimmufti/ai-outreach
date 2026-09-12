@@ -260,6 +260,7 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
             disc_entry["bot_in_guild"] = discord_info.bot_in_guild
             disc_entry["discovery_status"] = discord_info.discovery_status
             disc_entry["discovery_note"] = discord_info.discovery_note
+            disc_entry["bot_invite_url"] = discord_info.bot_invite_url
         else:
             username_val = discord_info.discord_username or (
                 discord_info.discord_invite.replace("https://discord.gg/", "").rstrip("/")
@@ -281,7 +282,8 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
                 "approximate_member_count": discord_info.approximate_member_count,
                 "bot_in_guild": discord_info.bot_in_guild,
                 "discovery_status": discord_info.discovery_status,
-                "discovery_note": discord_info.discovery_note
+                "discovery_note": discord_info.discovery_note,
+                "bot_invite_url": discord_info.bot_invite_url
             })
 
     return {

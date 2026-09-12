@@ -397,6 +397,38 @@ async def search_guild_members(guild_id: str, query: str, limit: int = 5) -> Lis
         return []
 
 
+def get_bot_client_id() -> str:
+    """Get the Discord Application/Client ID from settings or decode from token."""
+    cid = settings.get_discord_client_id()
+    if cid:
+        return cid
+    token = settings.get_discord_bot_token()
+    if token and "." in token:
+        try:
+            import base64
+            segment = token.split(".")[0]
+            segment += "=" * ((4 - len(segment) % 4) % 4)
+            decoded = base64.b64decode(segment).decode("utf-8")
+            if decoded.isdigit():
+                return decoded
+        except Exception:
+            pass
+    return "1548199535891972136"
+
+
+def generate_bot_invite_url(guild_id: Optional[str] = None) -> str:
+    """Generate the official OAuth2 authorization link to invite the Arclent bot to a server.
+    
+    If guild_id is provided, includes &guild_id={guild_id} to pre-select the server in Discord's authorization dialog.
+    Permissions 274878024704 covers: View Channels, Send Messages, Read Message History, Embed Links.
+    """
+    client_id = get_bot_client_id()
+    base_url = f"https://discord.com/oauth2/authorize?client_id={client_id}&permissions=274878024704&scope=bot%20applications.commands"
+    if guild_id and str(guild_id).strip():
+        base_url += f"&guild_id={str(guild_id).strip()}"
+    return base_url
+
+
 async def discover_creator_in_server(
     invite_code_or_url: str,
     creator_name: str = "",
@@ -441,6 +473,7 @@ async def discover_creator_in_server(
     guild_icon = guild.get("icon")
     member_count = resolved.get("approximate_member_count")
     inviter = resolved.get("inviter") or {}
+    bot_invite = generate_bot_invite_url(guild_id)
 
     # 2. Check bot token configuration
     token = settings.get_discord_bot_token()
@@ -455,7 +488,8 @@ async def discover_creator_in_server(
             status="discovered",
             discovery_status="bot_unconfigured",
             discovery_note=f"Discord server '{guild_name}' was resolved, but Arclent Bot token is not configured on this instance. Enter User ID manually.",
-            url=invite_url
+            url=invite_url,
+            bot_invite_url=bot_invite
         )
 
     if not guild_id:
@@ -465,7 +499,8 @@ async def discover_creator_in_server(
             status="discovered",
             discovery_status="server_resolved",
             discovery_note=f"Resolved Discord server '{guild_name}'.",
-            url=invite_url
+            url=invite_url,
+            bot_invite_url=bot_invite
         )
 
     # 3. Check whether Arclent Bot is already in this server
@@ -482,8 +517,9 @@ async def discover_creator_in_server(
             bot_in_guild=False,
             status="discovered",
             discovery_status="bot_not_in_server",
-            discovery_note=f"Discord server '{guild_name}' was resolved, but Arclent Bot is not in this server. Join the server directly or enter the creator's User ID manually.",
-            url=invite_url
+            discovery_note=f"Discord server '{guild_name}' was resolved, but Arclent Bot is not in this server. Click 'Add Bot to Server' to authorize it, or enter the creator's User ID manually.",
+            url=invite_url,
+            bot_invite_url=bot_invite
         )
 
     # 4. Bot IS in the server -> inspect owner & search members
@@ -520,7 +556,8 @@ async def discover_creator_in_server(
             status="sendable",
             discovery_status="identified",
             discovery_note=f"Identified server owner @{owner_username} as creator in '{guild_name}'.",
-            url=f"https://discord.com/users/{owner_id}"
+            url=f"https://discord.com/users/{owner_id}",
+            bot_invite_url=bot_invite
         )
 
     # 5. Check if inviter is the creator
@@ -541,7 +578,8 @@ async def discover_creator_in_server(
                 status="sendable",
                 discovery_status="identified",
                 discovery_note=f"Identified invite creator @{inviter_username} matching {creator_name or 'channel'} in '{guild_name}'.",
-                url=f"https://discord.com/users/{inviter_id}"
+                url=f"https://discord.com/users/{inviter_id}",
+                bot_invite_url=bot_invite
             )
 
     # 6. Search guild members
@@ -566,7 +604,8 @@ async def discover_creator_in_server(
                         status="sendable",
                         discovery_status="identified",
                         discovery_note=f"Identified member @{m_name} matching '{c_cand}' in '{guild_name}'.",
-                        url=f"https://discord.com/users/{m_id}"
+                        url=f"https://discord.com/users/{m_id}",
+                        bot_invite_url=bot_invite
                     )
 
     # 7. Fallback: Bot in server, but creator account not confirmed
@@ -580,5 +619,123 @@ async def discover_creator_in_server(
         status="discovered",
         discovery_status="creator_not_identified",
         discovery_note=f"Arclent Bot is in '{guild_name}', but creator's user account could not be unambiguously identified among members. Please enter User ID manually.",
-        url=invite_url
+        url=invite_url,
+        bot_invite_url=bot_invite
+    )
+
+
+async def recheck_bot_in_guild(
+    guild_id: str,
+    creator_name: str = "",
+    channel_name: str = "",
+    channel_handle: str = "",
+    existing_invite: str = ""
+) -> DiscordProfile:
+    """Recheck whether the Arclent bot has been added to a Discord guild and resolve the creator."""
+    clean_gid = (guild_id or "").strip()
+    bot_invite = generate_bot_invite_url(clean_gid)
+    invite_url = existing_invite or f"https://discord.com"
+
+    if not clean_gid:
+        return DiscordProfile(
+            discord_invite=invite_url,
+            status="discovered",
+            discovery_status="invalid_guild",
+            discovery_note="No valid server ID provided to check bot presence.",
+            bot_invite_url=bot_invite
+        )
+
+    guild_details = await check_bot_in_guild(clean_gid)
+    if not guild_details:
+        return DiscordProfile(
+            discord_invite=invite_url,
+            guild_id=clean_gid,
+            bot_in_guild=False,
+            status="discovered",
+            discovery_status="bot_not_in_server",
+            discovery_note="Arclent Bot has not yet joined this server. Please click 'Add Bot to Server' to authorize it.",
+            url=invite_url,
+            bot_invite_url=bot_invite
+        )
+
+    guild_name = guild_details.get("name") or "Discord Server"
+    guild_icon = guild_details.get("icon")
+    member_count = guild_details.get("approximate_member_count")
+
+    # Bot is present! Attempt identification
+    owner_id = str(guild_details.get("owner_id")) if guild_details.get("owner_id") else None
+    owner_member = await get_guild_member(clean_gid, owner_id) if owner_id else None
+    owner_user = (owner_member.get("user") if owner_member else {}) or {}
+    owner_username = owner_user.get("username") or (owner_member.get("nick") if owner_member else None)
+    owner_global = owner_user.get("global_name") or ""
+
+    c_candidates = [creator_name, channel_name, channel_handle]
+    clean_names = [re.sub(r'[^a-z0-9]', '', c.lower()) for c in c_candidates if c]
+    owner_text = re.sub(r'[^a-z0-9]', '', f"{owner_username or ''} {owner_global}".lower())
+    clean_gname = re.sub(r'[^a-z0-9]', '', guild_name.lower())
+
+    is_owner_match = False
+    if clean_names and any(cn in owner_text or owner_text in cn for cn in clean_names if len(cn) >= 3):
+        is_owner_match = True
+    elif clean_names and any(cn in clean_gname for cn in clean_names if len(cn) >= 3):
+        is_owner_match = True
+    elif owner_username and not clean_names:
+        is_owner_match = True
+
+    if is_owner_match and owner_id and owner_username:
+        return DiscordProfile(
+            discord_invite=invite_url,
+            discord_username=owner_username,
+            discord_user_id=owner_id,
+            guild_id=clean_gid,
+            guild_name=guild_name,
+            guild_icon=guild_icon,
+            approximate_member_count=member_count,
+            bot_in_guild=True,
+            status="sendable",
+            discovery_status="identified",
+            discovery_note=f"Identified server owner @{owner_username} as creator in '{guild_name}'.",
+            url=f"https://discord.com/users/{owner_id}",
+            bot_invite_url=bot_invite
+        )
+
+    # Search members
+    for c_cand in c_candidates:
+        clean_cand = c_cand.replace("@", "").strip()
+        if len(clean_cand) >= 3:
+            search_results = await search_guild_members(clean_gid, clean_cand, limit=3)
+            for m in search_results:
+                m_user = m.get("user") or {}
+                m_id = str(m_user.get("id")) if m_user.get("id") else None
+                m_name = m_user.get("username") or m.get("nick")
+                if m_id and m_name:
+                    return DiscordProfile(
+                        discord_invite=invite_url,
+                        discord_username=m_name,
+                        discord_user_id=m_id,
+                        guild_id=clean_gid,
+                        guild_name=guild_name,
+                        guild_icon=guild_icon,
+                        approximate_member_count=member_count,
+                        bot_in_guild=True,
+                        status="sendable",
+                        discovery_status="identified",
+                        discovery_note=f"Identified member @{m_name} matching '{c_cand}' in '{guild_name}'.",
+                        url=f"https://discord.com/users/{m_id}",
+                        bot_invite_url=bot_invite
+                    )
+
+    # Fallback if owner not identified
+    return DiscordProfile(
+        discord_invite=invite_url,
+        guild_id=clean_gid,
+        guild_name=guild_name,
+        guild_icon=guild_icon,
+        approximate_member_count=member_count,
+        bot_in_guild=True,
+        status="discovered",
+        discovery_status="creator_not_identified",
+        discovery_note=f"Arclent Bot confirmed in '{guild_name}'! Creator's account could not be automatically identified; please enter User ID manually.",
+        url=invite_url,
+        bot_invite_url=bot_invite
     )
