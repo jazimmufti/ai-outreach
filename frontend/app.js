@@ -579,12 +579,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnSendDiscordText = document.getElementById("btn-send-discord-text");
     const btnCopyDiscordMsg = document.getElementById("btn-copy-discord-msg");
     const btnCopyDiscordText = document.getElementById("btn-copy-discord-text");
-    const discordAddBotBanner = document.getElementById("discord-add-bot-banner");
-    const discordAddBotTitle = document.getElementById("discord-add-bot-title");
-    const discordAddBotText = document.getElementById("discord-add-bot-text");
-    const btnAddBotOauth = document.getElementById("btn-add-bot-oauth");
-    const btnRecheckDiscordBot = document.getElementById("btn-recheck-discord-bot");
-    const btnRecheckText = document.getElementById("btn-recheck-text");
 
     // Manual X Elements
     const manualXContainer = document.getElementById("manual-x-container");
@@ -2591,15 +2585,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (discUserId) {
                         return {
                             platform: "Discord",
-                            username: (state.discordProfile && state.discordProfile.discord_username) || discUserId,
-                            discord_username: state.discordProfile ? state.discordProfile.discord_username : null,
+                            username: discUserId,
                             discord_user_id: discUserId,
-                            guild_name: state.discordProfile ? state.discordProfile.guild_name : null,
-                            bot_in_guild: state.discordProfile ? state.discordProfile.bot_in_guild : null,
-                            discovery_status: state.discordProfile ? state.discordProfile.discovery_status : "identified",
-                            discovery_note: state.discordProfile ? state.discordProfile.discovery_note : null,
                             url: `https://discord.com/users/${discUserId}`,
-                            bot_invite_url: state.discordProfile ? state.discordProfile.bot_invite_url : null,
                             status: "sendable"
                         };
                     }
@@ -2611,13 +2599,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: dp.discord_invite || null,
                             discord_username: dp.discord_username || null,
                             discord_user_id: dp.discord_user_id || null,
-                            guild_id: dp.guild_id || null,
-                            guild_name: dp.guild_name || null,
-                            approximate_member_count: dp.approximate_member_count || null,
-                            bot_in_guild: dp.bot_in_guild,
-                            discovery_status: dp.discovery_status || null,
-                            discovery_note: dp.discovery_note || null,
-                            bot_invite_url: dp.bot_invite_url || null,
                             url: dp.url || dp.discord_invite || "https://discord.com",
                             status: dp.status || "discovered"
                         };
@@ -2630,12 +2611,6 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: found.discord_invite || (found.url && (found.url.includes("discord") || found.url.includes("discord.gg")) ? found.url : null),
                             discord_username: found.discord_username || found.username || null,
                             discord_user_id: found.discord_user_id || null,
-                            guild_id: found.guild_id || null,
-                            guild_name: found.guild_name || null,
-                            bot_in_guild: found.bot_in_guild,
-                            discovery_status: found.discovery_status || null,
-                            discovery_note: found.discovery_note || null,
-                            bot_invite_url: found.bot_invite_url || null,
                             url: found.url || found.discord_invite || "https://discord.com",
                             status: found.status || "discovered"
                         };
@@ -2694,24 +2669,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
                 
                 let displayHandle;
-                let serverBadgeHtml = "";
                 if (cfg.key === "discord") {
                     if (isNumericId || detectedProfile.discord_user_id) {
-                        const uid = detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '');
-                        const uname = detectedProfile.discord_username ? `@${detectedProfile.discord_username.replace(/^@+/, '')} · ` : "";
-                        displayHandle = `${uname}User ID: ${uid}`;
-                        if (detectedProfile.guild_name) {
-                            serverBadgeHtml = `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #16A34A; font-weight: 700; margin-top: 2px;">✓ Verified Server Owner · ${escapeHtml(detectedProfile.guild_name)}</span>`;
-                        }
+                        displayHandle = `User ID: ${detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '')}`;
                     } else if (detectedProfile.discord_invite) {
                         const m = detectedProfile.discord_invite.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
                         displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.discord_invite.replace(/^https?:\/\//i, '');
-                        if (detectedProfile.guild_name) {
-                            const botNote = detectedProfile.bot_in_guild === false
-                                ? `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #DC2626; font-weight: 700; margin-top: 2px;">${escapeHtml(detectedProfile.guild_name)} · Bot not in server</span>`
-                                : `<span class="other-social-server-badge font-mono" style="display: block; font-size: 11px; color: #D97706; font-weight: 700; margin-top: 2px;">${escapeHtml(detectedProfile.guild_name)} · Creator ID unconfirmed</span>`;
-                            serverBadgeHtml = botNote;
-                        }
                     } else if (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) {
                         const m = detectedProfile.url.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
                         displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.url.replace(/^https?:\/\//i, '');
@@ -2748,22 +2711,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                let extraBotActionsHtml = "";
-                const hasInviteOrGuildDetected = !!(
-                    (detectedProfile.discord_invite && detectedProfile.discord_invite.length > 2) ||
-                    (detectedProfile.guild_id && detectedProfile.guild_id.length > 2) ||
-                    (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) ||
-                    (detectedProfile.username && !/^[0-9]{17,20}$/.test(detectedProfile.username))
-                );
-                if (cfg.key === "discord" && (detectedProfile.bot_in_guild === false || hasInviteOrGuildDetected) && !detectedProfile.discord_user_id) {
-                    const targetGuildParam = detectedProfile.guild_id ? `&guild_id=${detectedProfile.guild_id}` : '';
-                    const oauthUrl = detectedProfile.bot_invite_url || `https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands${targetGuildParam}`;
-                    extraBotActionsHtml = `
-                        <a href="${oauthUrl}" target="_blank" rel="noopener" class="other-social-add-bot-link" style="background: #5865F2; color: #FFF; padding: 4px 8px; border: 1.5px solid var(--black); font-size: 11px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; border-radius: 2px;" title="Invite Arclent Bot to this server">Add Bot ↗</a>
-                        <button type="button" class="other-social-recheck-btn" style="background: var(--bg-cream); border: 1.5px solid var(--black); padding: 4px 6px; font-size: 11px; font-weight: 700; cursor: pointer;" title="Re-check if bot has joined">↻</button>
-                    `;
-                }
-
                 item.innerHTML = `
                     <div class="other-social-left">
                         <div class="other-social-icon" style="background: ${meta.bgColor};">
@@ -2772,25 +2719,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         <div class="other-social-meta">
                             <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
                             <span class="other-social-handle" title="${escapeHtml(displayHandle)}">${escapeHtml(displayHandle)}</span>
-                            ${serverBadgeHtml}
                         </div>
                     </div>
                     <div class="other-social-actions">
-                        ${extraBotActionsHtml}
                         <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="Send DM on ${escapeHtml(meta.name)}">Send DM ↗</button>
                         <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
                             ${isSelected ? '✓ Selected' : 'Select'}
                         </button>
                     </div>
                 `;
-
-                const recheckBtn = item.querySelector(".other-social-recheck-btn");
-                if (recheckBtn) {
-                    recheckBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        recheckDiscordBotPresence(detectedProfile.guild_id);
-                    };
-                }
 
                 const dmBtn = item.querySelector(".other-social-open-dm-btn");
                 if (dmBtn) {
@@ -3446,49 +3383,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 discordStatusBadge.style.borderColor = "#22C55E";
             }
             if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
-            if (discordAddBotBanner) discordAddBotBanner.classList.add("hidden");
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
         } else if (disc) {
-            const hasInviteOrGuild = !!(
-                (disc.discord_invite && disc.discord_invite.length > 2) ||
-                (disc.guild_id && disc.guild_id.length > 2) ||
-                (disc.url && (disc.url.includes("discord.gg") || disc.url.includes("discord.com/invite") || disc.url.includes("discord.io") || disc.url.includes("discord.me"))) ||
-                (disc.username && !/^[0-9]{17,20}$/.test(disc.username) && disc.username.toLowerCase() !== "discord")
-            );
-            const isBotAbsent = (disc.bot_in_guild === false) || hasInviteOrGuild;
-
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = isBotAbsent ? "BOT NOT IN SERVER" : "USER ID NEEDED";
+                discordStatusBadge.textContent = "USER ID NEEDED";
                 discordStatusBadge.style.background = "#FEF3C7";
                 discordStatusBadge.style.color = "#92400E";
                 discordStatusBadge.style.borderColor = "#F59E0B";
             }
-            if (isBotAbsent && discordAddBotBanner) {
-                discordAddBotBanner.classList.remove("hidden");
-                const targetGuildParam = disc.guild_id ? `&guild_id=${disc.guild_id}` : '';
-                const oauthUrl = disc.bot_invite_url || `https://discord.com/oauth2/authorize?client_id=1548199535891972136&permissions=274878024704&scope=bot%20applications.commands${targetGuildParam}`;
-                if (btnAddBotOauth) btnAddBotOauth.href = oauthUrl;
-                if (discordAddBotTitle) {
-                    discordAddBotTitle.textContent = disc.guild_name ? `Arclent Bot not in "${disc.guild_name}"` : "Arclent Bot Not in Server";
-                }
-            } else if (discordAddBotBanner) {
-                discordAddBotBanner.classList.add("hidden");
-            }
             if (discordIdentificationBanner) {
                 discordIdentificationBanner.classList.remove("hidden");
-                let targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
-                if (disc && disc.guild_name) {
-                    const botText = disc.bot_in_guild === false ? " (Bot not in server)" : " (Server resolved)";
-                    targetStr = `${disc.guild_name}${botText} · ${targetStr}`;
-                }
+                const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
         } else {
             // Discord NOT detected from video description -> show clean manual entry
-            if (discordAddBotBanner) discordAddBotBanner.classList.add("hidden");
             if (discordStatusBadge) {
                 discordStatusBadge.textContent = "ENTER USER ID";
                 discordStatusBadge.style.background = "#FEF3C7";
@@ -3670,67 +3582,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Helper: Discord Draft and Dispatch Handlers
-    async function recheckDiscordBotPresence(guildId) {
-        const targetGuildId = guildId || (state.discordProfile && state.discordProfile.guild_id) || null;
-        const targetInvite = (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url)) || null;
-        if (btnRecheckText) btnRecheckText.innerHTML = `<span class="analyzing-spinner" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-right: 4px;"></span> Checking...`;
-        if (btnRecheckDiscordBot) btnRecheckDiscordBot.disabled = true;
-
-        showToast("Checking Arclent Bot presence in Discord server...", "info");
-        try {
-            const resp = await fetch("/api/outreach/recheck-discord-bot", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    session_id: state.sessionId,
-                    guild_id: targetGuildId,
-                    invite: targetInvite
-                })
-            });
-            const data = await resp.json().catch(() => ({}));
-            if (resp.ok && data.success && data.discord_profile) {
-                state.discordProfile = data.discord_profile;
-                if (data.discord_profile.discord_user_id) {
-                    state.finalDiscordUserId = data.discord_profile.discord_user_id;
-                }
-                if (state.socialProfiles) {
-                    const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase() === "discord");
-                    if (idx >= 0) {
-                        state.socialProfiles[idx] = Object.assign({}, state.socialProfiles[idx], data.discord_profile, {
-                            username: data.discord_profile.discord_username || state.socialProfiles[idx].username,
-                            status: data.discord_profile.status
-                        });
-                    }
-                }
-                saveSessionState();
-                if (data.bot_in_guild) {
-                    showToast("✓ Arclent Bot confirmed in server! Creator recognized.", "success");
-                } else {
-                    showToast("Bot not yet detected in server. Please authorize via the link.", "warning");
-                }
-                renderDiscoveredOtherSocials();
-                if (currentScreen === "outreach_hub") {
-                    renderOutreachHub();
-                }
-            } else {
-                showToast(data.detail || data.message || "Could not verify bot status.", "error");
-            }
-        } catch (err) {
-            console.error("Recheck Discord bot error:", err);
-            showToast("Network error checking bot status.", "error");
-        } finally {
-            if (btnRecheckText) btnRecheckText.textContent = "↻ Re-check";
-            if (btnRecheckDiscordBot) btnRecheckDiscordBot.disabled = false;
-        }
-    }
-
-    if (btnRecheckDiscordBot) {
-        btnRecheckDiscordBot.onclick = () => {
-            const gid = (state.discordProfile && state.discordProfile.guild_id) || null;
-            recheckDiscordBotPresence(gid);
-        };
-    }
-
     function generateDiscordDmDraft(creatorName, videoTitle, userRole) {
         const cName = creatorName || "Creator";
         const vTitle = videoTitle || "your video";

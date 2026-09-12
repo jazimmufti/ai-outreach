@@ -27,9 +27,7 @@ from app.models.schemas import (
     AutoVerificationResult,
     DiscordProfile,
     SendDiscordMessageRequest,
-    SendDiscordMessageResponse,
-    RecheckDiscordBotRequest,
-    RecheckDiscordBotResponse
+    SendDiscordMessageResponse
 )
 from datetime import datetime, timezone
 
@@ -663,82 +661,6 @@ async def send_discord_message_endpoint(payload: SendDiscordMessageRequest, requ
         channel_id=result.get("channel_id"),
         sent_at=result.get("sent_at"),
         detail="Message delivered to creator via Arclent Discord Bot"
-    )
-
-
-@router.post("/recheck-discord-bot", response_model=RecheckDiscordBotResponse)
-async def recheck_discord_bot_endpoint(payload: RecheckDiscordBotRequest):
-    """Recheck whether the Arclent bot has joined a Discord server and attempt creator identification."""
-    session = get_session(payload.session_id) if payload.session_id else None
-    guild_id = payload.guild_id
-    if not guild_id and session and session.discord_profile and session.discord_profile.guild_id:
-        guild_id = session.discord_profile.guild_id
-
-    existing_invite = (
-        payload.invite or
-        (session.discord_profile.discord_invite if (session and session.discord_profile) else "")
-    )
-
-    if not guild_id and existing_invite:
-        inv_code = discord_service.extract_invite_code(existing_invite)
-        if inv_code:
-            resolved = await discord_service.resolve_discord_invite(inv_code)
-            if resolved and resolved.get("guild"):
-                guild_id = str(resolved["guild"].get("id"))
-
-    if not guild_id:
-        raise HTTPException(status_code=400, detail="No Discord guild_id available to re-check.")
-
-    creator_name = session.creator.name if (session and session.creator) else ""
-    channel_name = session.creator.channel_name if (session and session.creator) else creator_name
-    channel_handle = session.creator.channel_handle if (session and session.creator) else ""
-
-    profile = await discord_service.recheck_bot_in_guild(
-        guild_id=guild_id,
-        creator_name=creator_name,
-        channel_name=channel_name,
-        channel_handle=channel_handle,
-        existing_invite=existing_invite
-    )
-
-    if session:
-        session.discord_profile = profile
-        if profile.discord_user_id:
-            session.final_discord_user_id = profile.discord_user_id
-        if session.social_profiles:
-            updated_socials = []
-            for s in session.social_profiles:
-                if s.platform.lower() == "discord":
-                    updated_socials.append(SocialProfile(
-                        platform="Discord",
-                        username=profile.discord_username or s.username or (f"discord.gg/{profile.guild_name}" if profile.guild_name else "Discord"),
-                        url=profile.url or s.url or "https://discord.com",
-                        source=s.source,
-                        confidence=s.confidence,
-                        discord_invite=profile.discord_invite or s.discord_invite,
-                        discord_username=profile.discord_username or s.discord_username,
-                        discord_user_id=profile.discord_user_id or s.discord_user_id,
-                        discord_source=s.discord_source or "server_discovery",
-                        status=profile.status,
-                        guild_id=profile.guild_id or s.guild_id,
-                        guild_name=profile.guild_name or s.guild_name,
-                        approximate_member_count=profile.approximate_member_count or s.approximate_member_count,
-                        bot_in_guild=profile.bot_in_guild,
-                        discovery_status=profile.discovery_status,
-                        discovery_note=profile.discovery_note,
-                        bot_invite_url=profile.bot_invite_url
-                    ))
-                else:
-                    updated_socials.append(s)
-            session.social_profiles = updated_socials
-        save_session(session)
-
-    msg = profile.discovery_note or ("Arclent Bot confirmed in server!" if profile.bot_in_guild else "Bot is not in server.")
-    return RecheckDiscordBotResponse(
-        success=True,
-        bot_in_guild=bool(profile.bot_in_guild),
-        discord_profile=profile,
-        message=msg
     )
 
 

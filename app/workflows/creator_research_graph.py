@@ -213,35 +213,6 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
     ]))
     discord_info = extract_discord_information(combined_discord_text, source_label="youtube_description")
 
-    # If Discord server invite is discovered, attempt official Discord server resolution & member identification
-    if discord_info and discord_info.discord_invite and not discord_info.discord_user_id:
-        try:
-            from app.services.discord_service import discover_creator_in_server
-            server_profile = await discover_creator_in_server(
-                invite_code_or_url=discord_info.discord_invite,
-                creator_name=state.get("creator_name", ""),
-                channel_name=state.get("channel_name", ""),
-                channel_handle=state.get("channel_handle", "")
-            )
-            if server_profile:
-                if server_profile.discord_user_id:
-                    discord_info.discord_user_id = server_profile.discord_user_id
-                    discord_info.status = server_profile.status
-                if server_profile.discord_username:
-                    discord_info.discord_username = server_profile.discord_username
-                discord_info.guild_id = server_profile.guild_id
-                discord_info.guild_name = server_profile.guild_name
-                discord_info.guild_icon = server_profile.guild_icon
-                discord_info.approximate_member_count = server_profile.approximate_member_count
-                discord_info.bot_in_guild = server_profile.bot_in_guild
-                discord_info.discovery_status = server_profile.discovery_status
-                discord_info.discovery_note = server_profile.discovery_note
-                discord_info.bot_invite_url = server_profile.bot_invite_url
-                if server_profile.url and server_profile.discord_user_id:
-                    discord_info.url = server_profile.url
-        except Exception as e:
-            logger.debug(f"Discord server discovery note: {e}")
-
     # Guarantee that discovered Discord info is represented in filtered_socials
     if discord_info:
         disc_entry = next((s for s in filtered_socials if s.get("platform") == "Discord"), None)
@@ -255,13 +226,6 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
                 disc_entry["discord_username"] = discord_info.discord_username
             if discord_info.url and (not disc_entry.get("url") or disc_entry.get("url") == "https://discord.com"):
                 disc_entry["url"] = discord_info.url
-            disc_entry["guild_id"] = discord_info.guild_id
-            disc_entry["guild_name"] = discord_info.guild_name
-            disc_entry["approximate_member_count"] = discord_info.approximate_member_count
-            disc_entry["bot_in_guild"] = discord_info.bot_in_guild
-            disc_entry["discovery_status"] = discord_info.discovery_status
-            disc_entry["discovery_note"] = discord_info.discovery_note
-            disc_entry["bot_invite_url"] = discord_info.bot_invite_url
         else:
             username_val = discord_info.discord_username or (
                 discord_info.discord_invite.replace("https://discord.gg/", "").rstrip("/")
@@ -277,14 +241,7 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
                 "discord_username": discord_info.discord_username,
                 "discord_user_id": discord_info.discord_user_id,
                 "discord_source": discord_info.discord_source,
-                "status": discord_info.status,
-                "guild_id": discord_info.guild_id,
-                "guild_name": discord_info.guild_name,
-                "approximate_member_count": discord_info.approximate_member_count,
-                "bot_in_guild": discord_info.bot_in_guild,
-                "discovery_status": discord_info.discovery_status,
-                "discovery_note": discord_info.discovery_note,
-                "bot_invite_url": discord_info.bot_invite_url
+                "status": discord_info.status
             })
 
     return {
