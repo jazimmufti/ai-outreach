@@ -13,7 +13,7 @@ async def generate_outreach_message(
     creator_name: str,
     channel_name: str,
     video_title: Optional[str] = None,
-    channel: Literal["email", "instagram", "manual"] = "email",
+    channel: Literal["email", "instagram", "discord", "manual"] = "email",
     sender_name: Optional[str] = None,
     user_role: Optional[str] = None,
     custom_notes: Optional[str] = None
@@ -34,6 +34,8 @@ async def generate_outreach_message(
         sender_label = sender_name.strip()
     elif channel == "instagram":
         sender_label = "your collaborator on Instagram"
+    elif channel == "discord":
+        sender_label = "your collaborator via Discord"
     elif channel == "email" and sender_name:
         sender_label = sender_name.strip()
     else:
@@ -81,7 +83,7 @@ async def generate_outreach_message(
                 parsed = json.loads(resp_text.strip())
                 return OutreachMessage(
                     recipient_name=target_name,
-                    subject=parsed.get("subject", default_subject) if channel != "instagram" else None,
+                    subject=parsed.get("subject", default_subject) if channel not in ("instagram", "discord") else None,
                     body=parsed.get("body", default_body).strip(),
                     channel=channel
                 )
@@ -92,7 +94,7 @@ async def generate_outreach_message(
     # Standard Arclent Collaboration Confirmation Template
     return OutreachMessage(
         recipient_name=target_name,
-        subject=default_subject if channel != "instagram" else None,
+        subject=default_subject if channel not in ("instagram", "discord") else None,
         body=default_body,
         channel=channel
     )

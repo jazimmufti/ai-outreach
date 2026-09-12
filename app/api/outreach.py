@@ -24,7 +24,10 @@ from app.models.schemas import (
     SendEmailWorkflowRequest,
     SendEmailResponse,
     RecordSocialOutreachRequest,
-    AutoVerificationResult
+    AutoVerificationResult,
+    DiscordProfile,
+    SendDiscordMessageRequest,
+    SendDiscordMessageResponse
 )
 from datetime import datetime, timezone
 
@@ -36,6 +39,7 @@ from app.services.session_manager import (
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
 from app.services.linked_account import normalize_instagram_username
+from app.services import discord_service
 from app.services.auto_verification import (
     verify_contribution_from_description,
     verify_contribution_from_description_async
@@ -72,6 +76,7 @@ async def discover_creator_endpoint(payload: ResearchRequest):
 
         session.creator = creator_profile
         session.social_profiles = raw_result.social_profiles
+        session.discord_profile = raw_result.discord_profile
 
         # Locate Instagram profile if available
         for s in raw_result.social_profiles:
@@ -126,6 +131,7 @@ async def discover_creator_endpoint(payload: ResearchRequest):
             has_reliable_email=has_reliable_email,
             social_profiles=session.social_profiles,
             instagram_profile=session.instagram_profile,
+            discord_profile=session.discord_profile,
             auto_verification=session.auto_verification,
             errors=raw_result.errors
         )
@@ -177,6 +183,7 @@ async def stream_discovery_endpoint(
                     )
                     session.creator = creator_profile
                     session.social_profiles = [SocialProfile(**s) for s in raw.get("social_profiles", [])]
+                    session.discord_profile = DiscordProfile(**raw["discord_profile"]) if raw.get("discord_profile") else None
 
                     for s in session.social_profiles:
                         if s.platform == "Instagram":
@@ -582,6 +589,69 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
         "sender_identity": session.sender_identity,
         "creator_response": session.creator_response
     }
+
+
+@router.post("/send-discord-message", response_model=SendDiscordMessageResponse)
+async def send_discord_message_endpoint(payload: SendDiscordMessageRequest):
+    """Step 4 Send (Discord): Dispatch outreach message directly to creator via Arclent Discord Bot."""
+    session = get_session(payload.session_id) if payload.session_id else None
+    
+    # 1. Resolve message text: use provided payload or existing session draft or generate
+    message_content = (payload.message or "").strip()
+    if not message_content:
+        if session and session.message and session.message.body:
+            message_content = session.message.body.strip()
+        else:
+            creator_name = session.creator.name if (session and session.creator) else "Creator"
+            channel_name = session.creator.channel_name if (session and session.creator) else creator_name
+            video_title = session.creator.video_title if (session and session.creator) else None
+            role = session.user_role if session else "Video editor"
+            generated = await generate_outreach_message(
+                creator_name=creator_name,
+                channel_name=channel_name,
+                video_title=video_title,
+                channel="discord",
+                user_role=role
+            )
+            message_content = generated.body
+
+    # 2. Dispatch message using Arclent Discord Bot Service
+    try:
+        result = await discord_service.send_dm_message(
+            recipient_id=payload.discord_user_id,
+            message=message_content
+        )
+    except discord_service.DiscordServiceError as dse:
+        logger.error(f"Discord outreach error for recipient {payload.discord_user_id}: {dse.message} (HTTP {dse.status_code})")
+        raise HTTPException(status_code=dse.status_code, detail=dse.message)
+    except Exception as e:
+        logger.error(f"Unexpected Discord bot dispatch error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="We couldn't send the Discord message. The creator may have Discord DMs restricted. Try another contact method."
+        )
+
+    # 3. Update session tracking
+    if session:
+        session.stage = OutreachStage.SENT
+        session.selected_channel = "discord"
+        session.final_discord_user_id = payload.discord_user_id
+        session.discord_message_id = result.get("message_id")
+        session.discord_sent_at = result.get("sent_at")
+        session.creator_response = "pending"
+        session.sender_identity = "Arclent Discord Bot"
+        save_session(session)
+
+    return SendDiscordMessageResponse(
+        success=True,
+        platform="discord",
+        status="sent",
+        message_id=result.get("message_id"),
+        recipient_id=result.get("recipient_id") or payload.discord_user_id,
+        channel_id=result.get("channel_id"),
+        sent_at=result.get("sent_at"),
+        detail="Message delivered to creator via Arclent Discord Bot"
+    )
 
 
 @router.get("/verify", response_class=HTMLResponse)

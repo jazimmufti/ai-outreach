@@ -4,9 +4,15 @@ import logging
 from typing import TypedDict, List, Optional, Dict, Any, AsyncGenerator
 from langgraph.graph import StateGraph, START, END
 
-from app.models.schemas import SocialProfile, EmailCandidate, RawCreatorResearchResult
+from app.models.schemas import SocialProfile, DiscordProfile, EmailCandidate, RawCreatorResearchResult
 from app.services.youtube_service import parse_youtube_target, extract_video_id, get_youtube_metadata
-from app.services.social_discovery import extract_social_profiles, extract_website_urls, rank_social_profiles, discover_credits_social_profiles
+from app.services.social_discovery import (
+    extract_social_profiles, 
+    extract_discord_information,
+    extract_website_urls, 
+    rank_social_profiles, 
+    discover_credits_social_profiles
+)
 from app.services.email_discovery import extract_emails_from_text, crawl_website_for_emails
 from app.services.mistral_service import classify_and_verify_with_mistral
 
@@ -34,6 +40,7 @@ class CreatorResearchState(TypedDict):
     channel_links: List[str]
     published_at: Optional[str]
     social_profiles: List[Dict[str, Any]]
+    discord_profile: Optional[Dict[str, Any]]
     email_candidates: List[Dict[str, Any]]
     selected_email: Optional[str]
     email_source: Optional[str]
@@ -197,8 +204,18 @@ async def discover_socials_node(state: CreatorResearchState) -> Dict[str, Any]:
         if s.platform in ALLOWED_PLATFORMS
     ]
     
+    # Discover Discord information separately with strict identification
+    combined_discord_text = "\n".join(filter(None, [
+        "\n".join(channel_links) if channel_links else "",
+        channel_desc,
+        video_desc,
+        full_desc
+    ]))
+    discord_info = extract_discord_information(combined_discord_text, source_label="youtube_description")
+
     return {
         "social_profiles": filtered_socials,
+        "discord_profile": discord_info.model_dump() if discord_info else None,
         "current_step": "discover_socials"
     }
 
@@ -415,6 +432,7 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
         "channel_links": [],
         "published_at": None,
         "social_profiles": [],
+        "discord_profile": None,
         "email_candidates": [],
         "selected_email": None,
         "email_source": None,
@@ -435,6 +453,7 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
         if s.get("platform") in ALLOWED_PLATFORMS
     ]
     email_models = [EmailCandidate(**e) for e in final_state.get("email_candidates", [])]
+    discord_model = DiscordProfile(**final_state["discord_profile"]) if final_state.get("discord_profile") else None
 
     return RawCreatorResearchResult(
         video_url=final_state.get("video_url", ""),
@@ -452,6 +471,7 @@ async def execute_creator_research(youtube_url: str) -> RawCreatorResearchResult
         channel_links=final_state.get("channel_links", []),
         published_at=final_state.get("published_at"),
         social_profiles=social_models,
+        discord_profile=discord_model,
         email_candidates=email_models,
         selected_email=final_state.get("selected_email"),
         email_source=final_state.get("email_source"),
@@ -562,6 +582,7 @@ async def execute_creator_research_stream(
         if s.get("platform") in ALLOWED_PLATFORMS
     ]
     email_models = [EmailCandidate(**e) for e in state.get("email_candidates", [])]
+    discord_model = DiscordProfile(**state["discord_profile"]) if state.get("discord_profile") else None
 
     final_resp = RawCreatorResearchResult(
         video_url=state.get("video_url", ""),
@@ -579,6 +600,7 @@ async def execute_creator_research_stream(
         channel_links=state.get("channel_links", []),
         published_at=state.get("published_at"),
         social_profiles=social_models,
+        discord_profile=discord_model,
         email_candidates=email_models,
         selected_email=state.get("selected_email"),
         email_source=state.get("email_source"),

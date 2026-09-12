@@ -351,6 +351,9 @@ document.addEventListener("DOMContentLoaded", () => {
         finalInstagramHandle: null,
         finalInstagramUrl: null,
         instagramConfirmed: false,
+        discordProfile: null,
+        finalDiscordUserId: null,
+        discordConfirmed: false,
         socialProfiles: [],
         message: null,
         gmailConnected: false,
@@ -557,6 +560,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const copyInstaMsgBtn = document.getElementById("copy-insta-msg-btn");
     const copyInstaBtnText = document.getElementById("copy-insta-btn-text");
     const openInstagramBtn = document.getElementById("open-instagram-btn");
+
+    // Discord Outreach Elements
+    const hubSummaryDiscordRow = document.getElementById("hub-summary-discord-row");
+    const hubSummaryDiscordVal = document.getElementById("hub-summary-discord-val");
+    const hubEditDiscordBtn = document.getElementById("hub-edit-discord-btn");
+    const hubDiscordBlock = document.getElementById("hub-discord-block");
+    const discordStatusBadge = document.getElementById("discord-status-badge");
+    const discordIdentificationBanner = document.getElementById("discord-identification-banner");
+    const discordDiscoveredTarget = document.getElementById("discord-discovered-target");
+    const discordUserIdInput = document.getElementById("discord-user-id-input");
+    const btnDiscordSetId = document.getElementById("btn-discord-set-id");
+    const discordErrorAlert = document.getElementById("discord-error-alert");
+    const discordErrorMessage = document.getElementById("discord-error-message");
+    const hubDiscordHeadHandle = document.getElementById("hub-discord-head-handle");
+    const discordMessageBody = document.getElementById("discord-message-body");
+    const btnSendDiscordBot = document.getElementById("btn-send-discord-bot");
+    const btnSendDiscordText = document.getElementById("btn-send-discord-text");
+    const btnCopyDiscordMsg = document.getElementById("btn-copy-discord-msg");
+    const btnCopyDiscordText = document.getElementById("btn-copy-discord-text");
 
     // Helper: Automatically Update Sender Handle (from Extension or Context)
     function setSenderHandle(handle, syncBackend = true) {
@@ -1231,6 +1253,26 @@ document.addEventListener("DOMContentLoaded", () => {
         state.instagramProfile = data.instagram_profile || state.socialProfiles.find(s => (s.platform || "").toLowerCase() === "instagram") || null;
         state.selectedSocialProfile = state.instagramProfile || null;
 
+        state.discordProfile = data.discord_profile || null;
+        if (!state.discordProfile) {
+            const discSocial = state.socialProfiles.find(s => (s.platform || "").toLowerCase() === "discord");
+            if (discSocial) {
+                state.discordProfile = {
+                    discord_invite: discSocial.discord_invite || (discSocial.url && discSocial.url.includes("discord.gg") ? discSocial.url : null),
+                    discord_username: discSocial.discord_username || (discSocial.username && !discSocial.username.includes("http") ? discSocial.username : null),
+                    discord_user_id: discSocial.discord_user_id || null,
+                    discord_source: discSocial.discord_source || "youtube_description",
+                    status: discSocial.status || (discSocial.discord_user_id ? "sendable" : "discovered"),
+                    url: discSocial.url
+                };
+            }
+        }
+        if (state.discordProfile && state.discordProfile.discord_user_id) {
+            state.finalDiscordUserId = state.discordProfile.discord_user_id;
+        } else {
+            state.finalDiscordUserId = null;
+        }
+
         if (state.instagramProfile) {
             state.finalInstagramHandle = formatHandle(state.instagramProfile.username);
             state.finalInstagramUrl = state.instagramProfile.url;
@@ -1733,6 +1775,32 @@ document.addEventListener("DOMContentLoaded", () => {
         const clickedBtn = options.button || 
             (btnIgOpenSend && !btnIgOpenSend.closest(".hidden") ? btnIgOpenSend : 
             (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null));
+
+        if (platformName.toLowerCase() === "discord") {
+            const discUserId = options.handle && /^[0-9]{17,20}$/.test(options.handle.replace('@', ''))
+                ? options.handle.replace('@', '')
+                : (state.finalDiscordUserId || (state.discordProfile ? state.discordProfile.discord_user_id : null));
+
+            if (discUserId) {
+                state.finalDiscordUserId = discUserId;
+                await sendDiscordOutreachMessage({
+                    recipientId: discUserId,
+                    message: text,
+                    returnScreen: options.returnScreen
+                });
+                return;
+            } else {
+                state.stage = "outreach_hub";
+                renderOutreachHub();
+                showScreen("outreachHub", 4);
+                if (hubDiscordBlock) {
+                    hubDiscordBlock.classList.remove("hidden");
+                    hubDiscordBlock.scrollIntoView({ behavior: "smooth" });
+                }
+                showToast("Discord found, but creator's Discord account could not be identified automatically. Enter their User ID to send.", "info");
+                return;
+            }
+        }
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
         const isDesktop = !isMobileDevice();
@@ -2889,6 +2957,66 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hubInstagramBlock) hubInstagramBlock.classList.add("hidden");
         }
 
+        // 3. Discord Bot Section
+        const disc = state.discordProfile || (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
+        if (disc || state.finalDiscordUserId) {
+            if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.remove("hidden");
+            if (hubDiscordBlock) hubDiscordBlock.classList.remove("hidden");
+
+            const discUserId = state.finalDiscordUserId || (disc ? (disc.discord_user_id || (/^[0-9]{17,20}$/.test(disc.username || '') ? disc.username : null)) : null);
+            const isSendable = !!discUserId;
+
+            if (hubSummaryDiscordVal) {
+                if (discUserId) {
+                    hubSummaryDiscordVal.textContent = `User ID: ${discUserId}`;
+                    hubSummaryDiscordVal.style.color = "var(--green)";
+                } else if (disc && (disc.discord_username || disc.username)) {
+                    hubSummaryDiscordVal.textContent = `Handle: ${disc.discord_username || disc.username}`;
+                    hubSummaryDiscordVal.style.color = "var(--text-main)";
+                } else if (disc && (disc.discord_invite || disc.url)) {
+                    hubSummaryDiscordVal.textContent = `Invite: ${disc.discord_invite || disc.url}`;
+                    hubSummaryDiscordVal.style.color = "var(--text-main)";
+                } else {
+                    hubSummaryDiscordVal.textContent = "Discovered";
+                    hubSummaryDiscordVal.style.color = "var(--text-muted)";
+                }
+            }
+
+            if (discordMessageBody && !discordMessageBody.value) {
+                discordMessageBody.value = generateDiscordDmDraft(creatorName, videoTitle, state.userRole);
+            }
+
+            if (isSendable) {
+                state.finalDiscordUserId = discUserId;
+                if (discordStatusBadge) {
+                    discordStatusBadge.textContent = "SENDABLE · BOT READY";
+                    discordStatusBadge.style.background = "#DCFCE7";
+                    discordStatusBadge.style.color = "#166534";
+                    discordStatusBadge.style.borderColor = "#22C55E";
+                }
+                if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
+                if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to Discord User ID ${discUserId}`;
+            } else {
+                if (discordStatusBadge) {
+                    discordStatusBadge.textContent = "DISCOVERED · ID REQUIRED";
+                    discordStatusBadge.style.background = "#FEF3C7";
+                    discordStatusBadge.style.color = "#92400E";
+                    discordStatusBadge.style.borderColor = "#F59E0B";
+                }
+                if (discordIdentificationBanner) {
+                    discordIdentificationBanner.classList.remove("hidden");
+                    const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite / public mention";
+                    if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
+                }
+                if (btnSendDiscordBot) btnSendDiscordBot.disabled = !state.finalDiscordUserId;
+                if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message from Arclent Bot";
+            }
+        } else {
+            if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.add("hidden");
+            if (hubDiscordBlock) hubDiscordBlock.classList.add("hidden");
+        }
+
         // 3. Other Socials Grid (Displays all other channels including other Instagram profiles)
         const currentIg = (state.finalInstagramHandle || "").toLowerCase().replace('@', '');
         const otherSocials = (state.socialProfiles || []).filter(s => {
@@ -3025,6 +3153,175 @@ document.addEventListener("DOMContentLoaded", () => {
     if (openInstagramBtn) {
         openInstagramBtn.onclick = () => {
             dispatchSocialOutreach({ returnScreen: "outreach_hub", button: openInstagramBtn });
+        };
+    }
+
+    // Helper: Discord Draft and Dispatch Handlers
+    function generateDiscordDmDraft(creatorName, videoTitle, userRole) {
+        const cName = creatorName || "Creator";
+        const vTitle = videoTitle || "your video";
+        const role = userRole || "Video editor";
+        return `Hi ${cName}, your collaborator (${role}) on "${vTitle}" here via Arclent. Can you confirm our collaboration on this project?`;
+    }
+
+    async function sendDiscordOutreachMessage(opts = {}) {
+        const userId = opts.recipientId || state.finalDiscordUserId;
+        if (!userId || !/^[0-9]{17,20}$/.test(String(userId).trim())) {
+            showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+            if (discordUserIdInput) {
+                discordUserIdInput.focus();
+                discordUserIdInput.style.borderColor = "var(--red)";
+            }
+            return;
+        }
+
+        const c = state.creator || {};
+        const creatorName = c.name || c.channel_name || "Creator";
+        const videoTitle = c.video_title || "your video";
+        const role = state.userRole || "Video editor";
+
+        let text = opts.message;
+        if (!text && discordMessageBody && discordMessageBody.value.trim()) {
+            text = discordMessageBody.value.trim();
+        }
+        if (!text) {
+            text = generateDiscordDmDraft(creatorName, videoTitle, role);
+        }
+
+        if (discordErrorAlert) discordErrorAlert.classList.add("hidden");
+        if (btnSendDiscordBot) {
+            btnSendDiscordBot.disabled = true;
+            if (btnSendDiscordText) btnSendDiscordText.innerHTML = `<span class="analyzing-spinner" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></span> Sending via Bot...`;
+        }
+
+        try {
+            const resp = await fetch("/api/outreach/send-discord-message", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    session_id: state.sessionId,
+                    discord_user_id: String(userId).trim(),
+                    message: text,
+                    creator_id: c.channel_name || null,
+                    source: "youtube_description"
+                })
+            });
+
+            const data = await resp.json().catch(() => ({}));
+
+            if (!resp.ok) {
+                const errMsg = data.detail || "We couldn't send the Discord message. The creator may have Discord DMs restricted. Try another contact method.";
+                if (discordErrorAlert && discordErrorMessage) {
+                    discordErrorMessage.textContent = errMsg;
+                    discordErrorAlert.classList.remove("hidden");
+                }
+                showToast(errMsg, "error");
+                return;
+            }
+
+            // Success!
+            state.stage = "sent";
+            state.selectedChannel = "discord";
+            state.finalDiscordUserId = String(userId).trim();
+            saveSessionState();
+
+            // Transition directly to Delivery Success Screen (no manual "I've sent the message" button needed!)
+            if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+            if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
+            if (verificationDmReadyBox) verificationDmReadyBox.classList.add("hidden");
+            if (verificationPendingBox) verificationPendingBox.classList.remove("hidden");
+            if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+            if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+            if (vPendingRecipientSub) {
+                const msgIdStr = data.message_id ? ` (ID: ${data.message_id})` : "";
+                vPendingRecipientSub.textContent = `Message delivered to Discord User ID ${state.finalDiscordUserId} via Arclent Discord Bot${msgIdStr}`;
+            }
+
+            showScreen("deliverySuccess", 4);
+            showToast("✓ Message dispatched via Arclent Discord Bot!");
+            startVerificationPolling();
+
+        } catch (err) {
+            console.error("Discord outreach dispatch error:", err);
+            const errMsg = err.message || "Failed to deliver Discord message.";
+            if (discordErrorAlert && discordErrorMessage) {
+                discordErrorMessage.textContent = errMsg;
+                discordErrorAlert.classList.remove("hidden");
+            }
+            showToast(errMsg, "error");
+        } finally {
+            if (btnSendDiscordBot) {
+                btnSendDiscordBot.disabled = false;
+                if (btnSendDiscordText) btnSendDiscordText.textContent = "Send via Arclent Discord Bot ⚡";
+            }
+        }
+    }
+
+    if (btnDiscordSetId && discordUserIdInput) {
+        btnDiscordSetId.onclick = () => {
+            const rawId = discordUserIdInput.value.trim();
+            if (!/^[0-9]{17,20}$/.test(rawId)) {
+                showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                discordUserIdInput.style.borderColor = "var(--red)";
+                return;
+            }
+            discordUserIdInput.style.borderColor = "var(--green)";
+            state.finalDiscordUserId = rawId;
+            if (state.discordProfile) {
+                state.discordProfile.discord_user_id = rawId;
+                state.discordProfile.status = "sendable";
+            } else {
+                state.discordProfile = {
+                    discord_user_id: rawId,
+                    discord_source: "manual",
+                    status: "sendable",
+                    url: `https://discord.com/users/${rawId}`
+                };
+            }
+            if (discordStatusBadge) {
+                discordStatusBadge.textContent = "SENDABLE · BOT READY";
+                discordStatusBadge.style.background = "#DCFCE7";
+                discordStatusBadge.style.color = "#166534";
+                discordStatusBadge.style.borderColor = "#22C55E";
+            }
+            if (hubSummaryDiscordVal) {
+                hubSummaryDiscordVal.textContent = `User ID: ${rawId}`;
+                hubSummaryDiscordVal.style.color = "var(--green)";
+            }
+            if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to Discord User ID ${rawId}`;
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+            showToast("✓ Discord User ID set. Ready to send via Arclent Bot!");
+        };
+    }
+
+    if (btnSendDiscordBot) {
+        btnSendDiscordBot.onclick = () => {
+            sendDiscordOutreachMessage();
+        };
+    }
+
+    if (btnCopyDiscordMsg) {
+        btnCopyDiscordMsg.onclick = async () => {
+            const text = discordMessageBody ? discordMessageBody.value.trim() : "";
+            if (!text) return;
+            await copyTextToClipboard(text);
+            if (btnCopyDiscordText) {
+                btnCopyDiscordText.textContent = "✓ Copied!";
+                setTimeout(() => { if (btnCopyDiscordText) btnCopyDiscordText.textContent = "📋 Copy Message"; }, 2500);
+            }
+            showToast("✓ Message copied to clipboard!");
+        };
+    }
+
+    if (hubEditDiscordBtn) {
+        hubEditDiscordBtn.onclick = () => {
+            if (hubDiscordBlock) {
+                hubDiscordBlock.classList.remove("hidden");
+                hubDiscordBlock.scrollIntoView({ behavior: "smooth" });
+                if (discordUserIdInput) discordUserIdInput.focus();
+            }
         };
     }
 
@@ -3305,6 +3602,15 @@ document.addEventListener("DOMContentLoaded", () => {
         state.stageBeforeDelivery = null;
         state.pendingExtensionSession = null;
         state.senderHandle = null;
+        state.discordProfile = null;
+        state.finalDiscordUserId = null;
+        state.discordConfirmed = false;
+
+        if (discordUserIdInput) discordUserIdInput.value = "";
+        if (discordMessageBody) discordMessageBody.value = "";
+        if (discordErrorAlert) discordErrorAlert.classList.add("hidden");
+        if (hubSummaryDiscordRow) hubSummaryDiscordRow.classList.add("hidden");
+        if (hubDiscordBlock) hubDiscordBlock.classList.add("hidden");
 
         if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
         if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");

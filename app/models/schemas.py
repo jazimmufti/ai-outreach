@@ -42,6 +42,19 @@ class ResearchRequest(BaseModel):
         return v
 
 
+class DiscordProfile(BaseModel):
+    """Discovered Discord details for a creator."""
+    discord_invite: Optional[str] = Field(default=None, description="Discovered Discord invite link or code (e.g. discord.gg/...)")
+    discord_username: Optional[str] = Field(default=None, description="Discovered Discord handle or username")
+    discord_user_id: Optional[str] = Field(default=None, description="Validated 17-20 digit Discord User Snowflake ID")
+    discord_source: str = Field(default="youtube_description", description="Source location of Discord info")
+    status: Literal["sendable", "discovered"] = Field(
+        default="discovered", 
+        description="Whether a valid Discord User ID is available for official bot DM dispatch"
+    )
+    url: Optional[str] = Field(default=None, description="Direct URL to invite or user profile")
+
+
 class SocialProfile(BaseModel):
     """Discovered social media account."""
     platform: str = Field(..., description="Social platform name (Instagram, X, Discord, Reddit, Facebook, Twitch)")
@@ -49,6 +62,11 @@ class SocialProfile(BaseModel):
     url: str = Field(..., description="Full URL to public profile")
     source: str = Field(default="YouTube description", description="Source where profile was identified")
     confidence: Literal["high", "medium", "low"] = Field(default="medium", description="Confidence level")
+    discord_invite: Optional[str] = Field(default=None, description="Discord server invite code/URL if applicable")
+    discord_username: Optional[str] = Field(default=None, description="Discovered Discord username if applicable")
+    discord_user_id: Optional[str] = Field(default=None, description="Discovered Discord snowflake user ID if applicable")
+    discord_source: Optional[str] = Field(default=None, description="Source origin of Discord information")
+    status: Optional[str] = Field(default=None, description="Profile outreach status ('sendable' or 'discovered')")
 
 
 class EmailCandidate(BaseModel):
@@ -72,7 +90,7 @@ class OutreachMessage(BaseModel):
     recipient_name: str
     subject: Optional[str] = None
     body: str
-    channel: Literal["email", "instagram", "manual"] = "email"
+    channel: Literal["email", "instagram", "discord", "manual"] = "email"
 
 
 class CreatorProfile(BaseModel):
@@ -136,6 +154,10 @@ class OutreachSession(BaseModel):
     instagram_confirmed: Optional[bool] = None
     final_instagram_handle: Optional[str] = None
     final_instagram_url: Optional[str] = None
+    discord_profile: Optional[DiscordProfile] = None
+    final_discord_user_id: Optional[str] = None
+    discord_message_id: Optional[str] = None
+    discord_sent_at: Optional[str] = None
     auto_verification: Optional[AutoVerificationResult] = None
     message: Optional[OutreachMessage] = None
     selected_channel: Optional[str] = None
@@ -170,6 +192,7 @@ class RawCreatorResearchResult(BaseModel):
     channel_links: List[str] = Field(default_factory=list)
     published_at: Optional[str] = None
     social_profiles: List[SocialProfile] = Field(default_factory=list)
+    discord_profile: Optional[DiscordProfile] = None
     email_candidates: List[EmailCandidate] = Field(default_factory=list)
     selected_email: Optional[str] = None
     email_source: Optional[str] = None
@@ -285,8 +308,31 @@ class CreatorDiscoveryResponse(BaseModel):
     has_reliable_email: bool
     social_profiles: List[SocialProfile] = Field(default_factory=list)
     instagram_profile: Optional[SocialProfile] = None
+    discord_profile: Optional[DiscordProfile] = None
     auto_verification: Optional[AutoVerificationResult] = None
     errors: List[str] = Field(default_factory=list)
+
+
+class SendDiscordMessageRequest(BaseModel):
+    """Request payload to send direct outreach message via Arclent Discord Bot."""
+    session_id: Optional[str] = None
+    creator_id: Optional[str] = None
+    discord_user_id: str = Field(..., description="Recipient Discord User Snowflake ID (17-20 digits)")
+    message: Optional[str] = Field(default=None, description="Outreach message content")
+    source: Optional[str] = Field(default="youtube_description", description="Source origin of Discord information")
+
+
+class SendDiscordMessageResponse(BaseModel):
+    """Response returned after sending message via Arclent Discord Bot."""
+    success: bool
+    platform: str = "discord"
+    status: str = "sent"
+    message_id: Optional[str] = None
+    recipient_id: Optional[str] = None
+    channel_id: Optional[str] = None
+    sent_at: Optional[str] = None
+    detail: Optional[str] = None
+
 
 
 class GmailStatusResponse(BaseModel):

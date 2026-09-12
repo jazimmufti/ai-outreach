@@ -60,6 +60,12 @@ app.include_router(research.router)
 app.include_router(gmail.router)
 app.include_router(email.router)
 
+# Top-level direct endpoint for Discord outreach
+@app.post("/send-discord-message", response_model=outreach.SendDiscordMessageResponse, tags=["discord"])
+async def send_discord_message_top_level(payload: outreach.SendDiscordMessageRequest):
+    """Top-level direct endpoint to send outreach message via Arclent Discord Bot."""
+    return await outreach.send_discord_message_endpoint(payload)
+
 # Mount Frontend directory
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 

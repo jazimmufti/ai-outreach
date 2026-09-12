@@ -494,6 +494,13 @@
                         </div>
                         <button type="button" id="hub-edit-ig-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
                     </div>
+                    <div class="outreach-channel-item hidden" id="hub-summary-discord-row">
+                        <div class="outreach-channel-label">
+                            <span class="channel-type-badge font-mono" style="background: #5865F2; color: #FFF;">💬 DISCORD</span>
+                            <span id="hub-summary-discord-val" class="outreach-channel-value font-mono">Not specified</span>
+                        </div>
+                        <button type="button" id="hub-edit-discord-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                    </div>
                 </div>
 
                 <!-- 1. Email Outreach Block (if email verified) -->
@@ -564,6 +571,70 @@
                         </button>
                         <button type="button" id="open-instagram-btn" class="btn-primary">
                             <span>Open Instagram & Send ↗</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Discord Bot Direct Outreach Block -->
+                <div id="hub-discord-block" class="hub-action-section hidden" style="margin-top: 24px;">
+                    <div class="block-title-group" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <span class="field-label-tag font-mono" style="background: #5865F2; color: #FFFFFF; border-color: #111827;">CHANNEL · DISCORD BOT OUTREACH</span>
+                            <h2 class="sub-heading" style="font-size: 17px; margin-top: 4px;">Send Message via Arclent Discord Bot</h2>
+                        </div>
+                        <span class="badge font-mono" id="discord-status-badge" style="font-size: 11px; background: #EEF2FF; color: #4338CA; border: 1.5px solid #111827; font-weight: 700;">Discovered</span>
+                    </div>
+
+                    <!-- Identification Notice (when only invite or handle found) -->
+                    <div id="discord-identification-banner" class="notice-banner-credits hidden" style="background: #EEF2FF; border-color: #6366F1; margin-bottom: 16px;">
+                        <div class="notice-banner-icon" style="background: #5865F2; color: #FFF; font-weight: 800;">ℹ</div>
+                        <div class="notice-banner-content">
+                            <div class="notice-banner-title" style="color: #3730A3; font-weight: 800;">Discord found, but the creator's Discord account could not be identified automatically.</div>
+                            <div class="notice-banner-sub" style="color: #4338CA;" id="discord-found-details">
+                                Detected: <strong id="discord-discovered-target">https://discord.gg/...</strong>
+                            </div>
+                            <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                <input type="text" id="discord-user-id-input" class="retro-input font-mono" placeholder="Enter Discord User ID (17-20 digits)" style="flex: 1; min-width: 210px; font-size: 13px; padding: 7px 10px; background: #FFF;">
+                                <button type="button" id="btn-discord-set-id" class="btn-primary" style="padding: 7px 16px; font-size: 12px; white-space: nowrap;">
+                                    <span>Set User ID</span>
+                                </button>
+                            </div>
+                            <p class="font-mono" style="font-size: 11px; color: #6366F1; margin: 6px 0 0 0;">
+                                💡 Discord User IDs are 17–20 numeric digits (Right-click profile in Discord &rarr; Copy User ID).
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Error Alert Box -->
+                    <div id="discord-error-alert" class="notice-banner-credits hidden" style="background: #FEF2F2; border-color: #EF4444; margin-bottom: 16px;">
+                        <div class="notice-banner-icon" style="background: #EF4444; color: #FFF;">✕</div>
+                        <div class="notice-banner-content">
+                            <div class="notice-banner-title" style="color: #991B1B;" id="discord-error-title">Discord Message Could Not Be Sent</div>
+                            <div class="notice-banner-sub" style="color: #B91C1C;" id="discord-error-message">
+                                We couldn't send the Discord message. The creator may have Discord DMs restricted. Try another contact method.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dm-preview">
+                        <div class="dm-head" style="background: #5865F2; color: #FFFFFF;">
+                            <span id="hub-discord-head-handle">Direct message from Arclent Bot</span>
+                            <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.2); color: #FFF;">Official Discord Bot API</span>
+                        </div>
+                        <div class="dm-body">
+                            <div class="form-group" style="margin-bottom: 8px;">
+                                <label for="discord-message-body" class="retro-label font-mono">COLLABORATION VERIFICATION MESSAGE</label>
+                                <textarea id="discord-message-body" class="retro-textarea font-mono" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-row" style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" id="btn-send-discord-bot" class="btn-primary" style="flex: 1; min-width: 200px; justify-content: center;">
+                            <span id="btn-send-discord-text">Send via Arclent Discord Bot ⚡</span>
+                        </button>
+                        <button type="button" id="btn-copy-discord-msg" class="btn-secondary" style="flex: 0 0 auto; padding: 10px 16px;">
+                            <span id="btn-copy-discord-text">📋 Copy Message</span>
                         </button>
                     </div>
                 </div>

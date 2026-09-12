@@ -12,10 +12,10 @@ Restricted strictly to supported platforms:
 import re
 import logging
 import urllib.parse
-from typing import List, Set, Optional
+from typing import List, Set, Optional, Dict, Any
 from urllib.parse import urlparse
 
-from app.models.schemas import SocialProfile
+from app.models.schemas import SocialProfile, DiscordProfile
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,8 @@ EXCLUDED_USERNAMES = {
     "channel", "video", "videos", "shorts", "feed", "youtube", "yt", "subscribe", "subscribers", "profile", "account", "accounts",
     "https", "http", "www", "follow", "like", "comment", "enquiries", "business", "contact",
     "instagram", "insta", "ig", "threads", "facebook", "fb", "twitter", "x", "tiktok", "discord", "linkedin", "snapchat",
-    "credit", "credits", "editor", "edit", "vfx", "thumbnail", "contributor", "contributors"
+    "credit", "credits", "editor", "edit", "vfx", "thumbnail", "contributor", "contributors",
+    "server", "join", "community", "bot", "chat"
 }
 
 KNOWN_SPONSORS_AND_BRANDS = {
@@ -60,9 +61,17 @@ URL_PATTERNS = [
     },
     {
         "platform": "Discord",
+        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", re.I),
+        "format_url": lambda u: f"https://discord.com/users/{u.rstrip('/')}",
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
+        "is_user_id": True
+    },
+    {
+        "platform": "Discord",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9_-]{2,32})", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
+        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
+        "is_invite": True
     },
     {
         "platform": "Reddit",
@@ -106,9 +115,17 @@ TEXT_HANDLE_PATTERNS = [
     },
     {
         "platform": "Discord",
-        "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_-]{2,32})\b", re.I),
-        "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "pattern": re.compile(r"\bdiscord\s*(?:user\s*)?id\s*[:=\-—|]\s*([0-9]{17,20})\b", re.I),
+        "format_url": lambda u: f"https://discord.com/users/{u.rstrip('/')}",
+        "clean_user": lambda u: u.strip(),
+        "is_user_id": True
+    },
+    {
+        "platform": "Discord",
+        "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", re.I),
+        "format_url": lambda u: f"https://discord.com",
+        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip(),
+        "is_handle": True
     },
     {
         "platform": "Reddit",
@@ -174,6 +191,95 @@ def is_valid_username(user: str) -> bool:
     return True
 
 
+def extract_discord_information(text: str, source_label: str = "youtube_description") -> Optional[DiscordProfile]:
+    """Extract and categorize Discord information into server invite, username, and user ID.
+    
+    Distinguishes:
+    1. A Discord server invite (e.g. discord.gg/... or discord.com/invite/...)
+    2. A Discord username/handle (e.g. Discord: username or Discord: username#1234)
+    3. A Discord user ID (17-20 digit numeric snowflake or discord.com/users/<id>)
+    
+    Returns DiscordProfile with status='sendable' ONLY if a valid snowflake Discord User ID is identified.
+    Otherwise status='discovered'.
+    """
+    if not text:
+        return None
+
+    cleaned_text = clean_social_text(text)
+    
+    discovered_invite: Optional[str] = None
+    discovered_username: Optional[str] = None
+    discovered_user_id: Optional[str] = None
+    
+    # 1. Check for direct Discord User Profile URLs: discord.com/users/<snowflake> or discordapp.com/users/<snowflake>
+    user_url_match = re.search(
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})",
+        cleaned_text,
+        re.IGNORECASE
+    )
+    if user_url_match:
+        discovered_user_id = user_url_match.group(1)
+
+    # 2. Check for explicit text Discord User ID mentions: "Discord User ID: 123...", "Discord ID: 123..."
+    if not discovered_user_id:
+        text_id_match = re.search(
+            r"\bdiscord\s*(?:user\s*)?id\s*[:=\-—|]\s*([0-9]{17,20})\b",
+            cleaned_text,
+            re.IGNORECASE
+        )
+        if text_id_match:
+            discovered_user_id = text_id_match.group(1)
+
+    # 3. Check for Discord Server Invites: discord.gg/<code> or discord.com/invite/<code>
+    invite_match = re.search(
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|discord\.com\/invite\/)([a-zA-Z0-9_\-]{2,32})",
+        cleaned_text,
+        re.IGNORECASE
+    )
+    if invite_match:
+        raw_code = invite_match.group(1).rstrip("./_…-")
+        if is_valid_username(raw_code):
+            discovered_invite = f"https://discord.gg/{raw_code}"
+
+    # 4. Check for Discord text handles / usernames: "Discord: username", "Discord - @username", "Discord: username#1234"
+    for line in cleaned_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        handle_match = re.search(
+            r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b",
+            line,
+            re.IGNORECASE
+        )
+        if handle_match:
+            cand = handle_match.group(1).rstrip("./_…-").lstrip("@").strip()
+            if re.match(r"^[0-9]{17,20}$", cand) and not discovered_user_id:
+                discovered_user_id = cand
+            elif is_valid_username(cand.split("#")[0]) and not discovered_username:
+                discovered_username = cand
+
+    if not discovered_invite and not discovered_username and not discovered_user_id:
+        return None
+
+    status = "sendable" if (discovered_user_id and re.match(r"^[0-9]{17,20}$", discovered_user_id)) else "discovered"
+    
+    if discovered_user_id:
+        url = f"https://discord.com/users/{discovered_user_id}"
+    elif discovered_invite:
+        url = discovered_invite
+    else:
+        url = "https://discord.com"
+
+    return DiscordProfile(
+        discord_invite=discovered_invite,
+        discord_username=discovered_username,
+        discord_user_id=discovered_user_id,
+        discord_source=source_label,
+        status=status,
+        url=url
+    )
+
+
 def extract_social_profiles(text: str, source_label: str = "YouTube description") -> List[SocialProfile]:
     """Extract and normalize Instagram, X, Discord, Reddit, Facebook, and LinkedIn profiles from text."""
     if not text:
@@ -202,13 +308,23 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
                 continue
 
             seen_urls.add(key)
+            
+            d_invite = full_url if item["platform"] == "Discord" and item.get("is_invite") else None
+            d_user_id = cleaned_user if item["platform"] == "Discord" and item.get("is_user_id") else None
+            d_status = "sendable" if d_user_id else ("discovered" if item["platform"] == "Discord" else None)
+            d_source = source_label if item["platform"] == "Discord" else None
+
             discovered.append(
                 SocialProfile(
                     platform=item["platform"],
                     username=cleaned_user,
                     url=full_url,
                     source=source_label,
-                    confidence="high"
+                    confidence="high",
+                    discord_invite=d_invite,
+                    discord_user_id=d_user_id,
+                    discord_source=d_source,
+                    status=d_status
                 )
             )
 
@@ -236,13 +352,25 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
                     continue
 
                 seen_urls.add(key)
+
+                d_user_id = cleaned_user if item["platform"] == "Discord" and item.get("is_user_id") else None
+                if item["platform"] == "Discord" and not d_user_id and re.match(r"^[0-9]{17,20}$", cleaned_user):
+                    d_user_id = cleaned_user
+                d_username = cleaned_user if item["platform"] == "Discord" and not d_user_id else None
+                d_status = "sendable" if d_user_id else ("discovered" if item["platform"] == "Discord" else None)
+                d_source = source_label if item["platform"] == "Discord" else None
+
                 discovered.append(
                     SocialProfile(
                         platform=item["platform"],
                         username=cleaned_user,
                         url=full_url,
                         source=source_label,
-                        confidence="high"
+                        confidence="high",
+                        discord_username=d_username,
+                        discord_user_id=d_user_id,
+                        discord_source=d_source,
+                        status=d_status
                     )
                 )
 

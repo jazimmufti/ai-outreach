@@ -52,6 +52,14 @@ class Settings(BaseSettings):
         return str(val).strip().strip("'\"")
 
     
+    # Discord Bot Integration
+    DISCORD_BOT_TOKEN: str = Field(default="", description="Discord Bot Token for official API outreach")
+
+    def get_discord_bot_token(self) -> str:
+        """Get sanitized Discord Bot Token stripped of whitespace and accidental quotes."""
+        val = os.environ.get("DISCORD_BOT_TOKEN") or self.DISCORD_BOT_TOKEN
+        return str(val).strip().strip("'\"")
+
     # Session & Security
     SESSION_SECRET_KEY: str = Field(
         default="outreach_dev_secret_key_849204928173928172", 
