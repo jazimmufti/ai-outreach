@@ -583,7 +583,7 @@ def extract_discord_credit_candidates(
         # 1A: If the line itself has a role matching user_role
         if role_label:
             # Check for URL in this line
-            for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", line_clean, re.IGNORECASE):
+            for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})", line_clean, re.IGNORECASE):
                 add_result(m.group(1), None, role_label, m.group(0))
             # Check for mention in this line
             for m in re.finditer(r"<@!?([0-9]{17,20})>", line_clean):
@@ -617,8 +617,8 @@ def extract_discord_credit_candidates(
                 if other_role:
                     break
 
-                has_discord_context = "discord" in sub_line.lower() or "users/" in sub_line.lower() or "<@" in sub_line
-                for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", sub_line, re.IGNORECASE):
+                has_discord_context = "discord" in sub_line.lower() or "users/" in sub_line.lower() or "channels/@me" in sub_line.lower() or "<@" in sub_line
+                for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})", sub_line, re.IGNORECASE):
                     add_result(m.group(1), None, role_label, m.group(0))
                 for m in re.finditer(r"<@!?([0-9]{17,20})>", sub_line):
                     add_result(m.group(1), None, role_label, m.group(0))

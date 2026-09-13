@@ -59,6 +59,15 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(discord_profile.discord_user_id, "803511102246789123")
         self.assertEqual(discord_profile.url, "https://discord.com/users/803511102246789123")
 
+    def test_extract_discord_direct_dm_channel_link(self):
+        """Test extraction when a direct Discord DM channel link with snowflake is present."""
+        text = "Message me directly in DMs: https://discord.com/channels/@me/803511102246789123 for work."
+        discord_profile = extract_discord_information(text)
+
+        self.assertIsNotNone(discord_profile)
+        self.assertEqual(discord_profile.status, "sendable")
+        self.assertEqual(discord_profile.discord_user_id, "803511102246789123")
+
     def test_extract_discord_user_id_text_pattern(self):
         """Test extraction when Discord User ID is explicitly written in text."""
         text = "For business outreach: Discord User ID: 104523981726354129 or email me."

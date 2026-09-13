@@ -612,13 +612,22 @@
                         </div>
                     </div>
 
-                    <div class="btn-row">
+                    <div class="btn-row" style="flex-wrap: wrap; gap: 8px;">
                         <button type="button" id="btn-copy-discord-msg" class="btn-secondary">
                             <span id="btn-copy-discord-text">📋 Copy Message</span>
                         </button>
+                        <button type="button" id="btn-copy-discord-tag" class="btn-secondary hidden" title="Copy creator username/ID for Add Friend">
+                            <span id="btn-copy-discord-tag-text">🏷️ Copy Creator Tag</span>
+                        </button>
+                        <a id="btn-discord-join-server" class="btn-secondary hidden" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; background: #EEF2FF; border-color: #5865F2; color: #4338CA;">
+                            <span>Join Creator's Server ↗</span>
+                        </a>
                         <button type="button" id="btn-send-discord-bot" class="btn-primary" style="background: #5865F2; border-color: #111827;">
                             <span id="btn-send-discord-text">Open Discord & Send ↗</span>
                         </button>
+                    </div>
+                    <div id="discord-non-friend-note" class="font-mono" style="font-size: 11px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 4px; padding: 8px 12px; margin-top: 10px; color: #475569; line-height: 1.5;">
+                        💡 <strong>Not friends on Discord yet?</strong> Discord restricts DMs between strangers who don't share a server. Clicking <em>Open Discord & Send</em> directs you to your DMs. If DMs are locked, send a friend request or join their server above to message them.
                     </div>
                 </div>
 

@@ -227,19 +227,19 @@ document.addEventListener("DOMContentLoaded", () => {
             return `https://t.me/${encodeURIComponent(cleanTg)}?text=${encodedText}`;
         }
 
-        // 8. Discord: Direct link to creator user DM/profile or server invite
+        // 8. Discord: Direct link to creator user Direct Message or server invite
         if (p.includes("discord")) {
             const rawStr = String(rawHandleOrUrl || "").trim();
-            // Numeric snowflake ID (17-20 digits) opens the creator's profile/DM popout directly
+            // Numeric snowflake ID (17-20 digits) opens the creator's DM workspace directly
             const snowflakeMatch = rawStr.match(/\b([0-9]{17,20})\b/);
             if (snowflakeMatch && !rawStr.includes("discord.gg") && !rawStr.includes("/invite/")) {
-                return `https://discord.com/users/${snowflakeMatch[1]}`;
+                return `https://discord.com/channels/@me/${snowflakeMatch[1]}`;
             }
             if (rawStr.includes("discord.gg") || rawStr.includes("discord.com") || rawStr.includes("discord.io") || rawStr.includes("discord.me")) {
                 return rawStr;
             }
             if (state.finalDiscordUserId && /^[0-9]{17,20}$/.test(String(state.finalDiscordUserId).trim())) {
-                return `https://discord.com/users/${String(state.finalDiscordUserId).trim()}`;
+                return `https://discord.com/channels/@me/${String(state.finalDiscordUserId).trim()}`;
             }
             return `https://discord.com/channels/@me`;
         }
@@ -606,6 +606,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnSendDiscordText = document.getElementById("btn-send-discord-text");
     const btnCopyDiscordMsg = document.getElementById("btn-copy-discord-msg");
     const btnCopyDiscordText = document.getElementById("btn-copy-discord-text");
+    const btnCopyDiscordTag = document.getElementById("btn-copy-discord-tag");
+    const btnCopyDiscordTagText = document.getElementById("btn-copy-discord-tag-text");
+    const btnDiscordJoinServer = document.getElementById("btn-discord-join-server");
 
     // Manual X Elements
     const manualXContainer = document.getElementById("manual-x-container");
@@ -1748,6 +1751,10 @@ document.addEventListener("DOMContentLoaded", () => {
             copyInstaBtnText.textContent = "✓ Message Copied!";
             setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 5000);
         }
+        if (btnCopyDiscordText) {
+            btnCopyDiscordText.textContent = "✓ Copied!";
+            setTimeout(() => { if (btnCopyDiscordText) btnCopyDiscordText.textContent = "📋 Copy Message"; }, 5000);
+        }
 
         const overlay = document.getElementById("copy-redirect-overlay");
         const titleEl = document.getElementById("copy-redirect-title");
@@ -1886,7 +1893,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (vDmReadyGuideText) {
                     const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and press Enter / Send.";
                     const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
-                    vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                    if (isDiscord) {
+                        const discInvite = (state.discordProfile && state.discordProfile.discord_invite) || null;
+                        const discTag = (state.discordProfile && (state.discordProfile.discord_username || state.finalDiscordUserId)) || state.finalDiscordUserId || null;
+                        let extraDiscordHtml = "";
+                        if (discInvite) {
+                            extraDiscordHtml += ` <br><span style="font-size: 12px; color: #475569; margin-top: 4px; display: inline-block;">💡 <strong>DMs restricted?</strong> Join creator's server: <a href="${discInvite}" target="_blank" rel="noopener noreferrer" style="color: #5865F2; font-weight: 700; text-decoration: underline;">Join Server ↗</a></span>`;
+                        }
+                        if (discTag) {
+                            extraDiscordHtml += ` <br><span style="font-size: 12px; color: #475569; margin-top: 2px; display: inline-block;">Or add friend on Discord using tag/ID: <code style="background: #E2E8F0; padding: 2px 6px; border-radius: 3px; font-weight: 700;">${escapeHtml(String(discTag))}</code></span>`;
+                        }
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s Direct Message in Discord. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord DM ↗</a></span>${extraDiscordHtml}`;
+                    } else {
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                    }
                 }
 
                 if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
@@ -2609,7 +2629,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             platform: "Discord",
                             username: discUserId,
                             discord_user_id: discUserId,
-                            url: `https://discord.com/users/${discUserId}`,
+                            url: `https://discord.com/channels/@me/${discUserId}`,
                             status: "sendable"
                         };
                     }
@@ -2621,7 +2641,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: dp.discord_invite || null,
                             discord_username: dp.discord_username || null,
                             discord_user_id: dp.discord_user_id || null,
-                            url: dp.url || dp.discord_invite || "https://discord.com",
+                            url: dp.url || dp.discord_invite || "https://discord.com/channels/@me",
                             status: dp.status || "discovered"
                         };
                     }
@@ -2633,7 +2653,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_invite: found.discord_invite || (found.url && (found.url.includes("discord") || found.url.includes("discord.gg")) ? found.url : null),
                             discord_username: found.discord_username || found.username || null,
                             discord_user_id: found.discord_user_id || null,
-                            url: found.url || found.discord_invite || "https://discord.com",
+                            url: found.url || found.discord_invite || "https://discord.com/channels/@me",
                             status: found.status || "discovered"
                         };
                     }
@@ -2649,14 +2669,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     state.discordProfile = {
                         status: "sendable",
                         discord_user_id: trimmed,
-                        url: `https://discord.com/users/${trimmed}`,
+                        url: `https://discord.com/channels/@me/${trimmed}`,
                         source: "Manual entry"
                     };
                     const discObj = {
                         platform: "Discord",
                         username: trimmed,
                         discord_user_id: trimmed,
-                        url: `https://discord.com/users/${trimmed}`,
+                        url: `https://discord.com/channels/@me/${trimmed}`,
                         source: "Manual entry",
                         confidence: "high",
                         status: "sendable"
@@ -2876,7 +2896,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let defaultBase = "https://instagram.com";
         if (pLower === "x" || pLower.includes("twitter")) defaultBase = "https://x.com";
         else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
-        else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
+        else if (pLower.includes("discord")) defaultBase = "https://discord.com/channels/@me";
 
         const url = social.url || `${defaultBase}/${cleanHandle.replace('@', '')}`;
 
@@ -2940,7 +2960,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     username: discUname,
                     discord_user_id: state.discordProfile.discord_user_id,
                     discord_invite: state.discordProfile.discord_invite,
-                    url: state.discordProfile.url || (state.discordProfile.discord_user_id ? `https://discord.com/users/${state.discordProfile.discord_user_id}` : state.discordProfile.discord_invite)
+                    url: state.discordProfile.url || (state.discordProfile.discord_user_id ? `https://discord.com/channels/@me/${state.discordProfile.discord_user_id}` : state.discordProfile.discord_invite)
                 };
             } else {
                 const discSocial = (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
@@ -3476,6 +3496,37 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Enter creator Discord User ID or Open DM";
         }
 
+        // Setup Discord Join Server button (if server invite discovered)
+        const serverInviteUrl = disc && (disc.discord_invite || (disc.url && (disc.url.includes("discord.gg") || disc.url.includes("/invite/")) ? disc.url : null));
+        if (btnDiscordJoinServer) {
+            if (serverInviteUrl) {
+                btnDiscordJoinServer.href = serverInviteUrl;
+                btnDiscordJoinServer.classList.remove("hidden");
+            } else {
+                btnDiscordJoinServer.classList.add("hidden");
+            }
+        }
+
+        // Setup Discord Copy Creator Tag / ID button (helps users add friend if stranger DMs are blocked)
+        const creatorDiscordTag = discUserId || (disc ? (disc.discord_username || disc.username) : null);
+        if (btnCopyDiscordTag) {
+            if (creatorDiscordTag) {
+                btnCopyDiscordTag.classList.remove("hidden");
+                btnCopyDiscordTag.onclick = async () => {
+                    await copyTextToClipboard(String(creatorDiscordTag));
+                    if (btnCopyDiscordTagText) {
+                        btnCopyDiscordTagText.textContent = "✓ Tag Copied!";
+                        setTimeout(() => {
+                            if (btnCopyDiscordTagText) btnCopyDiscordTagText.textContent = "🏷️ Copy Creator Tag";
+                        }, 2500);
+                    }
+                    showToast(`✓ Copied "${creatorDiscordTag}"! Add them as a friend in Discord if DMs are locked.`);
+                };
+            } else {
+                btnCopyDiscordTag.classList.add("hidden");
+            }
+        }
+
         // 4. Other Socials Grid (Displays all other channels including Instagram, X, Reddit, LinkedIn, Facebook)
         if (hubOtherSocialsBlock) hubOtherSocialsBlock.classList.remove("hidden");
         
@@ -3657,8 +3708,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const disc = state.discordProfile || (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
         const targetHandle = userId || (disc ? (disc.discord_user_id || disc.discord_invite || disc.url || disc.username) : "Discord");
         const targetUrl = (userId && /^[0-9]{17,20}$/.test(userId))
-            ? `https://discord.com/users/${userId}`
-            : (disc ? (disc.url || disc.discord_invite) : null);
+            ? `https://discord.com/channels/@me/${userId}`
+            : (disc ? (disc.url || disc.discord_invite) : "https://discord.com/channels/@me");
 
         let text = opts.message;
         if (!text && discordMessageBody && discordMessageBody.value.trim()) {
@@ -3692,13 +3743,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (state.discordProfile) {
                 state.discordProfile.discord_user_id = rawId;
                 state.discordProfile.status = "sendable";
-                state.discordProfile.url = `https://discord.com/users/${rawId}`;
+                state.discordProfile.url = `https://discord.com/channels/@me/${rawId}`;
             } else {
                 state.discordProfile = {
                     discord_user_id: rawId,
                     discord_source: "manual",
                     status: "sendable",
-                    url: `https://discord.com/users/${rawId}`
+                    url: `https://discord.com/channels/@me/${rawId}`
                 };
             }
             if (discordStatusBadge) {
