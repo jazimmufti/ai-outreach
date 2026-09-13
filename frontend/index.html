@@ -1,24 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arclent — Creator Collaboration Verification & Outreach</title>
-    <meta name="description" content="Link your work, find the creator, and verify collaboration credentials seamlessly with Arclent.">
+    <meta name="description"
+        content="Link your work, find the creator, and verify collaboration credentials seamlessly with Arclent.">
     <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css?v=5.3">
 </head>
+
 <body>
     <div class="app-container">
-        
+
         <!-- Header with Logo and 4-Segment Progress Bar -->
         <header class="app-header">
             <div class="brand-group">
                 <a href="/" class="brand-logo-link" title="Arclent">
-                    <img src="/static/arclent-logo.png?v=2.0" alt="Arclent" class="brand-logo-img" width="120" height="28">
+                    <img src="/static/arclent-logo.png?v=2.0" alt="Arclent" class="brand-logo-img" width="120"
+                        height="28">
                 </a>
             </div>
 
@@ -28,7 +34,8 @@
                     <span class="status-dot"></span>
                     <span id="gmail-status-text">Gmail: Not connected</span>
                     <button id="header-connect-btn" class="btn-micro">Connect</button>
-                    <button id="header-disconnect-btn" class="btn-micro btn-micro-danger" style="display: none;">Disconnect</button>
+                    <button id="header-disconnect-btn" class="btn-micro btn-micro-danger"
+                        style="display: none;">Disconnect</button>
                 </div>
 
                 <div class="progress-segments" aria-label="Step Progress">
@@ -42,47 +49,40 @@
 
         <!-- Main Content Area -->
         <main class="main-content">
-            
+
             <!-- ================================================================
-                 SCREEN 1: Link your work (Matches Screenshot 1)
+                 SCREEN 1: Link your work
                  ================================================================ -->
             <section id="screen-input" class="retro-card active">
                 <h1 class="card-main-heading">Link your work</h1>
                 <p class="card-main-subtext">
-                    Paste the link to a specific piece of content you worked on. We'll find the creator and confirm the collaboration for you.
+                    Paste the link to a specific piece of content you worked on. We'll find the creator and confirm the
+                    collaboration for you.
                 </p>
 
                 <form id="discovery-form" class="work-link-form">
                     <div class="form-group">
                         <label for="youtube-url-input" class="retro-label font-mono">Work link</label>
-                        <input 
-                            type="text" 
-                            id="youtube-url-input" 
-                            name="youtube_url" 
-                            class="retro-input font-mono" 
-                            placeholder="https://youtube.com/watch?v=..." 
-                            required
-                            autocomplete="off"
-                        >
+                        <input type="text" id="youtube-url-input" name="youtube_url" class="retro-input font-mono"
+                            placeholder="https://youtube.com/watch?v=..." required autocomplete="off">
                     </div>
 
                     <div class="form-group">
                         <label for="user-role-input" class="retro-label font-mono">Your role on this piece</label>
-                        <input 
-                            type="text" 
-                            id="user-role-input" 
-                            name="user_role" 
-                            class="retro-input" 
-                            placeholder="e.g. Editor, thumbnail designer"
-                            value="Video editor"
-                            autocomplete="off"
-                        >
+                        <input type="text" id="user-role-input" name="user_role" class="retro-input"
+                            placeholder="e.g. Editor, thumbnail designer" value="Video editor" autocomplete="off">
                     </div>
 
                     <div class="sample-chips-row">
-                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=0e3GPea1Tyg" data-role="Video editor">youtube.com/mrbeast-video</button>
-                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=XzWzKzT62p0" data-role="Thumbnail designer">youtube.com/mkbhd-review</button>
-                        <button type="button" class="retro-chip-btn font-mono" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" data-role="Editor">youtube.com/ishowspeed-clip</button>
+                        <button type="button" class="retro-chip-btn font-mono"
+                            data-url="https://www.youtube.com/watch?v=0e3GPea1Tyg"
+                            data-role="Video editor">youtube.com/mrbeast-video</button>
+                        <button type="button" class="retro-chip-btn font-mono"
+                            data-url="https://www.youtube.com/watch?v=XzWzKzT62p0"
+                            data-role="Thumbnail designer">youtube.com/mkbhd-review</button>
+                        <button type="button" class="retro-chip-btn font-mono"
+                            data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                            data-role="Editor">youtube.com/ishowspeed-clip</button>
                     </div>
 
                     <div class="action-submit-wrapper">
@@ -149,7 +149,11 @@
                 <!-- Step Navigation Indicator with Integrated Back button -->
                 <div class="card-top-nav">
                     <button type="button" class="btn-retro-back" id="btn-back-email" title="Back to Link your work">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
                         <span>Back</span>
                     </button>
                     <div class="steps-nav">
@@ -164,8 +168,10 @@
                     <div class="notice-banner-content">
                         <div class="notice-banner-title">Credits are already mentioned in the description!</div>
                         <div class="notice-banner-sub">
-                            Found for <strong id="banner-credits-handles">@contributor</strong>. To get auto-verified instantly, 
-                            <button type="button" id="btn-banner-connect-ig" class="notice-banner-btn-link">connect your Instagram account</button>.
+                            Found for <strong id="banner-credits-handles">@contributor</strong>. To get auto-verified
+                            instantly,
+                            <button type="button" id="btn-banner-connect-ig" class="notice-banner-btn-link">connect your
+                                Instagram account</button>.
                         </div>
                     </div>
                 </div>
@@ -179,7 +185,8 @@
                     <div class="content-meta">
                         <div class="content-meta-top-row">
                             <span class="role" id="email-step-creator-role">Video Editor — MrBeast</span>
-                            <span class="creator-subs-tag font-mono" id="email-step-creator-subs">🔴 0 subscribers</span>
+                            <span class="creator-subs-tag font-mono" id="email-step-creator-subs">🔴 0
+                                subscribers</span>
                         </div>
                         <div class="platform" id="email-step-creator-platform">YouTube · Added from your work link</div>
                     </div>
@@ -231,16 +238,12 @@
                         <div class="form-group">
                             <label for="email-manual-entry-input" class="retro-label font-mono">Creator's email</label>
                             <div class="input-wrapper">
-                                <input 
-                                    type="email" 
-                                    id="email-manual-entry-input" 
-                                    class="retro-input font-mono" 
-                                    placeholder="name@example.com"
-                                    autocomplete="off"
-                                >
+                                <input type="email" id="email-manual-entry-input" class="retro-input font-mono"
+                                    placeholder="name@example.com" autocomplete="off">
                                 <span id="email-manual-entry-status-icon" class="validation-icon"></span>
                             </div>
-                            <span id="email-manual-entry-err-msg" class="input-error-msg hidden">Please enter a valid email address.</span>
+                            <span id="email-manual-entry-err-msg" class="input-error-msg hidden">Please enter a valid
+                                email address.</span>
                         </div>
 
                         <div class="btn-row">
@@ -266,11 +269,16 @@
                 <!-- Step Navigation Indicator with Integrated Back button -->
                 <div class="card-top-nav">
                     <button type="button" class="btn-retro-back" id="btn-back-ig" title="Back to Step 1 · Email">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
                         <span>Back</span>
                     </button>
                     <div class="steps-nav">
-                        <div class="step-pill done" id="email-step-pill-from-ig" style="cursor: pointer;" title="Back to Step 1 · Email">1 · EMAIL</div>
+                        <div class="step-pill done" id="email-step-pill-from-ig" style="cursor: pointer;"
+                            title="Back to Step 1 · Email">1 · EMAIL</div>
                         <div class="step-pill active" id="ig-step-pill">2 · INSTAGRAM</div>
                     </div>
                 </div>
@@ -299,7 +307,8 @@
 
                     <div class="lookup-row lookup-row-ig" id="ig-discovered-card">
                         <div class="lookup-icon lookup-icon-ig" id="ig-discovered-icon" title="Instagram">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -311,9 +320,15 @@
                             </div>
                             <div class="lookup-content-row">
                                 <span class="lookup-username-stylish" id="ig-found-handle">@handle</span>
-                                <a href="#" target="_blank" rel="noopener noreferrer" class="btn-open-profile-pill" id="ig-found-link">
+                                <a href="#" target="_blank" rel="noopener noreferrer" class="btn-open-profile-pill"
+                                    id="ig-found-link">
                                     <span>Open Profile</span>
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                                    </svg>
                                 </a>
                             </div>
                         </div>
@@ -334,10 +349,18 @@
 
                     <!-- Option: Other Social Media Profiles Fetched -->
                     <div id="ig-other-socials-section" class="other-socials-accordion">
-                        <button type="button" id="btn-toggle-other-socials" class="other-socials-toggle-btn" aria-expanded="false">
+                        <button type="button" id="btn-toggle-other-socials" class="other-socials-toggle-btn"
+                            aria-expanded="false">
                             <div class="toggle-btn-left">
                                 <span class="toggle-icon-wrap">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path
+                                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                                        </path>
+                                    </svg>
                                 </span>
                                 <span class="toggle-btn-title">Other social media profiles fetched</span>
                                 <span class="social-count-pill" id="ig-other-socials-count">0</span>
@@ -348,7 +371,8 @@
                         </button>
                         <div id="ig-other-socials-content" class="other-socials-content hidden">
                             <div class="other-socials-intro">
-                                <span>Discovered from creator's YouTube links & description. Click any to select or view:</span>
+                                <span>Discovered from creator's YouTube links & description. Click any to select or
+                                    view:</span>
                             </div>
                             <div id="ig-other-socials-list" class="other-socials-list">
                                 <!-- Dynamically populated other profiles -->
@@ -373,13 +397,8 @@
                     <form id="ig-manual-entry-form">
                         <div class="form-group">
                             <div class="input-wrapper">
-                                <input 
-                                    type="text" 
-                                    id="ig-manual-entry-input" 
-                                    class="retro-input font-mono" 
-                                    placeholder="@handle or instagram.com/handle"
-                                    autocomplete="off"
-                                >
+                                <input type="text" id="ig-manual-entry-input" class="retro-input font-mono"
+                                    placeholder="@handle or instagram.com/handle" autocomplete="off">
                             </div>
                         </div>
 
@@ -396,7 +415,8 @@
 
                 <!-- State C: Confirmed Instagram Profile & Direct Action -->
                 <div id="ig-confirmed-view" class="hidden">
-                    <div class="status-badge" id="ig-confirmed-status-badge" style="margin-bottom: 14px;"><span class="dot"></span>INSTAGRAM PROFILE CONFIRMED</div>
+                    <div class="status-badge" id="ig-confirmed-status-badge" style="margin-bottom: 14px;"><span
+                            class="dot"></span>INSTAGRAM PROFILE CONFIRMED</div>
                     <h1 class="card-main-heading" id="ig-confirmed-heading">Instagram profile confirmed</h1>
                     <p class="body-copy" id="ig-confirmed-subheading">
                         Ready to contact <strong id="ig-confirmed-creator-name">Creator</strong> on Instagram.
@@ -404,7 +424,8 @@
 
                     <div class="lookup-row lookup-row-confirmed" style="background: #F0FDF4; border-color: #22C55E;">
                         <div class="lookup-icon lookup-icon-ig" id="ig-confirmed-icon" title="Instagram">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -412,13 +433,16 @@
                         </div>
                         <div class="lookup-value-col">
                             <div class="lookup-value font-mono" id="ig-confirmed-handle">@handle</div>
-                            <span class="lookup-subtext" style="color: #166534; font-weight: 600;">✓ Confirmed Profile</span>
+                            <span class="lookup-subtext" style="color: #166534; font-weight: 600;">✓ Confirmed
+                                Profile</span>
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-top: 18px; margin-bottom: 18px;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                            <label for="ig-confirmed-message-draft" class="retro-label font-mono" style="margin-bottom: 0;">DIRECT MESSAGE DRAFT</label>
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                            <label for="ig-confirmed-message-draft" class="retro-label font-mono"
+                                style="margin-bottom: 0;">DIRECT MESSAGE DRAFT</label>
                             <span class="badge badge-high font-mono" style="font-size: 10px;">Ready to Send</span>
                         </div>
                         <textarea id="ig-confirmed-message-draft" class="retro-textarea font-mono" rows="4"></textarea>
@@ -426,30 +450,39 @@
 
                     <!-- Two primary action options: Open Instagram & Send, and Copy Message -->
                     <div class="btn-row" style="display: flex; gap: 10px;">
-                        <button type="button" id="btn-ig-open-send" class="btn-primary" style="flex: 1; justify-content: center;">
+                        <button type="button" id="btn-ig-open-send" class="btn-primary"
+                            style="flex: 1; justify-content: center;">
                             <span>Open Instagram & Send ↗</span>
                         </button>
-                        <button type="button" id="btn-ig-copy-draft-main" class="btn-secondary" style="flex: 1; justify-content: center;">
+                        <button type="button" id="btn-ig-copy-draft-main" class="btn-secondary"
+                            style="flex: 1; justify-content: center;">
                             <span id="btn-ig-copy-text">📋 Copy Message</span>
                         </button>
                     </div>
 
                     <!-- Other Discovered Profiles section directly below -->
-                    <div id="ig-confirmed-other-socials-box" class="discovered-profiles-footer-box" style="margin-top: 24px; padding-top: 18px; border-top: 1.5px dashed rgba(51, 71, 91, 0.25);">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                    <div id="ig-confirmed-other-socials-box" class="discovered-profiles-footer-box"
+                        style="margin-top: 24px; padding-top: 18px; border-top: 1.5px dashed rgba(51, 71, 91, 0.25);">
+                        <div
+                            style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <span class="field-label-tag font-mono" style="font-size: 10px; margin: 0;">CHANNELS</span>
-                                <span class="retro-label font-mono" style="margin-bottom: 0; font-size: 12px; font-weight: 700; color: var(--black);">OTHER DISCOVERED PROFILES</span>
+                                <span class="field-label-tag font-mono"
+                                    style="font-size: 10px; margin: 0;">CHANNELS</span>
+                                <span class="retro-label font-mono"
+                                    style="margin-bottom: 0; font-size: 12px; font-weight: 700; color: var(--black);">OTHER
+                                    DISCOVERED PROFILES</span>
                             </div>
                             <span class="social-count-pill" id="ig-confirmed-other-count">0</span>
                         </div>
                         <p class="body-copy" style="font-size: 12.5px; margin-bottom: 12px; color: var(--slate);">
                             Other channels discovered for this creator:
                         </p>
-                        <div id="ig-confirmed-other-socials-list" class="other-socials-list" style="margin-bottom: 14px;">
+                        <div id="ig-confirmed-other-socials-list" class="other-socials-list"
+                            style="margin-bottom: 14px;">
                             <!-- Populated dynamically -->
                         </div>
-                        <button type="button" id="btn-ig-to-hub" class="btn-retro-outline" style="width: 100%; justify-content: center; padding: 9px 16px; font-size: 12px;">
+                        <button type="button" id="btn-ig-to-hub" class="btn-retro-outline"
+                            style="width: 100%; justify-content: center; padding: 9px 16px; font-size: 12px;">
                             <span>View All Discovered Channels & Full Outreach Hub →</span>
                         </button>
                     </div>
@@ -461,21 +494,30 @@
                  SCREEN 5: OUTREACH & DISPATCH HUB
                  ================================================================ -->
             <section id="screen-outreach-hub" class="retro-card hidden">
-                <div class="card-header-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap;">
+                <div class="card-header-bar"
+                    style="display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; flex-wrap: wrap;">
                     <div style="display: flex; align-items: center; gap: 14px;">
                         <button type="button" class="btn-retro-back" id="btn-back-hub" title="Back">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="19" y1="12" x2="5" y2="12"></line>
+                                <polyline points="12 19 5 12 12 5"></polyline>
+                            </svg>
                             <span>Back</span>
                         </button>
                         <div class="header-flow-info">
-                            <div class="status-badge" style="margin-bottom: 4px;"><span class="dot"></span>READY · OUTREACH CHANNELS VERIFIED</div>
+                            <div class="status-badge" style="margin-bottom: 4px;"><span class="dot"></span>READY ·
+                                OUTREACH CHANNELS VERIFIED</div>
                             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                                <h1 class="card-main-heading" id="hub-creator-heading" style="margin-bottom: 0;">Reaching out to Creator</h1>
-                                <span class="creator-subs-tag font-mono" id="hub-creator-subs" style="display: inline-flex;">🔴 0 subscribers</span>
+                                <h1 class="card-main-heading" id="hub-creator-heading" style="margin-bottom: 0;">
+                                    Reaching out to Creator</h1>
+                                <span class="creator-subs-tag font-mono" id="hub-creator-subs"
+                                    style="display: inline-flex;">🔴 0 subscribers</span>
                             </div>
                         </div>
                     </div>
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 7px 16px; font-size: 12.5px;">New Search</button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn"
+                        style="padding: 7px 16px; font-size: 12.5px;">New Search</button>
                 </div>
 
                 <!-- Verified Channels Summary Box -->
@@ -483,23 +525,29 @@
                     <div class="outreach-channel-item" id="hub-summary-email-row">
                         <div class="outreach-channel-label">
                             <span class="channel-type-badge font-mono">✉ EMAIL</span>
-                            <span id="hub-summary-email-val" class="outreach-channel-value font-mono">name@domain.com</span>
+                            <span id="hub-summary-email-val"
+                                class="outreach-channel-value font-mono">name@domain.com</span>
                         </div>
-                        <button type="button" id="hub-edit-email-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                        <button type="button" id="hub-edit-email-btn" class="btn-ghost"
+                            style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
                     </div>
                     <div class="outreach-channel-item" id="hub-summary-ig-row">
                         <div class="outreach-channel-label">
                             <span class="channel-type-badge font-mono" id="hub-summary-social-label">📸 SOCIAL</span>
                             <span id="hub-summary-ig-val" class="outreach-channel-value font-mono">@handle</span>
                         </div>
-                        <button type="button" id="hub-edit-ig-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                        <button type="button" id="hub-edit-ig-btn" class="btn-ghost"
+                            style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
                     </div>
                     <div class="outreach-channel-item hidden" id="hub-summary-discord-row">
                         <div class="outreach-channel-label">
-                            <span class="channel-type-badge font-mono" style="background: #5865F2; color: #FFF;">💬 DISCORD</span>
-                            <span id="hub-summary-discord-val" class="outreach-channel-value font-mono">Not specified</span>
+                            <span class="channel-type-badge font-mono" style="background: #5865F2; color: #FFF;">💬
+                                DISCORD</span>
+                            <span id="hub-summary-discord-val" class="outreach-channel-value font-mono">Not
+                                specified</span>
                         </div>
-                        <button type="button" id="hub-edit-discord-btn" class="btn-ghost" style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
+                        <button type="button" id="hub-edit-discord-btn" class="btn-ghost"
+                            style="padding: 0; font-size: 12px; font-weight: 700; text-decoration: underline;">Edit</button>
                     </div>
                 </div>
 
@@ -507,38 +555,54 @@
                 <div id="hub-email-block" class="hub-action-section hidden">
                     <div class="block-title-group" style="margin-bottom: 14px;">
                         <span class="field-label-tag font-mono">CHANNEL 1 · GMAIL OUTREACH</span>
-                        <h2 class="sub-heading" style="font-size: 17px; margin-top: 4px; font-weight: 800;">Send Collaboration Confirmation Email</h2>
+                        <h2 class="sub-heading" style="font-size: 17px; margin-top: 4px; font-weight: 800;">Send
+                            Collaboration Confirmation Email</h2>
                     </div>
 
                     <!-- Email Composer Form -->
                     <form id="workflow-email-form" class="email-composer-form">
                         <div class="form-group">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-                                <label for="workflow-email-recipient" class="retro-label font-mono" style="margin-bottom: 0;">RECIPIENT EMAIL</label>
-                                <span id="composer-recipient-source-tag" class="badge badge-high" style="font-size: 10px; background: #00D26A; color: #000; border: 1.5px solid #111827; font-weight: 700;">Verified Contact</span>
+                            <div
+                                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                                <label for="workflow-email-recipient" class="retro-label font-mono"
+                                    style="margin-bottom: 0;">RECIPIENT EMAIL</label>
+                                <span id="composer-recipient-source-tag" class="badge badge-high"
+                                    style="font-size: 10px; background: #00D26A; color: #000; border: 1.5px solid #111827; font-weight: 700;">Verified
+                                    Contact</span>
                             </div>
-                            <input type="email" id="workflow-email-recipient" class="retro-input font-mono" required placeholder="creator@domain.com">
+                            <input type="email" id="workflow-email-recipient" class="retro-input font-mono" required
+                                placeholder="creator@domain.com">
                         </div>
 
                         <div class="form-group">
                             <label for="workflow-email-subject" class="retro-label font-mono">SUBJECT</label>
-                            <input type="text" id="workflow-email-subject" class="retro-input" required value="Collaboration confirmation for video">
+                            <input type="text" id="workflow-email-subject" class="retro-input" required
+                                value="Collaboration confirmation for video">
                         </div>
 
                         <div class="form-group">
-                            <label for="workflow-email-body" class="retro-label font-mono">MESSAGE DRAFT (With Yes/No Confirmation Buttons)</label>
-                            <textarea id="workflow-email-body" class="retro-textarea font-mono" rows="5" required></textarea>
+                            <label for="workflow-email-body" class="retro-label font-mono">MESSAGE DRAFT (With Yes/No
+                                Confirmation Buttons)</label>
+                            <textarea id="workflow-email-body" class="retro-textarea font-mono" rows="5"
+                                required></textarea>
                         </div>
 
-                        <div class="composer-actions" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px;">
-                            <button type="button" id="regenerate-email-btn" class="btn-secondary" style="flex: 0 0 auto; padding: 10px 18px;">
+                        <div class="composer-actions"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 10px;">
+                            <button type="button" id="regenerate-email-btn" class="btn-secondary"
+                                style="flex: 0 0 auto; padding: 10px 18px;">
                                 <span>🔄 Reset Draft</span>
                             </button>
-                            
+
                             <div class="send-action-group" style="flex: 1;">
-                                <button type="submit" id="workflow-send-email-btn" class="btn-primary" style="width: 100%; justify-content: center;" disabled>
+                                <button type="submit" id="workflow-send-email-btn" class="btn-primary"
+                                    style="width: 100%; justify-content: center;" disabled>
                                     <span>Send Verification Email</span>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2.5">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -555,11 +619,14 @@
                     <div class="dm-preview">
                         <div class="dm-head">
                             <span id="hub-dm-head-handle">Direct message to @creator</span>
-                            <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.2); color: #FFF;">Instagram DM</span>
+                            <span class="badge"
+                                style="font-size: 10px; background: rgba(255,255,255,0.2); color: #FFF;">Instagram
+                                DM</span>
                         </div>
                         <div class="dm-body">
                             <div class="form-group" style="margin-bottom: 8px;">
-                                <label for="insta-message-body" class="retro-label font-mono">VERIFICATION MESSAGE DRAFT</label>
+                                <label for="insta-message-body" class="retro-label font-mono">VERIFICATION MESSAGE
+                                    DRAFT</label>
                                 <textarea id="insta-message-body" class="retro-textarea font-mono" rows="4"></textarea>
                             </div>
                         </div>
@@ -575,42 +642,156 @@
                     </div>
                 </div>
 
-                <!-- 3. Discord Bot Direct Outreach Block -->
-                <div id="hub-discord-block" class="hub-action-section hidden" style="margin-top: 24px; padding: 18px; background: #FFFFFF; border: 2px solid #111827; box-shadow: 4px 4px 0px #111827; border-radius: 4px;">
-                    <!-- Header -->
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                <!-- 2.5 Discord Server Membership Auto-Verification Card -->
+                <div id="discord-verification-card" class="hub-action-section hidden"
+                    style="margin-top: 24px; padding: 20px; background: #FFFFFF; border: 2px solid #111827; box-shadow: 4px 4px 0px #111827; border-radius: 4px;">
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <div style="width: 32px; height: 32px; border-radius: 4px; background: #5865F2; display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 800; font-size: 16px; border: 1.5px solid #111827;">
+                            <div
+                                style="width: 34px; height: 34px; border-radius: 4px; background: #5865F2; display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 800; font-size: 18px; border: 1.5px solid #111827;">
                                 💬
                             </div>
                             <div>
-                                <h3 style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; margin: 0; color: #111827;">Discord Bot Outreach</h3>
-                                <span id="hub-discord-head-handle" class="font-mono" style="font-size: 11px; color: var(--text-muted);">Direct message via official bot</span>
+                                <h3
+                                    style="font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; margin: 0; color: #111827;">
+                                    Discord</h3>
+                                <span id="discord-verify-sub" class="font-mono"
+                                    style="font-size: 11px; color: var(--text-muted);">Server Membership
+                                    Auto-Verification</span>
                             </div>
                         </div>
-                        <span class="badge font-mono" id="discord-status-badge" style="font-size: 11px; font-weight: 700;">Ready</span>
+                        <span id="discord-verify-status-badge" class="badge font-mono"
+                            style="font-size: 11px; font-weight: 700; background: #E0E7FF; color: #3730A3; border: 1px solid #6366F1;">Membership
+                            Check</span>
+                    </div>
+
+                    <div id="discord-verify-initial-state">
+                        <p class="body-copy" style="font-size: 13.5px; margin-bottom: 12px; color: #374151;">
+                            A Discord server invite was detected in the video description:
+                            <strong id="discord-verify-detected-url" class="font-mono"
+                                style="color: #5865F2; word-break: break-all;">https://discord.gg/...</strong>.
+                            Verify whether your Discord account is a member of this Discord server.
+                        </p>
+                        <button type="button" id="btn-start-discord-verify" class="btn-primary"
+                            style="width: 100%; justify-content: center; padding: 11px; font-size: 14px;">
+                            <span>Verify Discord</span>
+                        </button>
+                    </div>
+
+                    <!-- In Progress State -->
+                    <div id="discord-verify-loading-state" class="hidden"
+                        style="padding: 16px; text-align: center; background: #F8FAFC; border: 1.5px dashed #94A3B8; border-radius: 4px;">
+                        <div class="spinner"
+                            style="display: inline-block; width: 22px; height: 22px; border: 3px solid #CBD5E1; border-top-color: #5865F2; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 8px;">
+                        </div>
+                        <div style="font-size: 13.5px; font-weight: 700; color: #1E293B;">Checking Discord membership...
+                        </div>
+                        <div style="font-size: 11.5px; color: #64748B; margin-top: 4px;">Authenticating via Discord
+                            OAuth and verifying server membership.</div>
+                    </div>
+
+                    <!-- Verified State -->
+                    <div id="discord-verify-success-state" class="hidden"
+                        style="padding: 16px; background: #F0FDF4; border: 2px solid #22C55E; border-radius: 4px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                            <span
+                                style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: #22C55E; color: #FFF; border-radius: 50%; font-weight: 800; font-size: 14px;">✓</span>
+                            <span style="font-size: 15px; font-weight: 800; color: #166534;">✓ Discord membership
+                                verified</span>
+                        </div>
+                        <p
+                            style="font-size: 13px; color: #15803D; font-weight: 600; margin-left: 36px; margin-bottom: 0;">
+                            You are a member of this Discord server.
+                        </p>
+                        <div id="discord-verify-guild-name-success" class="font-mono"
+                            style="font-size: 11.5px; color: #166534; margin-left: 36px; margin-top: 6px;">
+                            Server: <strong id="discord-verified-guild-val">Discord Server</strong>
+                        </div>
+                    </div>
+
+                    <!-- Not Verified State -->
+                    <div id="discord-verify-failed-state" class="hidden"
+                        style="padding: 16px; background: #FEF2F2; border: 2px solid #EF4444; border-radius: 4px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                            <span
+                                style="display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; background: #EF4444; color: #FFF; border-radius: 50%; font-weight: 800; font-size: 14px;">✕</span>
+                            <span style="font-size: 15px; font-weight: 800; color: #991B1B;">✕ Discord membership not
+                                verified</span>
+                        </div>
+                        <p style="font-size: 13px; color: #B91C1C; margin-left: 36px; margin-bottom: 12px;"
+                            id="discord-verify-failed-msg">
+                            You are not currently a member of this Discord server.
+                        </p>
+                        <div style="display: flex; gap: 10px; margin-left: 36px; flex-wrap: wrap;">
+                            <a id="discord-verify-join-server-link" href="#" target="_blank" rel="noopener noreferrer"
+                                class="btn-join"
+                                style="display: inline-flex; align-items: center; justify-content: center; background: #5865F2; color: #FFF; text-decoration: none; font-weight: 700; border: 1.5px solid #111827; border-radius: 2px; padding: 8px 14px; font-size: 12px; width: auto;">
+                                <span>Join Discord Server ↗</span>
+                            </a>
+                            <button type="button" id="btn-retry-discord-verify" class="btn-secondary"
+                                style="padding: 8px 14px; font-size: 12px; width: auto;">
+                                <span>🔄 Retry Verification</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Discord Bot Direct Outreach Block -->
+                <div id="hub-discord-block" class="hub-action-section hidden"
+                    style="margin-top: 24px; padding: 18px; background: #FFFFFF; border: 2px solid #111827; box-shadow: 4px 4px 0px #111827; border-radius: 4px;">
+                    <!-- Header -->
+                    <div
+                        style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div
+                                style="width: 32px; height: 32px; border-radius: 4px; background: #5865F2; display: flex; align-items: center; justify-content: center; color: #FFF; font-weight: 800; font-size: 16px; border: 1.5px solid #111827;">
+                                💬
+                            </div>
+                            <div>
+                                <h3
+                                    style="font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 800; margin: 0; color: #111827;">
+                                    Discord Bot Outreach</h3>
+                                <span id="hub-discord-head-handle" class="font-mono"
+                                    style="font-size: 11px; color: var(--text-muted);">Direct message via official
+                                    bot</span>
+                            </div>
+                        </div>
+                        <span class="badge font-mono" id="discord-status-badge"
+                            style="font-size: 11px; font-weight: 700;">Ready</span>
                     </div>
 
                     <!-- Compact Error Alert -->
-                    <div id="discord-error-alert" class="notice-banner-credits hidden" style="background: #FEF2F2; border: 1.5px solid #EF4444; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px;">
+                    <div id="discord-error-alert" class="notice-banner-credits hidden"
+                        style="background: #FEF2F2; border: 1.5px solid #EF4444; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px;">
                         <div style="display: flex; gap: 8px; align-items: flex-start;">
                             <span style="color: #DC2626; font-weight: 800; font-size: 13px;">✕</span>
                             <div>
-                                <div style="color: #991B1B; font-weight: 700; font-size: 12px;" id="discord-error-title">Message Could Not Be Sent</div>
-                                <div style="color: #B91C1C; font-size: 11.5px; margin-top: 2px;" id="discord-error-message"></div>
+                                <div style="color: #991B1B; font-weight: 700; font-size: 12px;"
+                                    id="discord-error-title">Message Could Not Be Sent</div>
+                                <div style="color: #B91C1C; font-size: 11.5px; margin-top: 2px;"
+                                    id="discord-error-message"></div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Streamlined User ID Field (Shown when ID is needed) -->
-                    <div id="discord-identification-banner" class="hidden" style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
-                            <span style="font-size: 11.5px; font-weight: 700; color: #1E293B;">Creator's Discord User ID (17-20 digits)</span>
-                            <span style="font-size: 11px; color: var(--text-muted);" id="discord-found-details">Detected: <strong id="discord-discovered-target">https://discord.gg/...</strong></span>
+                    <div id="discord-identification-banner" class="hidden"
+                        style="background: #F8FAFC; border: 1.5px solid #CBD5E1; border-radius: 4px; padding: 10px 12px; margin-bottom: 12px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-wrap: wrap; gap: 4px;">
+                            <span style="font-size: 11.5px; font-weight: 700; color: #1E293B;">Creator's Discord User ID
+                                (17-20 digits)</span>
+                            <span style="font-size: 11px; color: var(--text-muted);"
+                                id="discord-found-details">Detected: <strong
+                                    id="discord-discovered-target">https://discord.gg/...</strong></span>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="discord-user-id-input" class="retro-input font-mono" placeholder="Paste Discord User ID (e.g. 803511102246789123)" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF;">
-                            <button type="button" id="btn-discord-set-id" class="btn-secondary" style="padding: 6px 14px; font-size: 11.5px; white-space: nowrap;">
+                            <input type="text" id="discord-user-id-input" class="retro-input font-mono"
+                                placeholder="Paste Discord User ID (e.g. 803511102246789123)"
+                                style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF;">
+                            <button type="button" id="btn-discord-set-id" class="btn-secondary"
+                                style="padding: 6px 14px; font-size: 11.5px; white-space: nowrap;">
                                 <span>Save ID</span>
                             </button>
                         </div>
@@ -621,17 +802,22 @@
 
                     <!-- Message Preview -->
                     <div class="form-group" style="margin-bottom: 10px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <label for="discord-message-body" class="retro-label font-mono" style="font-size: 11px; color: var(--text-muted); margin: 0;">MESSAGE PREVIEW</label>
-                            <button type="button" id="btn-copy-discord-msg" style="background: none; border: none; font-family: var(--font-mono); font-size: 11px; color: #5865F2; cursor: pointer; text-decoration: underline; padding: 0;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <label for="discord-message-body" class="retro-label font-mono"
+                                style="font-size: 11px; color: var(--text-muted); margin: 0;">MESSAGE PREVIEW</label>
+                            <button type="button" id="btn-copy-discord-msg"
+                                style="background: none; border: none; font-family: var(--font-mono); font-size: 11px; color: #5865F2; cursor: pointer; text-decoration: underline; padding: 0;">
                                 <span id="btn-copy-discord-text">📋 Copy text</span>
                             </button>
                         </div>
-                        <textarea id="discord-message-body" class="retro-textarea font-mono" rows="3" style="font-size: 12px; line-height: 1.45; padding: 8px 10px;"></textarea>
+                        <textarea id="discord-message-body" class="retro-textarea font-mono" rows="3"
+                            style="font-size: 12px; line-height: 1.45; padding: 8px 10px;"></textarea>
                     </div>
 
                     <!-- Action Button -->
-                    <button type="button" id="btn-send-discord-bot" class="btn-primary" style="width: 100%; justify-content: center; padding: 9px; font-size: 13px;">
+                    <button type="button" id="btn-send-discord-bot" class="btn-primary"
+                        style="width: 100%; justify-content: center; padding: 9px; font-size: 13px;">
                         <span id="btn-send-discord-text">Send via Arclent Discord Bot ⚡</span>
                     </button>
                 </div>
@@ -645,13 +831,19 @@
                     <div id="hub-socials-grid" class="social-cards-grid"></div>
 
                     <!-- Manual X Entry if X not discovered -->
-                    <div id="manual-x-container" class="hidden" style="margin-top: 14px; background: #F8FAFC; border: 1.5px dashed #94A3B8; border-radius: 4px; padding: 12px 14px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="font-size: 11.5px; font-weight: 700; color: #1E293B;">X (Twitter) not detected — Add handle manually:</span>
+                    <div id="manual-x-container" class="hidden"
+                        style="margin-top: 14px; background: #F8FAFC; border: 1.5px dashed #94A3B8; border-radius: 4px; padding: 12px 14px;">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <span style="font-size: 11.5px; font-weight: 700; color: #1E293B;">X (Twitter) not detected
+                                — Add handle manually:</span>
                         </div>
                         <div style="display: flex; gap: 8px;">
-                            <input type="text" id="manual-x-input" class="retro-input font-mono" placeholder="Enter X username (e.g. @creator)" style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF;">
-                            <button type="button" id="btn-add-x-manual" class="btn-secondary" style="padding: 6px 14px; font-size: 11.5px; white-space: nowrap;">
+                            <input type="text" id="manual-x-input" class="retro-input font-mono"
+                                placeholder="Enter X username (e.g. @creator)"
+                                style="flex: 1; font-size: 12px; padding: 6px 10px; background: #FFFFFF;">
+                            <button type="button" id="btn-add-x-manual" class="btn-secondary"
+                                style="padding: 6px 14px; font-size: 11.5px; white-space: nowrap;">
                                 <span>+ Add X Profile</span>
                             </button>
                         </div>
@@ -664,12 +856,19 @@
                  SCREEN 5: Delivery & Creator Verification Status
                  ================================================================ -->
             <section id="screen-delivery-success" class="retro-card result-success-card hidden">
-                <div class="delivery-header-row" id="delivery-header-row" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                    <button type="button" class="btn-retro-back hidden" id="btn-back-delivery" title="Back to Outreach Hub">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                <div class="delivery-header-row" id="delivery-header-row"
+                    style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
+                    <button type="button" class="btn-retro-back hidden" id="btn-back-delivery"
+                        title="Back to Outreach Hub">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="19" y1="12" x2="5" y2="12"></line>
+                            <polyline points="12 19 5 12 12 5"></polyline>
+                        </svg>
                         <span>Back to Hub</span>
                     </button>
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="padding: 5px 12px; font-size: 12px;">New Search</button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn"
+                        style="padding: 5px 12px; font-size: 12px;">New Search</button>
                 </div>
 
                 <!-- State 0: Social DM Ready (waiting for user manual send) -->
@@ -677,8 +876,10 @@
                     <div class="verification-step-card" style="background: #F0FDF4; border-color: #22C55E;">
                         <div class="v-step-icon" style="background: #22C55E; color: #FFFFFF;">✓</div>
                         <div class="v-step-content">
-                            <h3 class="v-step-title" style="color: #166534;" id="v-dm-ready-title">Instagram DM Ready</h3>
-                            <p class="v-step-sub" id="v-dm-ready-sub">Your message has been added to the Instagram composer.</p>
+                            <h3 class="v-step-title" style="color: #166534;" id="v-dm-ready-title">Instagram DM Ready
+                            </h3>
+                            <p class="v-step-sub" id="v-dm-ready-sub">Your message has been added to the Instagram
+                                composer.</p>
                         </div>
                     </div>
 
@@ -686,15 +887,19 @@
                         <div class="v-step-icon spinner-icon" style="background: #F59E0B; color: #000;">●</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title" id="v-dm-ready-action-title">Review & Click Send in Instagram</h3>
-                            <p class="v-step-sub" id="v-dm-ready-guide-text">We've populated the conversation for you. Review the draft in Instagram and click Send to dispatch.</p>
+                            <p class="v-step-sub" id="v-dm-ready-guide-text">We've populated the conversation for you.
+                                Review the draft in Instagram and click Send to dispatch.</p>
                         </div>
                     </div>
 
-                    <div class="dm-ready-action-card" style="margin-top: 14px; background: #FAF7F0; border: 2px solid var(--border-color); padding: 18px; border-radius: 4px; box-shadow: var(--shadow-btn);">
-                        <p class="font-mono" id="v-dm-ready-confirm-prompt" style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
+                    <div class="dm-ready-action-card"
+                        style="margin-top: 14px; background: #FAF7F0; border: 2px solid var(--border-color); padding: 18px; border-radius: 4px; box-shadow: var(--shadow-btn);">
+                        <p class="font-mono" id="v-dm-ready-confirm-prompt"
+                            style="font-size: 13.5px; font-weight: 700; margin-bottom: 12px; color: var(--text-main);">
                             Did you click Send in Instagram?
                         </p>
-                        <button type="button" id="btn-confirm-dm-sent" class="btn-primary" style="width: 100%; justify-content: center; font-size: 14px; padding: 12px 20px;">
+                        <button type="button" id="btn-confirm-dm-sent" class="btn-primary"
+                            style="width: 100%; justify-content: center; font-size: 14px; padding: 12px 20px;">
                             <span>I've Sent the Message ✓</span>
                         </button>
                     </div>
@@ -706,7 +911,8 @@
                         <div class="v-step-icon">✓</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Outreach sent</h3>
-                            <p class="v-step-sub" id="v-pending-recipient-sub">Message delivered to creator via verified channel</p>
+                            <p class="v-step-sub" id="v-pending-recipient-sub">Message delivered to creator via verified
+                                channel</p>
                         </div>
                     </div>
 
@@ -714,7 +920,8 @@
                         <div class="v-step-icon spinner-icon">●</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Waiting for creator response...</h3>
-                            <p class="v-step-sub">We sent an email inquiry with Yes / No collaboration confirmation buttons.</p>
+                            <p class="v-step-sub">We sent an email inquiry with Yes / No collaboration confirmation
+                                buttons.</p>
                         </div>
                     </div>
                 </div>
@@ -722,51 +929,77 @@
                 <!-- State: Automatically Verified via Description Match -->
                 <div id="verification-auto-verified-box" class="verification-status-stack hidden">
                     <div class="brand-row-verified">
-                        <span class="brand-subtext font-mono" style="font-weight: 700; font-size: 11px; letter-spacing: 0.05em; color: var(--text-muted);">AUTOMATIC VERIFICATION</span>
+                        <span class="brand-subtext font-mono"
+                            style="font-weight: 700; font-size: 11px; letter-spacing: 0.05em; color: var(--text-muted);">AUTOMATIC
+                            VERIFICATION</span>
                         <span class="verified-success-badge">✓ COLLABORATION VERIFIED</span>
                     </div>
 
                     <div class="verification-step-card" style="background: #F0FDF4; border-color: #22C55E;">
-                        <div class="v-step-icon" style="background: #00D26A; color: #000; font-size: 18px; font-weight: 800;">✓</div>
+                        <div class="v-step-icon"
+                            style="background: #00D26A; color: #000; font-size: 18px; font-weight: 800;">✓</div>
                         <div class="v-step-content">
-                            <h3 class="v-step-title" style="color: #065F46; font-size: 18px;">Collaboration Verified!</h3>
-                            <p class="v-step-sub" id="v-auto-verified-desc" style="color: #047857; font-size: 14px; font-weight: 600; line-height: 1.5;">
-                                Your username matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!
+                            <h3 class="v-step-title" style="color: #065F46; font-size: 18px;">Collaboration Verified!
+                            </h3>
+                            <p class="v-step-sub" id="v-auto-verified-desc"
+                                style="color: #047857; font-size: 14px; font-weight: 600; line-height: 1.5;">
+                                Your username matches with the one mentioned for credits in the video description.
+                                Therefore, your collaboration is verified!
                             </p>
                         </div>
                     </div>
 
-                    <div class="collab-meta-box" style="background: #FAF8F2; border: 2px solid #111827; border-radius: 3px; padding: 16px 20px; box-shadow: 3px 3px 0px #111827;">
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">CREATOR / CHANNEL</span>
-                            <span class="meta-value" id="v-auto-creator-name" style="font-weight: 700; color: #111827;">Creator</span>
+                    <div class="collab-meta-box"
+                        style="background: #FAF8F2; border: 2px solid #111827; border-radius: 3px; padding: 16px 20px; box-shadow: 3px 3px 0px #111827;">
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">CREATOR / CHANNEL</span>
+                            <span class="meta-value" id="v-auto-creator-name"
+                                style="font-weight: 700; color: #111827;">Creator</span>
                         </div>
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">SUBSCRIBERS</span>
-                            <span class="meta-value font-mono" id="v-auto-creator-subs" style="font-weight: 700; color: #DC2626;">🔴 Active Audience</span>
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">SUBSCRIBERS</span>
+                            <span class="meta-value font-mono" id="v-auto-creator-subs"
+                                style="font-weight: 700; color: #DC2626;">🔴 Active Audience</span>
                         </div>
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">YOUR ROLE</span>
-                            <span class="meta-value" id="v-auto-role-name" style="font-weight: 700; color: #111827;">Video editor</span>
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">YOUR ROLE</span>
+                            <span class="meta-value" id="v-auto-role-name"
+                                style="font-weight: 700; color: #111827;">Video editor</span>
                         </div>
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">PROJECT CONTENT</span>
-                            <span class="meta-value" id="v-auto-video-title" style="font-weight: 700; color: #111827;">Video Title</span>
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">PROJECT CONTENT</span>
+                            <span class="meta-value" id="v-auto-video-title"
+                                style="font-weight: 700; color: #111827;">Video Title</span>
                         </div>
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">MATCHED USERNAME</span>
-                            <span class="meta-value font-mono" id="v-auto-matched-account-val" style="font-weight: 700; color: #065F46;">@ummer.04 (Verified Contributor)</span>
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed #D1D5DB; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">MATCHED USERNAME</span>
+                            <span class="meta-value font-mono" id="v-auto-matched-account-val"
+                                style="font-weight: 700; color: #065F46;">@ummer.04 (Verified Contributor)</span>
                         </div>
-                        <div class="meta-row" style="display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px;">
-                            <span class="meta-label font-mono" style="font-size: 11px; font-weight: 700; color: #6B7280;">VERIFICATION STATUS</span>
-                            <span class="meta-value font-mono" style="font-weight: 700; color: #065F46;">✓ Direct Description Credit Match</span>
+                        <div class="meta-row"
+                            style="display: flex; justify-content: space-between; padding: 7px 0; font-size: 13px;">
+                            <span class="meta-label font-mono"
+                                style="font-size: 11px; font-weight: 700; color: #6B7280;">VERIFICATION STATUS</span>
+                            <span class="meta-value font-mono" style="font-weight: 700; color: #065F46;">✓ Direct
+                                Description Credit Match</span>
                         </div>
                     </div>
 
                     <div class="verification-shield-card">
                         <div class="v-shield-icon">🛡</div>
                         <div class="v-shield-text" id="v-auto-shield-text">
-                            No further outreach steps needed. Your username matches the creator's published credits in the video description.
+                            No further outreach steps needed. Your username matches the creator's published credits in
+                            the video description.
                         </div>
                     </div>
                 </div>
@@ -778,7 +1011,8 @@
                         <div class="v-step-icon">✓</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Outreach sent</h3>
-                            <p class="v-step-sub" id="v-success-recipient-sub">Message delivered to creator via verified channel</p>
+                            <p class="v-step-sub" id="v-success-recipient-sub">Message delivered to creator via verified
+                                channel</p>
                         </div>
                     </div>
 
@@ -807,7 +1041,8 @@
                         <div class="v-step-icon">✓</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title">Outreach sent</h3>
-                            <p class="v-step-sub" id="v-rejected-recipient-sub">Message delivered to creator via verified channel</p>
+                            <p class="v-step-sub" id="v-rejected-recipient-sub">Message delivered to creator via
+                                verified channel</p>
                         </div>
                     </div>
 
@@ -816,7 +1051,8 @@
                         <div class="v-step-icon reject-icon">✕</div>
                         <div class="v-step-content">
                             <h3 class="v-step-title" style="color: #991B1B;">Collaboration Declined</h3>
-                            <p class="v-step-sub" style="color: #7F1D1D;">Response received: Recipient indicated they did not collaborate on this content</p>
+                            <p class="v-step-sub" style="color: #7F1D1D;">Response received: Recipient indicated they
+                                did not collaborate on this content</p>
                         </div>
                     </div>
 
@@ -831,7 +1067,8 @@
 
 
                 <div class="result-actions" style="margin-top: 24px;">
-                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="width: 100%;">Verify Another Collaboration</button>
+                    <button type="button" class="btn-retro-outline reset-workflow-btn" style="width: 100%;">Verify
+                        Another Collaboration</button>
                 </div>
             </section>
 
@@ -840,19 +1077,21 @@
         <!-- Pop-up Modal: Connect Instagram to Auto-Verify -->
         <div id="modal-connect-instagram" class="modal-backdrop hidden">
             <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-ci-title">
-                <button type="button" class="modal-close-btn" id="btn-modal-ci-close" aria-label="Close modal">✕</button>
-                
+                <button type="button" class="modal-close-btn" id="btn-modal-ci-close"
+                    aria-label="Close modal">✕</button>
+
                 <div class="modal-badge-row">
                     <span class="modal-badge font-mono">⚡ CREDITS DETECTED IN DESCRIPTION</span>
                 </div>
 
                 <h2 class="modal-heading" id="modal-ci-title">Credits are already mentioned!</h2>
-                
+
                 <p class="modal-desc" id="modal-ci-desc">
-                    Credits for <strong id="modal-detected-handles-list"></strong> were found in the video description. 
+                    Credits for <strong id="modal-detected-handles-list"></strong> were found in the video description.
                     To get <strong>auto-verified</strong>, connect your Instagram account.
                 </p>
-                <p class="modal-optional-hint font-mono" style="font-size: 0.8rem; color: #6B7280; margin-top: -0.25rem; margin-bottom: 1.25rem;">
+                <p class="modal-optional-hint font-mono"
+                    style="font-size: 0.8rem; color: #6B7280; margin-top: -0.25rem; margin-bottom: 1.25rem;">
                     💡 Connecting Instagram is optional. You can skip and verify manually at any time.
                 </p>
 
@@ -867,17 +1106,11 @@
                         <label for="modal-ci-input" class="retro-label font-mono">Your Instagram Username</label>
                         <div class="input-wrapper modal-input-wrapper">
                             <span class="input-prefix font-mono">@</span>
-                            <input 
-                                type="text" 
-                                id="modal-ci-input" 
-                                class="retro-input font-mono" 
-                                placeholder="your_username"
-                                autocomplete="off"
-                                autocapitalize="none"
-                                spellcheck="false"
-                            >
+                            <input type="text" id="modal-ci-input" class="retro-input font-mono"
+                                placeholder="your_username" autocomplete="off" autocapitalize="none" spellcheck="false">
                         </div>
-                        <span id="modal-ci-err" class="input-error-msg hidden">Please enter your Instagram username</span>
+                        <span id="modal-ci-err" class="input-error-msg hidden">Please enter your Instagram
+                            username</span>
                     </div>
 
                     <div class="modal-actions-row">
@@ -892,12 +1125,63 @@
             </div>
         </div>
 
+        <!-- Pop-up Modal: Enter Creator's Discord User ID -->
+        <div id="modal-discord-user-id" class="modal-backdrop hidden">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-dui-title">
+                <button type="button" class="modal-close-btn" id="btn-modal-dui-close"
+                    aria-label="Close modal">✕</button>
+
+                <div class="modal-badge-row">
+                    <span class="modal-badge font-mono"
+                        style="background: #5865F2; color: #FFF; border-color: #111827;">💬 DISCORD OUTREACH &
+                        VERIFICATION</span>
+                </div>
+
+                <h2 class="modal-heading" id="modal-dui-title">Enter Discord User ID</h2>
+
+                <p class="modal-desc" style="line-height: 1.5; margin-bottom: 14px;">
+                    The outreach and verification logic is strictly based on the creator's <strong>Discord User
+                        ID</strong> (17-20 digit numeric snowflake), not their username or display name.
+                </p>
+
+                <form id="form-discord-user-id-modal">
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label for="input-modal-discord-user-id" class="retro-label font-mono">DISCORD USER ID
+                            (SNOWFLAKE)</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="input-modal-discord-user-id" class="retro-input font-mono"
+                                placeholder="e.g. 803511102246789123" autocomplete="off" spellcheck="false" required>
+                        </div>
+                        <span id="modal-dui-err" class="input-error-msg hidden">Please enter a valid 17-20 digit Discord
+                            User ID</span>
+                    </div>
+
+                    <div class="modal-helper-tip font-mono"
+                        style="background: #F8FAFC; border: 1.5px solid #CBD5E1; padding: 10px 12px; border-radius: 4px; font-size: 11px; color: #475569; margin-bottom: 16px;">
+                        💡 <strong>How to get User ID:</strong> In Discord &rarr; User Settings &rarr; Advanced &rarr;
+                        enable <em>Developer Mode</em>. Then right-click the creator's profile/avatar &rarr; click
+                        <em>Copy User ID</em>.
+                    </div>
+
+                    <div class="modal-actions-row">
+                        <button type="submit" id="btn-modal-dui-submit" class="btn-primary" style="flex: 1;">
+                            <span>Save User ID & Continue ✓</span>
+                        </button>
+                        <button type="button" id="btn-modal-dui-cancel" class="btn-secondary">
+                            <span>Cancel</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Copy & Redirect High-Visibility Overlay -->
         <div id="copy-redirect-overlay" class="copy-redirect-overlay">
             <div class="copy-redirect-icon-box">📋</div>
             <div class="copy-redirect-body">
                 <h3 class="copy-redirect-title" id="copy-redirect-title">Message Copied to Clipboard!</h3>
-                <p class="copy-redirect-sub" id="copy-redirect-sub">Opening Instagram in <strong id="copy-redirect-timer">4</strong>s... Just paste (Ctrl+V) into the chat.</p>
+                <p class="copy-redirect-sub" id="copy-redirect-sub">Opening Instagram in <strong
+                        id="copy-redirect-timer">4</strong>s... Just paste (Ctrl+V) into the chat.</p>
                 <div class="copy-redirect-preview" id="copy-redirect-preview">"Hey Creator..."</div>
             </div>
         </div>
@@ -909,4 +1193,5 @@
     <!-- Client Script -->
     <script src="/static/app.js?v=5.5"></script>
 </body>
+
 </html>

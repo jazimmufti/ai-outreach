@@ -77,12 +77,22 @@ async def discover_creator_endpoint(payload: ResearchRequest):
         session.creator = creator_profile
         session.social_profiles = raw_result.social_profiles
         session.discord_profile = raw_result.discord_profile
+        if session.discord_profile and session.discord_profile.discord_invite:
+            session.discord_invite_url = session.discord_profile.discord_invite
+        if session.discord_profile and session.discord_profile.discord_user_id:
+            session.discord_user_id = session.discord_profile.discord_user_id
+            session.final_discord_user_id = session.discord_profile.discord_user_id
 
-        # Locate Instagram profile if available
+        # Locate Instagram and Discord profiles if available
         for s in raw_result.social_profiles:
-            if s.platform == "Instagram":
+            if s.platform == "Instagram" and not session.instagram_profile:
                 session.instagram_profile = s
-                break
+            elif (s.platform or "").lower() == "discord":
+                if s.discord_invite and not session.discord_invite_url:
+                    session.discord_invite_url = s.discord_invite
+                if s.discord_user_id and not session.discord_user_id:
+                    session.discord_user_id = s.discord_user_id
+                    session.final_discord_user_id = s.discord_user_id
 
         # Step 0: Automatic Contribution Verification via YouTube Video Description
         # Checks whether creator mentions match the Arclent linked Instagram account
@@ -184,11 +194,21 @@ async def stream_discovery_endpoint(
                     session.creator = creator_profile
                     session.social_profiles = [SocialProfile(**s) for s in raw.get("social_profiles", [])]
                     session.discord_profile = DiscordProfile(**raw["discord_profile"]) if raw.get("discord_profile") else None
+                    if session.discord_profile and session.discord_profile.discord_invite:
+                        session.discord_invite_url = session.discord_profile.discord_invite
+                    if session.discord_profile and session.discord_profile.discord_user_id:
+                        session.discord_user_id = session.discord_profile.discord_user_id
+                        session.final_discord_user_id = session.discord_profile.discord_user_id
 
                     for s in session.social_profiles:
-                        if s.platform == "Instagram":
+                        if s.platform == "Instagram" and not session.instagram_profile:
                             session.instagram_profile = s
-                            break
+                        elif (s.platform or "").lower() == "discord":
+                            if s.discord_invite and not session.discord_invite_url:
+                                session.discord_invite_url = s.discord_invite
+                            if s.discord_user_id and not session.discord_user_id:
+                                session.discord_user_id = s.discord_user_id
+                                session.final_discord_user_id = s.discord_user_id
 
                     # Step 0: Automatic Contribution Verification via YouTube Video Description
                     desc_parts = [
@@ -1091,6 +1111,17 @@ async def handle_creator_verification_response(
     confirm_href = f"/verify?session_id={session.session_id}&action=confirm{token_param}"
     reject_href = f"/verify?session_id={session.session_id}&action=reject{token_param}"
 
+    discord_section_html = ""
+    if session.discord_invite_url:
+        discord_section_html = f"""
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px dashed #D1D5DB;">
+            <div style="font-size: 11px; font-weight: 700; color: #4B5563; margin-bottom: 8px; font-family: 'JetBrains Mono', monospace;">AUTO-VERIFICATION AVAILABLE</div>
+            <a href="/discord/verify?session_id={session.session_id}" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: #5865F2; color: #FFFFFF; text-decoration: none; font-weight: 700; font-size: 13.5px; padding: 11px 16px; border: 2px solid #111827; border-radius: 3px; box-shadow: 3px 3px 0px #111827;">
+                <span>💬 Verify Discord Server Membership</span>
+            </a>
+        </div>
+        """
+
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1317,6 +1348,8 @@ async def handle_creator_verification_response(
                 <span>✕ No, I do not confirm</span>
             </a>
         </div>
+
+        {discord_section_html}
 
         <div class="footer-note">
             Sent securely via Arclent • Creator Collaboration & Credentials Verification

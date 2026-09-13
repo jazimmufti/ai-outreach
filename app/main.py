@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 
 from app.config import settings
-from app.api import research, gmail, email, outreach
+from app.api import research, gmail, email, outreach, discord
 from app.services.session_manager import get_most_recent_session
 
 # Configure logging
@@ -59,6 +59,7 @@ app.include_router(outreach.router)
 app.include_router(research.router)
 app.include_router(gmail.router)
 app.include_router(email.router)
+app.include_router(discord.router)
 
 # Top-level direct endpoint for Discord outreach
 @app.post("/send-discord-message", response_model=outreach.SendDiscordMessageResponse, tags=["discord"])

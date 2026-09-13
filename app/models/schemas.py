@@ -47,6 +47,10 @@ class DiscordProfile(BaseModel):
     discord_invite: Optional[str] = Field(default=None, description="Discovered Discord invite link or code (e.g. discord.gg/...)")
     discord_username: Optional[str] = Field(default=None, description="Discovered Discord handle or username")
     discord_user_id: Optional[str] = Field(default=None, description="Validated 17-20 digit Discord User Snowflake ID")
+    discord_guild_id: Optional[str] = Field(default=None, description="Resolved Discord Guild/Server ID snowflake")
+    discord_guild_name: Optional[str] = Field(default=None, description="Resolved Discord Guild/Server Name")
+    discord_verification_status: Optional[str] = Field(default=None, description="Status: 'pending', 'verified', 'not_verified', 'server_not_resolved', 'oauth_failed', 'verification_error'")
+    discord_verified_at: Optional[str] = Field(default=None, description="ISO timestamp of Discord verification")
     discord_source: str = Field(default="youtube_description", description="Source location of Discord info")
     status: Literal["sendable", "discovered"] = Field(
         default="discovered", 
@@ -156,6 +160,12 @@ class OutreachSession(BaseModel):
     final_instagram_url: Optional[str] = None
     discord_profile: Optional[DiscordProfile] = None
     final_discord_user_id: Optional[str] = None
+    discord_user_id: Optional[str] = None
+    discord_guild_id: Optional[str] = None
+    discord_invite_url: Optional[str] = None
+    discord_verification_status: Optional[str] = None
+    discord_verified_at: Optional[str] = None
+    discord_guild_name: Optional[str] = None
     discord_message_id: Optional[str] = None
     discord_sent_at: Optional[str] = None
     auto_verification: Optional[AutoVerificationResult] = None
@@ -350,3 +360,23 @@ class SendEmailResponse(BaseModel):
     message_id: Optional[str] = None
     sender: Optional[str] = None
     timestamp: Optional[str] = None
+
+
+class DiscordVerificationStatusResponse(BaseModel):
+    """Status of Discord server membership auto-verification."""
+    session_id: str
+    verified: bool = False
+    discord_user_id: Optional[str] = None
+    discord_guild_id: Optional[str] = None
+    discord_invite_url: Optional[str] = None
+    discord_verification_status: Optional[str] = None
+    discord_verified_at: Optional[str] = None
+    guild_name: Optional[str] = None
+    message: Optional[str] = None
+
+
+class SetDiscordUserIdRequest(BaseModel):
+    """Request payload to set creator's Discord User ID."""
+    session_id: str
+    discord_user_id: str
+
