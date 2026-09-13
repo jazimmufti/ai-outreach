@@ -1,5 +1,6 @@
 """Step-by-step Creator Outreach Workflow API routes."""
 
+import re
 import json
 import logging
 from typing import Optional, Literal
@@ -27,7 +28,8 @@ from app.models.schemas import (
     AutoVerificationResult,
     DiscordProfile,
     SendDiscordMessageRequest,
-    SendDiscordMessageResponse
+    SendDiscordMessageResponse,
+    VerifyLinkedDiscordAccountRequest
 )
 from datetime import datetime, timezone
 
@@ -563,7 +565,10 @@ async def record_social_outreach_endpoint(payload: RecordSocialOutreachRequest):
     platform_str = payload.platform or "Instagram"
     session.selected_channel = platform_str.lower()
     if payload.handle:
-        session.final_instagram_handle = payload.handle
+        if "discord" in platform_str.lower():
+            session.final_discord_user_id = payload.handle.lstrip("@")
+        else:
+            session.final_instagram_handle = payload.handle
 
     if payload.sender_handle and payload.sender_handle.strip():
         raw_h = payload.sender_handle.strip().lstrip("@")
@@ -1334,60 +1339,33 @@ async def handle_creator_verification_response(
 
 class VerifyLinkedAccountRequest(BaseModel):
     session_id: str
-    instagram_account: Optional[str] = None
-    discord_account: Optional[str] = None
+    instagram_account: str
 
 
 @router.post("/verify-linked-account")
 async def verify_linked_account_endpoint(payload: VerifyLinkedAccountRequest):
-    """Dynamically verify an unlinked user when they connect their Instagram or Discord account."""
+    """Dynamically verify an unlinked user when they connect their Instagram account."""
     session = get_session(payload.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
 
-    clean_ig = normalize_instagram_username(payload.instagram_account) if payload.instagram_account else None
-    clean_discord = normalize_discord_account(payload.discord_account) if payload.discord_account else None
-
-    if not clean_ig and not clean_discord:
-        raise HTTPException(status_code=400, detail="Please provide a valid Instagram handle or Discord account.")
+    clean_handle = normalize_instagram_username(payload.instagram_account)
+    if not clean_handle:
+        raise HTTPException(status_code=400, detail="Invalid Instagram handle provided.")
 
     extracted = []
     if session.auto_verification and session.auto_verification.extracted_accounts:
         extracted = [h.lower().lstrip("@") for h in session.auto_verification.extracted_accounts]
 
-    # Check Discord match
-    if clean_discord and clean_discord.lower() in extracted:
-        auto_result = AutoVerificationResult(
-            verified=True,
-            status="auto_verified",
-            method="youtube_description_discord_match",
-            matched_account=clean_discord,
-            linked_account=clean_discord,
-            extracted_accounts=extracted,
-            reason=f"Connected Discord account {clean_discord} matches contributor credits published in the video description."
-        )
-        session.auto_verification = auto_result
-        session.stage = OutreachStage.AUTO_VERIFIED
-        session.creator_response = "confirmed"
-        session.verified_at = datetime.now(timezone.utc).isoformat()
-        save_session(session)
-        return {
-            "verified": True,
-            "matched_account": clean_discord,
-            "session_id": session.session_id,
-            "auto_verification": auto_result
-        }
-
-    # Check Instagram match
-    if clean_ig and clean_ig.lower() in extracted:
+    if clean_handle.lower() in extracted:
         auto_result = AutoVerificationResult(
             verified=True,
             status="auto_verified",
             method="youtube_description_instagram_match",
-            matched_account=clean_ig,
-            linked_account=clean_ig,
+            matched_account=clean_handle,
+            linked_account=clean_handle,
             extracted_accounts=extracted,
-            reason=f"Connected Instagram account @{clean_ig} matches contributor credits published in the video description."
+            reason=f"Connected Instagram account @{clean_handle} matches contributor credits published in the video description."
         )
         session.auto_verification = auto_result
         session.stage = OutreachStage.AUTO_VERIFIED
@@ -1396,19 +1374,75 @@ async def verify_linked_account_endpoint(payload: VerifyLinkedAccountRequest):
         save_session(session)
         return {
             "verified": True,
-            "matched_account": clean_ig,
+            "matched_account": clean_handle,
             "session_id": session.session_id,
             "auto_verification": auto_result
         }
 
-    account_label = f"Discord {clean_discord}" if clean_discord else f"@{clean_ig}"
     return {
         "verified": False,
         "matched_account": None,
         "session_id": session.session_id,
         "extracted_accounts": extracted,
-        "message": f"Connected {account_label}, but credits in description were for: {', '.join(f'@{a}' if not a.isdigit() else a for a in extracted)}"
+        "message": f"Connected @{clean_handle}, but credits in description were for: {', '.join(f'@{a}' for a in extracted)}"
     }
+
+
+@router.post("/verify-linked-discord-account")
+async def verify_linked_discord_account_endpoint(payload: VerifyLinkedDiscordAccountRequest):
+    """Dynamically verify an unlinked user when they connect their Discord account."""
+    session = get_session(payload.session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
+
+    clean_account = normalize_discord_account(payload.discord_account)
+    if not clean_account:
+        raise HTTPException(status_code=400, detail="Invalid Discord User ID or username provided.")
+
+    extracted = []
+    if session.auto_verification and session.auto_verification.extracted_accounts:
+        extracted = [str(h).lower().lstrip("@") for h in session.auto_verification.extracted_accounts]
+
+    def norm_comp(s: str) -> str:
+        return re.sub(r"[^a-zA-Z0-9]", "", s or "").lower()
+
+    clean_norm = norm_comp(clean_account)
+    is_match = any(
+        acc.lower() == clean_account.lower() or norm_comp(acc) == clean_norm
+        for acc in extracted
+    )
+
+    if is_match:
+        auto_result = AutoVerificationResult(
+            verified=True,
+            status="auto_verified",
+            method="youtube_description_discord_match",
+            matched_account=clean_account,
+            linked_account=clean_account,
+            extracted_accounts=extracted,
+            platform="Discord",
+            reason=f"Your Discord ID/username {clean_account} matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!"
+        )
+        session.auto_verification = auto_result
+        session.stage = OutreachStage.AUTO_VERIFIED
+        session.creator_response = "confirmed"
+        session.verified_at = datetime.now(timezone.utc).isoformat()
+        save_session(session)
+        return {
+            "verified": True,
+            "matched_account": clean_account,
+            "session_id": session.session_id,
+            "auto_verification": auto_result
+        }
+
+    return {
+        "verified": False,
+        "matched_account": None,
+        "session_id": session.session_id,
+        "extracted_accounts": extracted,
+        "message": f"Connected Discord account {clean_account}, but credits in description were for: {', '.join(extracted)}"
+    }
+
 
 
 @router.get("/session-status")

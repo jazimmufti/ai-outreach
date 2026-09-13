@@ -61,8 +61,8 @@ URL_PATTERNS = [
     },
     {
         "platform": "Discord",
-        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})", re.I),
-        "format_url": lambda u: f"https://discord.com/channels/@me/{u.rstrip('/')}",
+        "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", re.I),
+        "format_url": lambda u: f"https://discord.com/users/{u.rstrip('/')}",
         "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
         "is_user_id": True
     },
@@ -211,9 +211,9 @@ def extract_discord_information(text: str, source_label: str = "youtube_descript
     discovered_username: Optional[str] = None
     discovered_user_id: Optional[str] = None
     
-    # 1. Check for direct Discord User DM / Profile URLs: discord.com/channels/@me/<snowflake> or discord.com/users/<snowflake>
+    # 1. Check for direct Discord User Profile URLs: discord.com/users/<snowflake> or discordapp.com/users/<snowflake>
     user_url_match = re.search(
-        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})",
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})",
         cleaned_text,
         re.IGNORECASE
     )

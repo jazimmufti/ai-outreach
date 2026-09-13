@@ -46,18 +46,22 @@ INSTA_PREFIXED_HANDLE_REGEX = re.compile(
 )
 
 # Regex to detect general contributor / credit mentions
-# (e.g. "Credits: @ummer.04", "Editor: @user", "Editor: https://instagram.com/user", "Editor: ummer.04")
-# MUST have '@', or an Instagram URL, or contain handle-defining punctuation (. or _)
+# (e.g. "Credits: @ummer.04", "Editor: @user", "Editor: https://instagram.com/user", "Editor: ummer.04", "Editor: 151600386127968346")
 CREDIT_PREFIXED_HANDLE_REGEX = re.compile(
     r"\b(?:contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
     r"edited by|editor|video editor|video edit|edit by|edit|vfx by|vfx|visual effects|thumbnail by|thumbnail|thumbnail artist|"
     r"thumb by|thumb|sound by|sound designer|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
     r"assisted by|assistant by|assistant|assisted)\b"
+    r"(?:\s*[\(\[](?:instagram|insta|ig|twitter|x|twitch|facebook|fb|discord|youtube)[\)\]])?"
     r"[\s\:\-\—\|\–\>\•\*\~]*[^\w\s@\/]*[\s\:\-\—\|\–\>\•\*\~]*"
     r"(?:"
         r"@([a-zA-Z0-9_\.]{2,30})"
         r"|"
         r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([a-zA-Z0-9_\.]{1,30})"
+        r"|"
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})"
+        r"|"
+        r"([0-9]{17,20})"
         r"|"
         r"(?!https?:\/\/)([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})"
     r")\b",
@@ -255,6 +259,10 @@ CREDIT_ROLE_PATTERN = re.compile(
         r"|"
         r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am|x\.com|twitter\.com|facebook\.com|twitch\.tv)\/([a-zA-Z0-9_\.]{1,30})"
         r"|"
+        r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})"
+        r"|"
+        r"([0-9]{17,20})"
+        r"|"
         r"(?!https?:\/\/)([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})"
     r")\b",
     re.IGNORECASE
@@ -319,7 +327,7 @@ def detect_specified_platform(text_snippet: str) -> Optional[str]:
         return "Twitch"
     if "facebook.com" in lower or re.search(r"\b(facebook|fb)\b", lower):
         return "Facebook"
-    if "discord.gg" in lower or "discord.com" in lower or re.search(r"\b(discord)\b", lower):
+    if "discord.gg" in lower or "discord.com" in lower or "discordapp.com" in lower or re.search(r"\b(discord)\b", lower):
         return "Discord"
     return None
 
@@ -331,14 +339,14 @@ def extract_credit_candidates(
     """Extract candidate usernames and their associated role/credit labels from a description.
     
     Strictly extracts explicit credits only (e.g. 'Editor: @user', 'Contributors: @user1 @user2',
-    'DRNKIE: Thumbnail', 'Edited by Trenton Oliver').
+    'DRNKIE: Thumbnail', 'Edited by Trenton Oliver', 'Editor: 151600386127968346').
     Filters candidates according to whether the credit role matches user_role.
     Standalone or promotional @mentions without explicit credit indicators are never extracted.
     
     Returns:
         List of dicts: [
             {"username": "ummer.04", "role": "editor", "specified_platform": None, "is_name": False},
-            {"username": "Trenton Oliver", "role": "editor", "display_name": "Trenton Oliver", "is_name": True}
+            {"username": "151600386127968346", "role": "editor", "specified_platform": "Discord", "is_name": False}
         ]
     """
     if not description or not description.strip():
@@ -375,6 +383,8 @@ def extract_credit_candidates(
                     end_idx = len(raw_text)
                 line_context = raw_text[start_idx:end_idx]
                 specified_platform = detect_specified_platform(line_context)
+                if not specified_platform and re.match(r"^[0-9]{17,20}$", handle):
+                    specified_platform = "Discord"
 
                 results.append({
                     "username": handle,
@@ -410,6 +420,50 @@ def extract_credit_candidates(
                             "specified_platform": specified_platform,
                             "is_name": False
                         })
+
+            # Check for Discord snowflake user IDs on the credit line
+            for sf_match in re.finditer(r"\b([0-9]{17,20})\b", rest):
+                sf_id = sf_match.group(1)
+                key = get_norm_key(sf_id)
+                if key and key not in seen_keys:
+                    seen_keys.add(key)
+                    results.append({
+                        "username": sf_id,
+                        "display_name": sf_id,
+                        "role": role_label,
+                        "specified_platform": "Discord",
+                        "is_name": False
+                    })
+
+            # Check for Discord direct profile links on the credit line
+            for d_url_match in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", rest, re.I):
+                d_id = d_url_match.group(1)
+                key = get_norm_key(d_id)
+                if key and key not in seen_keys:
+                    seen_keys.add(key)
+                    results.append({
+                        "username": d_id,
+                        "display_name": d_id,
+                        "role": role_label,
+                        "specified_platform": "Discord",
+                        "is_name": False
+                    })
+
+            # If line explicitly references Discord, also capture bare discord handle
+            if specified_platform == "Discord":
+                for dh_match in re.finditer(r"\b([a-zA-Z0-9_\.]{2,32}(?:#[0-9]{4})?)\b", rest):
+                    dh = dh_match.group(1).lstrip("@").strip()
+                    if dh and dh.lower() not in EXCLUDED_INSTAGRAM_PATHS and not dh.startswith("http"):
+                        key = get_norm_key(dh)
+                        if key and key not in seen_keys:
+                            seen_keys.add(key)
+                            results.append({
+                                "username": dh,
+                                "display_name": dh,
+                                "role": role_label,
+                                "specified_platform": "Discord",
+                                "is_name": False
+                            })
 
     # Strategy C: Reverse credit mentions (e.g. "@UMMER.04 was the editor on this video")
     for match in REVERSE_CREDIT_PATTERN.finditer(raw_text):
@@ -520,144 +574,6 @@ def extract_credit_candidates(
     return results
 
 
-def extract_discord_credit_candidates(
-    description: Optional[str],
-    user_role: Optional[str] = None
-) -> List[Dict[str, Any]]:
-    """Extract Discord usernames and User IDs credited in the YouTube description.
-    
-    Filters candidates by matching credit role against user_role using is_credit_role_matching.
-    Supports:
-    - Discord user profile URLs: discord.com/users/<snowflake>
-    - Discord mentions: <@snowflake> or <@!snowflake>
-    - Explicit Discord user IDs in credit lines: "Editor Discord ID: 1516003862127968346", "Discord: 1516003862127968346"
-    - Explicit Discord usernames in credit lines: "Editor Discord: username", "Discord: username#1234", "Editor: @username (Discord)"
-    - Multi-line credit blocks where Discord info is under an identified role
-    - Reverse credits: "<@snowflake> was the editor", "username on Discord edited this video"
-    - General credits / contributor lines with Discord info
-    """
-    if not description or not description.strip():
-        return []
-
-    raw_text = urllib.parse.unquote(description)
-    results: List[Dict[str, Any]] = []
-    seen: Set[str] = set()
-
-    def add_result(user_id: Optional[str], username: Optional[str], role: str, raw: str):
-        uid = user_id.strip() if user_id else None
-        uname = username.strip().lstrip("@").lower() if username else None
-        key = f"{uid or ''}:{uname or ''}:{role.lower()}"
-        if key in seen:
-            return
-        seen.add(key)
-        results.append({
-            "discord_user_id": uid,
-            "discord_username": uname,
-            "role": role.lower(),
-            "raw_credit": raw,
-            "specified_platform": "Discord"
-        })
-
-    lines = raw_text.splitlines()
-    for idx, line in enumerate(lines):
-        line_clean = line.strip()
-        if not line_clean:
-            continue
-
-        # Check if line contains a credit role indicator
-        role_label = None
-        role_match = re.search(
-            r"\b(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
-            r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
-            r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
-            r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
-            r"assisted by|assistant by|assistant|assisted)\b",
-            line_clean,
-            re.IGNORECASE
-        )
-        if role_match:
-            role_candidate = role_match.group(1).lower()
-            if is_credit_role_matching(role_candidate, user_role):
-                role_label = role_candidate
-
-        # 1A: If the line itself has a role matching user_role
-        if role_label:
-            # Check for URL in this line
-            for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})", line_clean, re.IGNORECASE):
-                add_result(m.group(1), None, role_label, m.group(0))
-            # Check for mention in this line
-            for m in re.finditer(r"<@!?([0-9]{17,20})>", line_clean):
-                add_result(m.group(1), None, role_label, m.group(0))
-            # Check for explicit discord id or snowflake
-            for m in re.finditer(r"(?:discord\s*(?:user\s*)?id\s*[:=\-—|]?\s*|discord\s*[:=\-—|]?\s*|(?<=\s)|(?<=:))([0-9]{17,20})\b", line_clean, re.IGNORECASE):
-                add_result(m.group(1), None, role_label, m.group(1))
-            # Check for Discord handle / username in this line (e.g. "Editor Discord: ummer_edit", "Discord: ummer#1234")
-            for m in re.finditer(r"\bdiscord\b(?!\.com|\.gg|\.io|\.me)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", line_clean, re.IGNORECASE):
-                val = m.group(1).rstrip("./_…-").lstrip("@").strip()
-                if re.match(r"^[0-9]{17,20}$", val):
-                    add_result(val, None, role_label, val)
-                elif val.lower() not in EXCLUDED_INSTAGRAM_PATHS:
-                    add_result(None, val, role_label, val)
-
-            # Also check subsequent lines (1 to 6 lines) for Discord info under this role
-            for sub_idx in range(idx + 1, min(len(lines), idx + 7)):
-                sub_line = lines[sub_idx].strip()
-                if not sub_line:
-                    continue
-                # If sub_line introduces a NEW different role, stop scanning under this role
-                other_role = re.search(
-                    r"^\s*(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
-                    r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
-                    r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
-                    r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
-                    r"assisted by|assistant by|assistant|assisted)\s*[\:\-\—\|]",
-                    sub_line,
-                    re.IGNORECASE
-                )
-                if other_role:
-                    break
-
-                has_discord_context = "discord" in sub_line.lower() or "users/" in sub_line.lower() or "channels/@me" in sub_line.lower() or "<@" in sub_line
-                for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/(?:users|channels\/@me)\/([0-9]{17,20})", sub_line, re.IGNORECASE):
-                    add_result(m.group(1), None, role_label, m.group(0))
-                for m in re.finditer(r"<@!?([0-9]{17,20})>", sub_line):
-                    add_result(m.group(1), None, role_label, m.group(0))
-                if has_discord_context:
-                    for m in re.finditer(r"\b([0-9]{17,20})\b", sub_line):
-                        add_result(m.group(1), None, role_label, m.group(1))
-                    for m in re.finditer(r"\bdiscord\b(?!\.com|\.gg|\.io|\.me)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", sub_line, re.IGNORECASE):
-                        val = m.group(1).rstrip("./_…-").lstrip("@").strip()
-                        if re.match(r"^[0-9]{17,20}$", val):
-                            add_result(val, None, role_label, val)
-                        elif val.lower() not in EXCLUDED_INSTAGRAM_PATHS:
-                            add_result(None, val, role_label, val)
-
-        # 1B: Reverse credit mentions (e.g. "<@1516003862127968346> was the editor")
-        rev_m = re.search(
-            r"(?:<@!?([0-9]{17,20})>|([a-zA-Z0-9_.]{2,32})\s+on\s+discord)\s+(?:was\s+the\s+|is\s+the\s+|worked\s+as\s+)?(editor|video editor|thumbnail designer|vfx artist|creator|collaborator|contributor|assisted|collaborated|edited)\b",
-            line_clean,
-            re.IGNORECASE
-        )
-        if rev_m:
-            r_role = rev_m.group(3).lower()
-            if is_credit_role_matching(r_role, user_role):
-                if rev_m.group(1):
-                    add_result(rev_m.group(1), None, r_role, rev_m.group(0))
-                elif rev_m.group(2):
-                    add_result(None, rev_m.group(2), r_role, rev_m.group(0))
-
-    # Strategy 2: General / Contributor credit lines with Discord info
-    if is_credit_role_matching("credit", user_role):
-        for m in re.finditer(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", raw_text, re.IGNORECASE):
-            add_result(m.group(1), None, "credit", m.group(0))
-        for m in re.finditer(r"<@!?([0-9]{17,20})>", raw_text):
-            add_result(m.group(1), None, "credit", m.group(0))
-        for m in re.finditer(r"\bdiscord\s*(?:user\s*)?id\s*[:=\-—|]?\s*([0-9]{17,20})\b", raw_text, re.IGNORECASE):
-            add_result(m.group(1), None, "credit", m.group(1))
-
-    return results
-
-
 async def extract_verified_contributor_accounts(
     description: Optional[str],
     linked_platform: Optional[str] = None,
@@ -725,6 +641,18 @@ async def extract_verified_contributor_accounts(
                     "is_name": True,
                     "platforms": ["Instagram"],
                     "urls": {}
+                })
+                continue
+
+            # Discord credits (snowflake user ID or explicit Discord mention): preserve directly for connection & auto-verification
+            if specified == "Discord" or re.match(r"^[0-9]{17,20}$", username):
+                verified_list.append({
+                    "username": username,
+                    "display_name": display_name,
+                    "role": role,
+                    "is_name": False,
+                    "platforms": ["Discord"],
+                    "urls": {"Discord": f"https://discord.com/users/{username}" if re.match(r"^[0-9]{17,20}$", username) else f"https://discord.gg/{username}"}
                 })
                 continue
 

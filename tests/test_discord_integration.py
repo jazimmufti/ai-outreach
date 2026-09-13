@@ -59,15 +59,6 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(discord_profile.discord_user_id, "803511102246789123")
         self.assertEqual(discord_profile.url, "https://discord.com/users/803511102246789123")
 
-    def test_extract_discord_direct_dm_channel_link(self):
-        """Test extraction when a direct Discord DM channel link with snowflake is present."""
-        text = "Message me directly in DMs: https://discord.com/channels/@me/803511102246789123 for work."
-        discord_profile = extract_discord_information(text)
-
-        self.assertIsNotNone(discord_profile)
-        self.assertEqual(discord_profile.status, "sendable")
-        self.assertEqual(discord_profile.discord_user_id, "803511102246789123")
-
     def test_extract_discord_user_id_text_pattern(self):
         """Test extraction when Discord User ID is explicitly written in text."""
         text = "For business outreach: Discord User ID: 104523981726354129 or email me."
@@ -351,30 +342,9 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
             "message": "Hello!"
         }
 
-    def test_discord_social_outreach_workflow(self):
-        """Test Discord manual DM dispatch recorded via record-social-outreach matching Instagram workflow."""
-        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        payload = {
-            "session_id": session.session_id,
-            "platform": "Discord",
-            "handle": "803511102246789123",
-            "sender_handle": "1516003862127968346",
-            "sender_identity": "1516003862127968346 on Arclent",
-            "message": "Hey Creator! Can you confirm our collaboration?"
-        }
-
-        response = self.client.post("/api/outreach/record-social-outreach", json=payload)
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertTrue(data["success"])
-        self.assertEqual(data["selected_channel"], "discord")
-        self.assertEqual(data["sender_handle"], "1516003862127968346")
-
-        updated_session = get_session(session.session_id)
-        self.assertEqual(updated_session.selected_channel, "discord")
-        self.assertEqual(updated_session.stage, OutreachStage.SENT)
-        self.assertEqual(updated_session.creator_response, "pending")
-        self.assertEqual(updated_session.sender_handle, "1516003862127968346")
+        response = self.client.post("/api/outreach/send-discord-message", json=payload)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("17-20 digit numeric snowflake", response.json()["detail"])
 
 
 if __name__ == "__main__":

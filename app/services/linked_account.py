@@ -7,19 +7,18 @@ with the authenticated user's actual linked account (e.g. current_user.instagram
 without modifying any core verification logic.
 """
 
-import re
 from typing import Optional
 
 
 # Default linked account for Arclent profile.
-# By default, NO account is connected initially for Instagram.
+# By default, NO Instagram account is connected initially.
 LINKED_INSTAGRAM_ACCOUNT: Optional[str] = None
 DEFAULT_LINKED_PLATFORM: Optional[str] = None
 
-# Default linked Discord account (can be user ID snowflake e.g. "1516003862127968346" or Discord username)
-DEFAULT_LINKED_DISCORD_ACCOUNT: Optional[str] = "1516003862127968346"
+# Default linked Discord account for Arclent sender/creator
+DEFAULT_LINKED_DISCORD_ACCOUNT: Optional[str] = "151600386127968346"
 
-# Internal mutable holders allowing overrides during testing without modifying production code.
+# Internal mutable holder allowing overrides during testing without modifying production code.
 _current_linked_account: Optional[str] = LINKED_INSTAGRAM_ACCOUNT
 _current_linked_platform: Optional[str] = DEFAULT_LINKED_PLATFORM
 _current_linked_discord_account: Optional[str] = DEFAULT_LINKED_DISCORD_ACCOUNT
@@ -34,36 +33,11 @@ def normalize_instagram_username(username: Optional[str]) -> Optional[str]:
 
 
 def normalize_discord_account(account: Optional[str]) -> Optional[str]:
-    """Normalize a Discord account (snowflake ID or username).
-    
-    Handles:
-    - User snowflake ID (e.g. '1516003862127968346')
-    - Mention syntax: '<@1516003862127968346>' or '<@!1516003862127968346>'
-    - Discord user profile URL: 'https://discord.com/users/1516003862127968346'
-    - Discord usernames: '@username', 'username#1234', 'username'
-    """
+    """Normalize a Discord account (snowflake ID or username)."""
     if not account:
         return None
-    cleaned = account.strip()
-
-    # Extract snowflake from user profile URL
-    url_m = re.search(r"(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", cleaned, re.IGNORECASE)
-    if url_m:
-        return url_m.group(1)
-
-    # Extract snowflake from mention syntax <@123...> or <@!123...>
-    mention_m = re.search(r"<@!?([0-9]{17,20})>", cleaned)
-    if mention_m:
-        return mention_m.group(1)
-
-    # Check if raw snowflake ID
-    id_m = re.search(r"\b([0-9]{17,20})\b", cleaned)
-    if id_m and (len(cleaned) <= 24 or "id" in cleaned.lower() or "user" in cleaned.lower() or "discord" in cleaned.lower()):
-        return id_m.group(1)
-
-    # Otherwise normalize as username (strip '@', trailing slash, lowercase)
-    uname = cleaned.lstrip("@").rstrip("/").strip().lower()
-    return uname if uname else None
+    cleaned = account.strip().lstrip("@").rstrip("/").strip().lower()
+    return cleaned if cleaned else None
 
 
 def get_linked_instagram_account() -> Optional[str]:
@@ -76,19 +50,27 @@ def get_linked_instagram_account() -> Optional[str]:
 
 
 def get_linked_discord_account() -> Optional[str]:
-    """Retrieve the currently linked Discord account (ID or username) for the Arclent creator.
+    """Retrieve the currently linked Discord account (ID or username) for the Arclent user.
     
     Returns:
-        Normalized Discord snowflake ID or username, or None if not linked.
+        Normalized Discord account (e.g. '151600386127968346'), or None if not linked.
     """
     return normalize_discord_account(_current_linked_discord_account)
 
 
+def get_linked_account(platform: Optional[str] = None) -> Optional[str]:
+    """Retrieve linked account for given platform ('Instagram', 'Discord', etc.)."""
+    plat = (platform or get_linked_platform() or "Instagram").lower()
+    if "discord" in plat:
+        return get_linked_discord_account()
+    return get_linked_instagram_account()
+
+
 def get_linked_platform() -> Optional[str]:
-    """Retrieve the platform of the linked Arclent account ('Instagram', 'X', 'Discord', etc.)."""
+    """Retrieve the platform of the linked Arclent account ('Instagram', 'Discord', 'X', etc.)."""
+    if not _current_linked_account and _current_linked_discord_account:
+        return "Discord"
     if not _current_linked_account:
-        if _current_linked_discord_account:
-            return "Discord"
         return None
     return _current_linked_platform or "Instagram"
 
@@ -108,26 +90,23 @@ def set_dummy_linked_discord_account(account: Optional[str]) -> None:
 
 def set_dummy_linked_account(username: Optional[str], platform: Optional[str] = "Instagram") -> None:
     """Helper function to override the dummy linked account and its platform for testing."""
-    global _current_linked_account, _current_linked_platform
-    _current_linked_account = username
-    _current_linked_platform = platform if username else None
+    global _current_linked_account, _current_linked_platform, _current_linked_discord_account
+    if platform and "discord" in platform.lower():
+        _current_linked_discord_account = username
+    else:
+        _current_linked_account = username
+        _current_linked_platform = platform if username else None
 
 
 def reset_dummy_linked_instagram_account() -> None:
-    """Reset the dummy linked Instagram account back to None (unlinked)."""
+    """Reset the dummy linked account back to None (unlinked)."""
     global _current_linked_account, _current_linked_platform
     _current_linked_account = LINKED_INSTAGRAM_ACCOUNT
     _current_linked_platform = DEFAULT_LINKED_PLATFORM
 
 
 def reset_dummy_linked_discord_account() -> None:
-    """Reset the dummy linked Discord account back to default ('1516003862127968346')."""
+    """Reset the dummy linked Discord account back to default ('151600386127968346')."""
     global _current_linked_discord_account
     _current_linked_discord_account = DEFAULT_LINKED_DISCORD_ACCOUNT
-
-
-def reset_dummy_linked_accounts() -> None:
-    """Reset all dummy linked accounts to default states."""
-    reset_dummy_linked_instagram_account()
-    reset_dummy_linked_discord_account()
 

@@ -477,7 +477,45 @@ Twitter: [/ badogblue](https://twitter.com/badogblue)
         editor_cand = extract_credit_candidates(desc, user_role="Video editor")
         self.assertEqual(editor_cand, [])
 
+    def test_discord_snowflake_candidate_extraction(self):
+        """Test extraction of 17-20 digit Discord snowflake User ID from description."""
+        desc = "Editor: 151600386127968346\nThumbnail: @designer"
+        candidates = extract_credit_candidates(desc, user_role="Video editor")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["username"], "151600386127968346")
+        self.assertEqual(candidates[0]["specified_platform"], "Discord")
+
+    def test_discord_server_invite_versus_profile(self):
+        """Test that a Discord server invite is recognized as social profile, not user profile."""
+        from app.services.social_discovery import extract_social_profiles
+        text = "Join my Discord community at https://discord.gg/testserver or discord.com/invite/abc123"
+        profiles = extract_social_profiles(text)
+        discord_profiles = [p for p in profiles if p.platform == "Discord"]
+        self.assertTrue(len(discord_profiles) >= 1)
+        self.assertTrue(any("discord.gg" in (p.discord_invite or p.url or "") for p in discord_profiles))
+
+    def test_frontend_discord_workflow_parity(self):
+        """Verify frontend index.html and app.js have Discord parity with Instagram."""
+        with open("frontend/index.html", "r", encoding="utf-8") as f:
+            html = f.read()
+        with open("frontend/app.js", "r", encoding="utf-8") as f:
+            js = f.read()
+
+        # index.html elements
+        self.assertIn('id="modal-connect-discord"', html)
+        self.assertIn('id="btn-modal-cd-submit"', html)
+        self.assertIn('Open Discord & Send', html)
+        self.assertIn('id="discord-identification-banner"', html)
+
+        # app.js variables and handlers
+        self.assertIn('linkedDiscordAccount', js)
+        self.assertIn('151600386127968346', js)
+        self.assertIn('https://discord.com/users/', js)
+        self.assertIn('showConnectDiscordModal', js)
+        self.assertIn('/api/outreach/verify-linked-discord-account', js)
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

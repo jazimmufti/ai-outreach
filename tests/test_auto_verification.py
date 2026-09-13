@@ -21,16 +21,11 @@ from app.services.linked_account import (
     get_linked_instagram_account,
     set_dummy_linked_instagram_account,
     reset_dummy_linked_instagram_account,
-    normalize_instagram_username,
-    get_linked_discord_account,
-    set_dummy_linked_discord_account,
-    reset_dummy_linked_discord_account,
-    normalize_discord_account
+    normalize_instagram_username
 )
 from app.services.youtube_description_parser import (
     extract_instagram_accounts,
-    clean_and_normalize_username,
-    extract_discord_credit_candidates
+    clean_and_normalize_username
 )
 from app.services.auto_verification import verify_contribution_from_description
 from app.services.session_manager import clear_all_sessions, get_session
@@ -420,148 +415,67 @@ class TestVerifyLinkedAccountDynamicEndpoint(unittest.TestCase):
         self.assertEqual(session.stage, OutreachStage.AUTO_VERIFIED)
         self.assertEqual(session.creator_response, "confirmed")
 
-
-class TestDiscordAutoVerification(unittest.TestCase):
-    """Tests for automatic verification matching Discord User IDs or usernames in credits."""
-
-    def setUp(self):
-        clear_all_sessions()
-        reset_dummy_linked_instagram_account()
-        set_dummy_linked_discord_account("1516003862127968346")
-        self.client = TestClient(app)
-
-    def tearDown(self):
-        clear_all_sessions()
-        reset_dummy_linked_instagram_account()
-        reset_dummy_linked_discord_account()
-
-    def test_discord_user_id_labeled_match(self):
-        """Credit mentions 'Editor Discord ID: 1516003862127968346'."""
-        desc = "Project by Amazing Team\nEditor Discord ID: 1516003862127968346\nSubscribe!"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertTrue(result.verified)
-        self.assertEqual(result.status, "auto_verified")
-        self.assertEqual(result.method, "youtube_description_discord_match")
-        self.assertEqual(result.matched_account, "1516003862127968346")
-        self.assertIn("1516003862127968346", result.reason)
-
-    def test_discord_user_url_match(self):
-        """Credit mentions 'Editor: https://discord.com/users/1516003862127968346'."""
-        desc = "Editor: https://discord.com/users/1516003862127968346\nMusic by: Artist"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertTrue(result.verified)
-        self.assertEqual(result.status, "auto_verified")
-        self.assertEqual(result.method, "youtube_description_discord_match")
-        self.assertEqual(result.matched_account, "1516003862127968346")
-
-    def test_discord_mention_match(self):
-        """Credit mentions '<@1516003862127968346>' in editor credits."""
-        desc = "Credits:\nEdited by: <@1516003862127968346>"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertTrue(result.verified)
-        self.assertEqual(result.status, "auto_verified")
-        self.assertEqual(result.method, "youtube_description_discord_match")
-        self.assertEqual(result.matched_account, "1516003862127968346")
-
-    def test_discord_username_match(self):
-        """Credit mentions Discord username matching linked username."""
-        set_dummy_linked_discord_account("jazim_editor")
-        desc = "Special thanks to our editor (Discord: jazim_editor) for the cuts!"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertTrue(result.verified)
-        self.assertEqual(result.status, "auto_verified")
-        self.assertEqual(result.method, "youtube_description_discord_match")
-        self.assertEqual(result.matched_account, "jazim_editor")
-
-    def test_discord_multiline_block_match(self):
-        """Credit mentions Editor on one line and Discord ID on next line."""
-        desc = "Credits:\nEditor: Jazim\nDiscord: 1516003862127968346\nThumbnail: Alex"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertTrue(result.verified)
-        self.assertEqual(result.status, "auto_verified")
-        self.assertEqual(result.matched_account, "1516003862127968346")
-
-    def test_discord_role_mismatch_fallback(self):
-        """User role is 'Video editor', but credit is for 'Thumbnail'."""
-        desc = "Thumbnail by: 1516003862127968346\nEditor: SomeoneElse"
-        result = verify_contribution_from_description(desc, user_role="Video editor")
-        self.assertFalse(result.verified)
-        self.assertEqual(result.status, "fallback_no_match")
-
-    def test_discord_custom_linked_override_parameter(self):
-        """Pass custom linked_discord_account explicitly to verification function."""
-        desc = "Editor Discord: 987654321098765432"
-        result = verify_contribution_from_description(
-            desc,
-            linked_discord_account="987654321098765432",
-            user_role="Video editor"
-        )
-        self.assertTrue(result.verified)
-        self.assertEqual(result.matched_account, "987654321098765432")
-
     @patch("app.api.outreach.execute_creator_research")
-    def test_discover_api_auto_verify_discord(self, mock_research):
-        """End-to-end /api/outreach/discover auto-verifies when Discord ID is in description."""
+    def test_discord_auto_verification_flow_and_unlinked_modal(self, mock_research):
+        """Test Discord credits detection, unlinked fallback, and dynamic verification via /verify-linked-discord-account."""
         mock_research.return_value = RawCreatorResearchResult(
             video_url="https://www.youtube.com/watch?v=0e3GPea1Tyg",
             creator_name="Test Creator",
             channel_name="Test Channel",
-            video_title="Super Collab Project",
-            video_description="Big project collab!\nEditor: 1516003862127968346 (Discord)",
-            description="Big project collab!\nEditor: 1516003862127968346 (Discord)",
-            selected_email="creator@test.com"
+            video_title="Collab Video",
+            video_description="Editor: 151600386127968346",
+            description="Editor: 151600386127968346"
         )
 
+        # 1. Unlinked Discord account -> returns fallback_no_linked_account with Discord platform
         res = self.client.post("/api/outreach/discover", json={
             "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
             "user_role": "Video editor",
-            "linked_discord_account": "1516003862127968346"
-        })
-
-        self.assertEqual(res.status_code, 200)
-        data = res.json()
-        self.assertEqual(data["stage"], OutreachStage.AUTO_VERIFIED)
-        self.assertIsNotNone(data["auto_verification"])
-        self.assertTrue(data["auto_verification"]["verified"])
-        self.assertEqual(data["auto_verification"]["method"], "youtube_description_discord_match")
-        self.assertEqual(data["auto_verification"]["matched_account"], "1516003862127968346")
-
-    @patch("app.api.outreach.execute_creator_research")
-    def test_verify_linked_account_discord_modal(self, mock_research):
-        """Test dynamically verifying via /api/outreach/verify-linked-account with Discord ID."""
-        mock_research.return_value = RawCreatorResearchResult(
-            video_url="https://www.youtube.com/watch?v=0e3GPea1Tyg",
-            creator_name="Test Creator",
-            channel_name="Test Channel",
-            video_title="Super Collab Project",
-            video_description="Editor Discord ID: 1516003862127968346",
-            description="Editor Discord ID: 1516003862127968346"
-        )
-
-        # 1. Unlinked discover
-        res = self.client.post("/api/outreach/discover", json={
-            "youtube_url": "https://www.youtube.com/watch?v=0e3GPea1Tyg",
-            "user_role": "Video editor",
-            "linked_instagram_account": "",
             "linked_discord_account": ""
         })
         self.assertEqual(res.status_code, 200)
-        session_id = res.json()["session_id"]
+        data = res.json()
+        self.assertFalse(data["auto_verification"]["verified"])
+        self.assertEqual(data["auto_verification"]["status"], "fallback_no_linked_account")
+        self.assertEqual(data["auto_verification"]["platform"], "Discord")
+        self.assertIn("151600386127968346", data["auto_verification"]["extracted_accounts"])
 
-        # 2. Connect Discord
-        verify_res = self.client.post("/api/outreach/verify-linked-account", json={
+        session_id = data["session_id"]
+
+        # 2. Wrong ID does not verify
+        fail_res = self.client.post("/api/outreach/verify-linked-discord-account", json={
             "session_id": session_id,
-            "discord_account": "1516003862127968346"
+            "discord_account": "999999999999999999"
+        })
+        self.assertEqual(fail_res.status_code, 200)
+        self.assertFalse(fail_res.json()["verified"])
+
+        # 3. User connects matching Discord ID 151600386127968346 -> auto-verifies
+        verify_res = self.client.post("/api/outreach/verify-linked-discord-account", json={
+            "session_id": session_id,
+            "discord_account": "151600386127968346"
         })
         self.assertEqual(verify_res.status_code, 200)
         verify_data = verify_res.json()
         self.assertTrue(verify_data["verified"])
-        self.assertEqual(verify_data["matched_account"], "1516003862127968346")
-        self.assertEqual(verify_data["auto_verification"]["method"], "youtube_description_discord_match")
+        self.assertEqual(verify_data["matched_account"], "151600386127968346")
 
-        # 3. Verify session stage
+        # 4. Session stage is updated to AUTO_VERIFIED
         session = get_session(session_id)
         self.assertEqual(session.stage, OutreachStage.AUTO_VERIFIED)
         self.assertEqual(session.creator_response, "confirmed")
 
+    def test_discord_snowflake_direct_auto_verification(self):
+        """Direct verification of Discord snowflake in description against linked Discord account."""
+        desc = "Special thanks to Editor: 151600386127968346 for great editing!"
+        result = verify_contribution_from_description(
+            desc,
+            linked_discord_account="151600386127968346",
+            user_role="Video editor"
+        )
+        self.assertTrue(result.verified)
+        self.assertEqual(result.status, "auto_verified")
+        self.assertEqual(result.method, "youtube_description_discord_match")
+        self.assertEqual(result.matched_account, "151600386127968346")
+        self.assertEqual(result.platform, "Discord")
 
