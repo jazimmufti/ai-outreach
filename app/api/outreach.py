@@ -38,7 +38,7 @@ from app.services.session_manager import (
 )
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
-from app.services.linked_account import normalize_instagram_username
+from app.services.linked_account import normalize_instagram_username, normalize_discord_account
 from app.services import discord_service
 from app.services.auto_verification import (
     verify_contribution_from_description,
@@ -95,6 +95,7 @@ async def discover_creator_endpoint(payload: ResearchRequest):
         auto_verify_result = await verify_contribution_from_description_async(
             desc_to_check,
             linked_account=payload.linked_instagram_account,
+            linked_discord_account=payload.linked_discord_account,
             user_role=session.user_role
         )
         session.auto_verification = auto_verify_result
@@ -147,7 +148,8 @@ async def discover_creator_endpoint(payload: ResearchRequest):
 async def stream_discovery_endpoint(
     youtube_url: str = Query(..., description="YouTube video or channel URL"),
     user_role: Optional[str] = Query(None, description="Role on the piece of content"),
-    linked_account: Optional[str] = Query(None, description="User's linked Instagram handle")
+    linked_account: Optional[str] = Query(None, description="User's linked Instagram handle"),
+    linked_discord_account: Optional[str] = Query(None, description="User's linked Discord user ID or username")
 ):
     """Step 1 Stream: Server-Sent Events for live step progress."""
     if not youtube_url:
@@ -200,6 +202,7 @@ async def stream_discovery_endpoint(
                     auto_verify_result = await verify_contribution_from_description_async(
                         desc_to_check,
                         linked_account=linked_account,
+                        linked_discord_account=linked_discord_account,
                         user_role=session.user_role
                     )
                     session.auto_verification = auto_verify_result
@@ -1331,33 +1334,37 @@ async def handle_creator_verification_response(
 
 class VerifyLinkedAccountRequest(BaseModel):
     session_id: str
-    instagram_account: str
+    instagram_account: Optional[str] = None
+    discord_account: Optional[str] = None
 
 
 @router.post("/verify-linked-account")
 async def verify_linked_account_endpoint(payload: VerifyLinkedAccountRequest):
-    """Dynamically verify an unlinked user when they connect their Instagram account."""
+    """Dynamically verify an unlinked user when they connect their Instagram or Discord account."""
     session = get_session(payload.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Outreach session expired or not found.")
 
-    clean_handle = normalize_instagram_username(payload.instagram_account)
-    if not clean_handle:
-        raise HTTPException(status_code=400, detail="Invalid Instagram handle provided.")
+    clean_ig = normalize_instagram_username(payload.instagram_account) if payload.instagram_account else None
+    clean_discord = normalize_discord_account(payload.discord_account) if payload.discord_account else None
+
+    if not clean_ig and not clean_discord:
+        raise HTTPException(status_code=400, detail="Please provide a valid Instagram handle or Discord account.")
 
     extracted = []
     if session.auto_verification and session.auto_verification.extracted_accounts:
         extracted = [h.lower().lstrip("@") for h in session.auto_verification.extracted_accounts]
 
-    if clean_handle.lower() in extracted:
+    # Check Discord match
+    if clean_discord and clean_discord.lower() in extracted:
         auto_result = AutoVerificationResult(
             verified=True,
             status="auto_verified",
-            method="youtube_description_instagram_match",
-            matched_account=clean_handle,
-            linked_account=clean_handle,
+            method="youtube_description_discord_match",
+            matched_account=clean_discord,
+            linked_account=clean_discord,
             extracted_accounts=extracted,
-            reason=f"Connected Instagram account @{clean_handle} matches contributor credits published in the video description."
+            reason=f"Connected Discord account {clean_discord} matches contributor credits published in the video description."
         )
         session.auto_verification = auto_result
         session.stage = OutreachStage.AUTO_VERIFIED
@@ -1366,17 +1373,41 @@ async def verify_linked_account_endpoint(payload: VerifyLinkedAccountRequest):
         save_session(session)
         return {
             "verified": True,
-            "matched_account": clean_handle,
+            "matched_account": clean_discord,
             "session_id": session.session_id,
             "auto_verification": auto_result
         }
 
+    # Check Instagram match
+    if clean_ig and clean_ig.lower() in extracted:
+        auto_result = AutoVerificationResult(
+            verified=True,
+            status="auto_verified",
+            method="youtube_description_instagram_match",
+            matched_account=clean_ig,
+            linked_account=clean_ig,
+            extracted_accounts=extracted,
+            reason=f"Connected Instagram account @{clean_ig} matches contributor credits published in the video description."
+        )
+        session.auto_verification = auto_result
+        session.stage = OutreachStage.AUTO_VERIFIED
+        session.creator_response = "confirmed"
+        session.verified_at = datetime.now(timezone.utc).isoformat()
+        save_session(session)
+        return {
+            "verified": True,
+            "matched_account": clean_ig,
+            "session_id": session.session_id,
+            "auto_verification": auto_result
+        }
+
+    account_label = f"Discord {clean_discord}" if clean_discord else f"@{clean_ig}"
     return {
         "verified": False,
         "matched_account": None,
         "session_id": session.session_id,
         "extracted_accounts": extracted,
-        "message": f"Connected @{clean_handle}, but credits in description were for: {', '.join(f'@{a}' for a in extracted)}"
+        "message": f"Connected {account_label}, but credits in description were for: {', '.join(f'@{a}' if not a.isdigit() else a for a in extracted)}"
     }
 
 

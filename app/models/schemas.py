@@ -29,6 +29,7 @@ class ResearchRequest(BaseModel):
     youtube_url: str = Field(..., description="Full YouTube video URL or channel link")
     user_role: Optional[str] = Field(default="Video editor", description="Role on the piece of content")
     linked_instagram_account: Optional[str] = Field(default=None, description="Optional linked Instagram handle of the contributor")
+    linked_discord_account: Optional[str] = Field(default=None, description="Optional linked Discord user ID or username of the contributor")
 
     @field_validator("youtube_url")
     @classmethod

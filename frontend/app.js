@@ -401,6 +401,20 @@ document.addEventListener("DOMContentLoaded", () => {
         state.linkedInstagramAccount = "ummer.04";
     }
 
+    // Default linked Discord account (1516003862127968346)
+    try {
+        const storedLinkedDiscord = localStorage.getItem("arclent_linked_discord");
+        if (storedLinkedDiscord === "unlinked" || storedLinkedDiscord === "none") {
+            state.linkedDiscordAccount = null;
+        } else if (storedLinkedDiscord) {
+            state.linkedDiscordAccount = storedLinkedDiscord.replace(/^@+/, "");
+        } else {
+            state.linkedDiscordAccount = "1516003862127968346";
+        }
+    } catch (_) {
+        state.linkedDiscordAccount = "1516003862127968346";
+    }
+
     function saveSessionState() {
         if (!state.sessionId) return;
         try {
@@ -417,7 +431,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 senderEmail: state.senderEmail,
                 senderHandle: state.senderHandle,
                 senderDiscordUserId: state.senderDiscordUserId,
-                linkedInstagramAccount: state.linkedInstagramAccount
+                linkedInstagramAccount: state.linkedInstagramAccount,
+                linkedDiscordAccount: state.linkedDiscordAccount
             }));
         } catch (e) {}
     }
@@ -1148,7 +1163,8 @@ document.addEventListener("DOMContentLoaded", () => {
         updateStepper(1, "running");
 
         const linkedAccountParam = encodeURIComponent(state.linkedInstagramAccount || "");
-        const sseUrl = `/api/outreach/stream?youtube_url=${encodeURIComponent(youtubeUrl)}&user_role=${encodeURIComponent(state.userRole)}&linked_account=${linkedAccountParam}`;
+        const linkedDiscordParam = encodeURIComponent(state.linkedDiscordAccount || "");
+        const sseUrl = `/api/outreach/stream?youtube_url=${encodeURIComponent(youtubeUrl)}&user_role=${encodeURIComponent(state.userRole)}&linked_account=${linkedAccountParam}&linked_discord_account=${linkedDiscordParam}`;
         let eventSource = null;
         let isFinalized = false;
 
@@ -1209,7 +1225,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify({
                     youtube_url: youtubeUrl,
                     user_role: state.userRole,
-                    linked_instagram_account: state.linkedInstagramAccount || ""
+                    linked_instagram_account: state.linkedInstagramAccount || "",
+                    linked_discord_account: state.linkedDiscordAccount || ""
                 })
             });
 
@@ -3849,13 +3866,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const role = state.userRole || "Video editor";
         const matchedAccount = (autoVerify && autoVerify.matched_account) 
             ? autoVerify.matched_account 
-            : (state.linkedInstagramAccount || "contributor");
+            : (state.linkedDiscordAccount || state.linkedInstagramAccount || "contributor");
+        const isDiscordMatch = autoVerify && (autoVerify.method === "youtube_description_discord_match" || /^\d{17,20}$/.test(matchedAccount));
         const cleanHandle = matchedAccount.replace(/^@+/, "");
-        const matchedHandle = `@${cleanHandle}`;
+        const isNumericSnowflake = /^\d{17,20}$/.test(cleanHandle);
+        const matchedDisplay = isDiscordMatch
+            ? (isNumericSnowflake ? `Discord ID: ${cleanHandle}` : `${cleanHandle} (Discord)`)
+            : `@${cleanHandle}`;
 
-        if (vAutoMatchedHandle) vAutoMatchedHandle.textContent = matchedHandle;
+        if (vAutoMatchedHandle) vAutoMatchedHandle.textContent = matchedDisplay;
         if (vAutoVerifiedDesc) {
-            vAutoVerifiedDesc.innerHTML = `Your username <strong>${escapeHtml(matchedHandle)}</strong> matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!`;
+            const typeLabel = isDiscordMatch ? (isNumericSnowflake ? "Discord User ID" : "Discord username") : "username";
+            vAutoVerifiedDesc.innerHTML = `Your ${typeLabel} <strong>${escapeHtml(matchedDisplay)}</strong> matches with the one mentioned for credits in the video description. Therefore, your collaboration is verified!`;
         }
         if (vAutoCreatorName) vAutoCreatorName.textContent = creatorName;
         if (vAutoCreatorSubs) {
@@ -3871,7 +3893,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (vAutoRoleName) vAutoRoleName.textContent = role;
         if (vAutoVideoTitle) vAutoVideoTitle.textContent = `"${videoTitle}"`;
-        if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedHandle} (Verified Contributor)`;
+        if (vAutoMatchedAccountVal) vAutoMatchedAccountVal.textContent = `${matchedDisplay} (Verified Contributor)`;
 
         if (deliveryHeaderRow) {
             deliveryHeaderRow.classList.add("hidden");
