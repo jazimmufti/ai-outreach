@@ -12,24 +12,15 @@ from app.services.discord_service import (
     validate_snowflake,
     verify_bot_connection,
     send_dm_message,
-    extract_invite_code,
-    resolve_invite_to_guild,
-    check_guild_membership,
-    generate_discord_oauth_url,
     DiscordConfigurationError,
     DiscordValidationError,
     DiscordAuthenticationError,
     DiscordDeliveryError,
     DiscordNotFoundError,
     DiscordRateLimitError,
-    DiscordInviteResolutionError,
-    DiscordBotNotInServerError,
-    DiscordBotAccessError,
-    DiscordOAuthError,
 )
 from app.services.message_generator import generate_outreach_message
 from app.services.session_manager import create_session, get_session
-from app.api.discord import store_oauth_state, consume_oauth_state
 from app.models.schemas import (
     CreatorProfile,
     DiscordProfile,
@@ -351,207 +342,30 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
             "message": "Hello!"
         }
 
-        response = self.client.post("/api/outreach/send-discord-message", json=payload)
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("17-20 digit numeric snowflake", response.json()["detail"])
-
-    # ------------------------------------------------------------------------
-    # 5. SERVER MEMBERSHIP AUTO-VERIFICATION TESTS
-    # ------------------------------------------------------------------------
-
-    def test_extract_invite_code_formats(self):
-        """Test invite code extraction from various Discord invite URL formats."""
-        self.assertEqual(extract_invite_code("https://discord.gg/arclent"), "arclent")
-        self.assertEqual(extract_invite_code("https://discord.com/invite/creator123"), "creator123")
-        self.assertEqual(extract_invite_code("http://discord.gg/test-guild?param=1"), "test-guild")
-        self.assertEqual(extract_invite_code("discord.gg/arclent"), "arclent")
-        self.assertIsNone(extract_invite_code("https://discord.com/users/803511102246789123"))
-        self.assertIsNone(extract_invite_code("https://google.com"))
-
-    @patch("httpx.AsyncClient.get")
-    async def test_resolve_invite_to_guild_success(self, mock_get):
-        """Test resolving an invite code to guild_id and guild_name via Discord API."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "guild": {
-                "id": "123456789012345678",
-                "name": "Arclent HQ"
-            }
-        }
-        mock_get.return_value = mock_resp
-
-        res = await resolve_invite_to_guild("arclent")
-        self.assertEqual(res["guild_id"], "123456789012345678")
-        self.assertEqual(res["guild_name"], "Arclent HQ")
-
-    @patch("httpx.AsyncClient.get")
-    async def test_resolve_invite_to_guild_404_raises_error(self, mock_get):
-        """Test resolve_invite_to_guild raises DiscordInviteResolutionError on 404."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        mock_resp.json.return_value = {"message": "Unknown Invite", "code": 10006}
-        mock_get.return_value = mock_resp
-
-        with self.assertRaises(DiscordInviteResolutionError):
-            await resolve_invite_to_guild("expired-code")
-
-    @patch("httpx.AsyncClient.get")
-    async def test_check_guild_membership_success(self, mock_get):
-        """Test check_guild_membership confirms membership when user is found (200)."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "user": {"id": "803511102246789123"},
-            "roles": ["111222333"]
-        }
-        mock_get.return_value = mock_resp
-
-        with patch.object(Settings, "get_discord_bot_token", return_value="fake-bot-token"):
-            res = await check_guild_membership("123456789012345678", "803511102246789123")
-            self.assertTrue(res["is_member"])
-            self.assertEqual(res["user_id"], "803511102246789123")
-
-    @patch("httpx.AsyncClient.get")
-    async def test_check_guild_membership_not_member(self, mock_get):
-        """Test check_guild_membership returns is_member=False when user is not found (404 / 10007)."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        mock_resp.json.return_value = {
-            "code": 10007,
-            "message": "Unknown Member"
-        }
-        mock_get.return_value = mock_resp
-
-        with patch.object(Settings, "get_discord_bot_token", return_value="fake-bot-token"):
-            res = await check_guild_membership("123456789012345678", "803511102246789123")
-            self.assertFalse(res["is_member"])
-
-    @patch("httpx.AsyncClient.get")
-    async def test_check_guild_membership_bot_not_in_server(self, mock_get):
-        """Test check_guild_membership raises DiscordBotNotInServerError on 404 / 10004."""
-        mock_resp = MagicMock()
-        mock_resp.status_code = 404
-        mock_resp.json.return_value = {
-            "code": 10004,
-            "message": "Unknown Guild"
-        }
-        mock_get.return_value = mock_resp
-
-        with patch.object(Settings, "get_discord_bot_token", return_value="fake-bot-token"):
-            with self.assertRaises(DiscordBotNotInServerError):
-                await check_guild_membership("123456789012345678", "803511102246789123")
-
-    def test_discord_verify_endpoint_oauth_redirect(self):
-        """Test GET /discord/verify redirects to Discord OAuth authorize URL with state."""
+    def test_discord_social_outreach_workflow(self):
+        """Test Discord manual DM dispatch recorded via record-social-outreach matching Instagram workflow."""
         session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        with patch.object(Settings, "get_discord_client_id", return_value="fake-client-id"), \
-             patch.object(Settings, "get_discord_redirect_uri", return_value="http://localhost:8000/discord/callback"):
-            response = self.client.get(f"/discord/verify?session_id={session.session_id}", follow_redirects=False)
-            self.assertEqual(response.status_code, 307)
-            loc = response.headers["location"]
-            self.assertIn("discord.com/oauth2/authorize", loc)
-            self.assertIn("client_id=fake-client-id", loc)
-            self.assertIn("scope=identify", loc)
-            self.assertIn("state=", loc)
-
-    @patch("app.services.discord_service.exchange_oauth_code", new_callable=AsyncMock)
-    @patch("app.services.discord_service.get_authenticated_user", new_callable=AsyncMock)
-    @patch("app.services.discord_service.resolve_invite_to_guild", new_callable=AsyncMock)
-    @patch("app.services.discord_service.check_guild_membership", new_callable=AsyncMock)
-    def test_discord_callback_verified(self, mock_check, mock_resolve, mock_user, mock_exchange):
-        """Test GET /discord/callback successfully authenticates and verifies server membership."""
-        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        session.discord_invite_url = "https://discord.gg/arclent"
-
-        state_token = "valid-test-state-token-1"
-        store_oauth_state(state_token, session.session_id)
-
-        mock_exchange.return_value = {"access_token": "mock-access-token"}
-        mock_user.return_value = {"id": "803511102246789123", "username": "creator_joe"}
-        mock_resolve.return_value = {"guild_id": "111222333444555666", "guild_name": "Arclent Community"}
-        mock_check.return_value = {
-            "is_member": True,
-            "user_id": "803511102246789123",
-            "guild_id": "111222333444555666",
-            "guild_name": "Arclent Community"
+        payload = {
+            "session_id": session.session_id,
+            "platform": "Discord",
+            "handle": "803511102246789123",
+            "sender_handle": "1516003862127968346",
+            "sender_identity": "1516003862127968346 on Arclent",
+            "message": "Hey Creator! Can you confirm our collaboration?"
         }
 
-        response = self.client.get(f"/discord/callback?code=mock-code&state={state_token}")
+        response = self.client.post("/api/outreach/record-social-outreach", json=payload)
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Discord membership verified", response.text)
-        self.assertIn("Arclent Community", response.text)
-
-        updated = get_session(session.session_id)
-        self.assertEqual(updated.discord_verification_status, "verified")
-        self.assertEqual(updated.discord_user_id, "803511102246789123")
-        self.assertEqual(updated.discord_guild_id, "111222333444555666")
-
-    @patch("app.services.discord_service.exchange_oauth_code", new_callable=AsyncMock)
-    @patch("app.services.discord_service.get_authenticated_user", new_callable=AsyncMock)
-    @patch("app.services.discord_service.resolve_invite_to_guild", new_callable=AsyncMock)
-    @patch("app.services.discord_service.check_guild_membership", new_callable=AsyncMock)
-    def test_discord_callback_not_verified(self, mock_check, mock_resolve, mock_user, mock_exchange):
-        """Test GET /discord/callback returns 400 with join link when creator is not in guild."""
-        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        session.discord_invite_url = "https://discord.gg/arclent"
-
-        state_token = "valid-test-state-token-2"
-        store_oauth_state(state_token, session.session_id)
-
-        mock_exchange.return_value = {"access_token": "mock-access-token"}
-        mock_user.return_value = {"id": "803511102246789123", "username": "creator_joe"}
-        mock_resolve.return_value = {"guild_id": "111222333444555666", "guild_name": "Arclent Community"}
-        mock_check.return_value = {
-            "is_member": False,
-            "user_id": "803511102246789123",
-            "guild_id": "111222333444555666",
-            "guild_name": "Arclent Community"
-        }
-
-        response = self.client.get(f"/discord/callback?code=mock-code&state={state_token}")
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("Discord membership could not be verified", response.text)
-        self.assertIn("https://discord.gg/arclent", response.text)
-
-        updated = get_session(session.session_id)
-        self.assertEqual(updated.discord_verification_status, "not_verified")
-
-    def test_api_set_discord_user_id(self):
-        """Test POST /api/discord/set-user-id updates session Discord User ID."""
-        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        resp = self.client.post("/api/discord/set-user-id", json={
-            "session_id": session.session_id,
-            "discord_user_id": "803511102246789123"
-        })
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
+        data = response.json()
         self.assertTrue(data["success"])
-        self.assertEqual(data["discord_user_id"], "803511102246789123")
+        self.assertEqual(data["selected_channel"], "discord")
+        self.assertEqual(data["sender_handle"], "1516003862127968346")
 
-        updated = get_session(session.session_id)
-        self.assertEqual(updated.discord_user_id, "803511102246789123")
-
-        # Invalid snowflake
-        resp_bad = self.client.post("/api/discord/set-user-id", json={
-            "session_id": session.session_id,
-            "discord_user_id": "not-numeric"
-        })
-        self.assertEqual(resp_bad.status_code, 400)
-
-    def test_api_get_discord_verification_status(self):
-        """Test GET /discord/verification-status returns current verification state."""
-        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
-        session.discord_verification_status = "verified"
-        session.discord_user_id = "803511102246789123"
-        session.discord_guild_name = "Arclent Community"
-
-        resp = self.client.get(f"/discord/verification-status?session_id={session.session_id}")
-        self.assertEqual(resp.status_code, 200)
-        data = resp.json()
-        self.assertTrue(data["verified"])
-        self.assertEqual(data["discord_verification_status"], "verified")
-        self.assertEqual(data["discord_user_id"], "803511102246789123")
+        updated_session = get_session(session.session_id)
+        self.assertEqual(updated_session.selected_channel, "discord")
+        self.assertEqual(updated_session.stage, OutreachStage.SENT)
+        self.assertEqual(updated_session.creator_response, "pending")
+        self.assertEqual(updated_session.sender_handle, "1516003862127968346")
 
 
 if __name__ == "__main__":

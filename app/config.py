@@ -52,32 +52,8 @@ class Settings(BaseSettings):
         return str(val).strip().strip("'\"")
 
     
-    # Discord Bot & OAuth2 Integration
-    DISCORD_CLIENT_ID: str = Field(default="", description="Discord OAuth2 Client ID")
-    DISCORD_CLIENT_SECRET: str = Field(default="", description="Discord OAuth2 Client Secret")
-    DISCORD_BOT_TOKEN: str = Field(default="", description="Discord Bot Token for official API outreach & membership checks")
-    DISCORD_REDIRECT_URI: str = Field(
-        default="http://localhost:8000/discord/callback",
-        description="Discord OAuth2 Redirect URI"
-    )
-
-    def get_discord_client_id(self) -> str:
-        """Get sanitized Discord Client ID stripped of whitespace and accidental quotes."""
-        val = os.environ.get("DISCORD_CLIENT_ID") or self.DISCORD_CLIENT_ID
-        return str(val).strip().strip("'\"")
-
-    def get_discord_client_secret(self) -> str:
-        """Get sanitized Discord Client Secret stripped of whitespace and accidental quotes."""
-        val = os.environ.get("DISCORD_CLIENT_SECRET") or self.DISCORD_CLIENT_SECRET
-        return str(val).strip().strip("'\"")
-
-    def get_discord_redirect_uri(self) -> str:
-        """Get sanitized Discord Redirect URI prioritizing environment variable."""
-        val = os.environ.get("DISCORD_REDIRECT_URI") or self.DISCORD_REDIRECT_URI
-        uri = str(val).strip().strip("'\"")
-        if uri.endswith("/discord/callback/"):
-            return uri[:-1]
-        return uri
+    # Discord Bot Integration
+    DISCORD_BOT_TOKEN: str = Field(default="", description="Discord Bot Token for official API outreach")
 
     def get_discord_bot_token(self) -> str:
         """Get sanitized Discord Bot Token stripped of whitespace and accidental quotes."""
