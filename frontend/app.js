@@ -2141,28 +2141,43 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
 
                 startVerificationPolling();
+
+                // Open Discord with the pre-opened window or direct open
+                if (discUserId) {
+                    if (targetWin && !targetWin.closed) {
+                        try {
+                            targetWin.location.href = targetUrl;
+                        } catch (_) {
+                            openPlatformUrl(targetUrl);
+                        }
+                    } else {
+                        openPlatformUrl(targetUrl);
+                    }
+                } else {
+                    if (targetWin && !targetWin.closed) {
+                        try {
+                            targetWin.location.href = targetUrl;
+                        } catch (_) {
+                            openPlatformUrl(targetUrl);
+                        }
+                    } else {
+                        openPlatformUrl(targetUrl);
+                    }
+                }
             };
 
-            if (text) {
-                await copyTextToClipboard(text);
-                showToast(`✓ Copied draft message for Discord!`);
-            }
+            // Pre-open window reference synchronously inside active user gesture so 4s countdown doesn't get blocked
+            let targetWin = null;
+            try {
+                targetWin = window.open("about:blank", "_blank");
+            } catch (_) {}
 
-            await executeDiscordOpen();
-
-            // Open Discord profile directly within active user gesture so browser popup blocker does not block it
-            if (discUserId) {
-                try {
-                    const ifr = document.createElement("iframe");
-                    ifr.style.display = "none";
-                    ifr.src = `discord://-/users/${discUserId}`;
-                    document.body.appendChild(ifr);
-                    setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                } catch (_) {}
-                openPlatformUrl(targetUrl);
-            } else {
-                openPlatformUrl(targetUrl);
-            }
+            await showCopyAndRedirectCountdown({
+                text: text,
+                meta: meta,
+                clickedBtn: clickedBtn,
+                openAction: executeDiscordOpen
+            });
 
             return;
         }
@@ -2732,29 +2747,33 @@ document.addEventListener("DOMContentLoaded", () => {
                                   (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
                                   generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
                 
-                const isIg = (platformKey || "").toLowerCase().includes("instagram") || (platformKey || "").toLowerCase() === "ig";
-                if (isIg) {
+                const isCountedPlatform = isIg || pLower.includes("discord");
+                if (isCountedPlatform) {
+                    let targetWin = null;
+                    try {
+                        targetWin = window.open("about:blank", "_blank");
+                    } catch (_) {}
+
                     await showCopyAndRedirectCountdown({
                         text: draftText,
                         meta: meta,
                         clickedBtn: igFoundLink,
                         openAction: () => {
-                            openPlatformUrl(url);
+                            if (targetWin && !targetWin.closed) {
+                                try {
+                                    targetWin.location.href = url;
+                                } catch (_) {
+                                    openPlatformUrl(url);
+                                }
+                            } else {
+                                openPlatformUrl(url);
+                            }
                         }
                     });
                 } else {
                     if (draftText) {
                         await copyTextToClipboard(draftText);
                         showToast(`✓ Copied message for ${meta.name}!`);
-                    }
-                    if (pLower.includes("discord") && snowflake) {
-                        try {
-                            const ifr = document.createElement("iframe");
-                            ifr.style.display = "none";
-                            ifr.src = `discord://-/users/${snowflake}`;
-                            document.body.appendChild(ifr);
-                            setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                        } catch (_) {}
                     }
                     openPlatformUrl(url);
                 }
@@ -4085,26 +4104,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnDirectProfile.classList.remove("hidden");
                 btnDirectProfile.onclick = (e) => {
                     e.preventDefault();
-                    try {
-                        const ifr = document.createElement("iframe");
-                        ifr.style.display = "none";
-                        ifr.src = `discord://-/users/${cleanId}`;
-                        document.body.appendChild(ifr);
-                        setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                    } catch (_) {}
                     openPlatformUrl(`https://discord.com/users/${cleanId}`);
                 };
             }
             if (hubDiscordHeadHandle) {
                 hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</span>`;
                 hubDiscordHeadHandle.onclick = () => {
-                    try {
-                        const ifr = document.createElement("iframe");
-                        ifr.style.display = "none";
-                        ifr.src = `discord://-/users/${cleanId}`;
-                        document.body.appendChild(ifr);
-                        setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                    } catch (_) {}
                     openPlatformUrl(`https://discord.com/users/${cleanId}`);
                 };
             }
@@ -4140,26 +4145,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     btnDirectProfile.classList.remove("hidden");
                     btnDirectProfile.onclick = (e) => {
                         e.preventDefault();
-                        try {
-                            const ifr = document.createElement("iframe");
-                            ifr.style.display = "none";
-                            ifr.src = `discord://-/users/${clean}`;
-                            document.body.appendChild(ifr);
-                            setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                        } catch (_) {}
                         openPlatformUrl(`https://discord.com/users/${clean}`);
                     };
                 }
                 if (hubDiscordHeadHandle) {
                     hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</span>`;
                     hubDiscordHeadHandle.onclick = () => {
-                        try {
-                            const ifr = document.createElement("iframe");
-                            ifr.style.display = "none";
-                            ifr.src = `discord://-/users/${clean}`;
-                            document.body.appendChild(ifr);
-                            setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
-                        } catch (_) {}
                         openPlatformUrl(`https://discord.com/users/${clean}`);
                     };
                 }
