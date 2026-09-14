@@ -294,43 +294,24 @@ document.addEventListener("DOMContentLoaded", () => {
         return isMobileUA || isTouchMac || isNarrowTouch;
     }
 
-    // Helper: Safely open URL. On mobile, direct navigation triggers OS Universal Links into the native app,
-    // avoids mobile browser popup blockers, and preserves session. On desktop, opens in a new tab.
+    // Helper: Safely open URL in a new tab on every device (desktop and mobile).
+    // Avoids replacing or navigating away from the current Arclent tab.
     function openPlatformUrl(url) {
-        if (!url) return;
-        const isMobile = isMobileDevice();
+        if (!url) return null;
 
-        if (isMobile) {
-            // Direct navigation on mobile triggers OS Universal Links into the native app (e.g. Instagram)
-            // without being blocked by Safari or Chrome popup blockers.
-            try {
-                window.location.href = url;
-            } catch (e) {
-                console.warn("window.location navigation failed:", e);
-                const a = document.createElement("a");
-                a.href = url;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    try { document.body.removeChild(a); } catch (_) {}
-                }, 100);
-            }
-            return;
-        }
-
-        // On Desktop: Always open in a new tab (_blank), never redirect the current tab
+        // Open in a new tab on every device (desktop and mobile)
         let openedWin = null;
         try {
-            openedWin = window.open(url, "_blank");
-            if (openedWin) {
+            openedWin = window.open(url, "_blank", "noopener,noreferrer");
+            if (openedWin && !openedWin.closed) {
                 try { openedWin.focus(); } catch (_) {}
-                return;
+                return openedWin;
             }
         } catch (e) {
             console.warn("window.open failed:", e);
         }
 
-        // Anchor fallback for new tab
+        // Anchor fallback for new tab on every device (mobile and desktop)
         try {
             const a = document.createElement("a");
             a.href = url;
@@ -341,9 +322,11 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 try { document.body.removeChild(a); } catch (_) {}
             }, 300);
+            return openedWin;
         } catch (err) {
             console.warn("Anchor click fallback failed:", err);
         }
+        return openedWin;
     }
 
     // Backwards-compatibility alias
@@ -870,8 +853,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnModalCiSubmit.textContent = "Connecting... Redirecting to Instagram ↗";
             }
 
-            // Redirect user to Instagram login page
-            window.location.href = "https://www.instagram.com/accounts/login/";
+            // Open Instagram login page in a new tab
+            openPlatformUrl("https://www.instagram.com/accounts/login/");
+            setTimeout(() => {
+                hideConnectInstagramModal();
+                if (btnModalCiSubmit) {
+                    btnModalCiSubmit.disabled = false;
+                    btnModalCiSubmit.textContent = "Connect Instagram Account ↗";
+                }
+            }, 800);
         });
     }
 
@@ -2029,13 +2019,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const targetUrl = `https://discord.com/users/${discUserId}`;
-            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
+            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}&text=${encodeURIComponent(text || '')}`;
 
             // Synchronously open the dedicated redirect page in a new tab within active user gesture.
             // Supports both desktop and mobile browsers.
             let redirectWin = null;
             try {
-                redirectWin = window.open(redirectPage, "_blank");
+                redirectWin = openPlatformUrl(redirectPage);
             } catch (_) {}
 
             const executeDiscordOpen = async () => {
@@ -2074,7 +2064,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
                         `;
                     } else {
-                        const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
+                        const fallbackTarget = 'target="_blank" rel="noopener noreferrer"';
                         vDmReadyGuideText.innerHTML = `We opened creator's Discord server. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord ↗</a></span>`;
                     }
                 }
@@ -2106,7 +2096,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so 4s countdown delay is guaranteed
+                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so countdown delay is guaranteed
                 if (!redirectWin || redirectWin.closed) {
                     openPlatformUrl(redirectPage);
                 }
@@ -2130,11 +2120,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
 
         let redirectWin = null;
-        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}`;
-        if (!extensionInstalled && isInstagram) {
-            try {
-                redirectWin = window.open(redirectPage, "_blank");
-            } catch (_) {}
+        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}&text=${encodeURIComponent(text || '')}`;
+
+        // Synchronously open platform or redirect page in a new tab within the user gesture on all devices
+        if (!extensionInstalled) {
+            if (isInstagram) {
+                try {
+                    redirectWin = openPlatformUrl(redirectPage);
+                } catch (_) {}
+            } else {
+                try {
+                    redirectWin = openPlatformUrl(dmUrl);
+                } catch (_) {}
+            }
         }
 
         const executeOpen = async () => {
@@ -2167,7 +2165,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 if (vDmReadyGuideText) {
                     const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
-                    const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
+                    const fallbackTarget = 'target="_blank" rel="noopener noreferrer"';
                     vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
                 }
 
@@ -2200,13 +2198,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Start live verification polling
                 startVerificationPolling();
 
-                // Open Instagram or destination platform with countdown delay
+                // Open Instagram or destination platform with countdown delay if not already opened
                 if (isInstagram && !extensionInstalled) {
                     if (!redirectWin || redirectWin.closed) {
                         openPlatformUrl(redirectPage);
                     }
-                } else {
-                    openPlatformUrl(dmUrl);
+                } else if (!extensionInstalled) {
+                    if (!redirectWin || redirectWin.closed) {
+                        openPlatformUrl(dmUrl);
+                    }
                 }
             }
         };
@@ -2804,9 +2804,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
                     let redirectWin = null;
-                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
+                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}&text=${encodeURIComponent(draftText || '')}`;
                     try {
-                        redirectWin = window.open(redirectPage, "_blank");
+                        redirectWin = openPlatformUrl(redirectPage);
                     } catch (_) {}
                     await showCopyAndRedirectCountdown({
                         text: draftText,
@@ -2819,11 +2819,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     });
                 } else {
+                    let newWin = null;
+                    try {
+                        newWin = openPlatformUrl(url);
+                    } catch (_) {}
                     if (draftText) {
                         await copyTextToClipboard(draftText);
                         showToast(`✓ Copied message for ${meta.name}!`);
                     }
-                    openPlatformUrl(url);
+                    if (!newWin || newWin.closed) {
+                        openPlatformUrl(url);
+                    }
                 }
             };
         }
@@ -3547,6 +3553,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (igServerVisitRow && igServerVisitLink) {
             if (isServer && serverInviteUrl) {
                 igServerVisitLink.href = serverInviteUrl;
+                igServerVisitLink.onclick = (e) => {
+                    e.preventDefault();
+                    openPlatformUrl(serverInviteUrl);
+                };
                 igServerVisitRow.classList.remove("hidden");
             } else {
                 igServerVisitRow.classList.add("hidden");
@@ -3920,8 +3930,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (btnIgOpenSend) {
-        btnIgOpenSend.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "verify_instagram", button: btnIgOpenSend });
+        btnIgOpenSend.onclick = (e) => {
+            if (e) e.preventDefault();
+            const active = state.activeSocialProfile || state.instagramProfile || { platform: "Instagram" };
+            dispatchSocialOutreach({
+                platform: active.platform || "Instagram",
+                profile: active,
+                returnScreen: "verify_instagram",
+                button: btnIgOpenSend
+            });
         };
     }
 
@@ -4204,10 +4221,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         <span>Send DM ↗</span>
                     </button>
                 `;
+                card.style.cursor = "pointer";
+                card.onclick = (e) => {
+                    if (e.target.closest(".hub-social-send-btn")) return;
+                    openPlatformUrl(s.url || getDirectMessageUrl(s.platform, s.username));
+                };
                 const sendBtn = card.querySelector(".hub-social-send-btn");
                 if (sendBtn) {
                     sendBtn.onclick = (e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         dispatchSocialOutreach({
                             profile: s,
                             platform: s.platform,
@@ -4319,8 +4342,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (openInstagramBtn) {
-        openInstagramBtn.onclick = () => {
-            dispatchSocialOutreach({ returnScreen: "outreach_hub", button: openInstagramBtn });
+        openInstagramBtn.onclick = (e) => {
+            if (e) e.preventDefault();
+            dispatchSocialOutreach({
+                platform: "Instagram",
+                profile: state.instagramProfile || { platform: "Instagram" },
+                returnScreen: "outreach_hub",
+                button: openInstagramBtn
+            });
         };
     }
 
