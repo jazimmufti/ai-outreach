@@ -243,12 +243,12 @@ document.addEventListener("DOMContentLoaded", () => {
             if (rawStr.includes("discord.gg") || rawStr.includes("discord.com/invite") || rawStr.includes("discord.io") || rawStr.includes("discord.me")) {
                 return rawStr;
             }
-            if (rawStr.includes("discord.com/channels/@me/")) {
+            if (rawStr.includes("discord.com/users/")) {
                 return rawStr;
             }
             const cleanId = extractDiscordSnowflake(rawStr);
             if (cleanId) {
-                return `https://discord.com/channels/@me/${cleanId}`;
+                return `https://discord.com/users/${cleanId}`;
             }
             return `https://discord.com/channels/@me`;
         }
@@ -2056,7 +2056,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const targetUrl = discUserId 
-                ? `https://discord.com/channels/@me/${discUserId}`
+                ? `https://discord.com/users/${discUserId}`
                 : inviteUrl;
 
             const executeDiscordOpen = async () => {
@@ -2084,9 +2084,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const pasteHint = isMob ? "Paste your message and send in Discord." : "Paste (Ctrl+V) your message and send in Discord.";
                     if (discUserId) {
                         vDmReadyGuideText.innerHTML = `
-                            We opened your direct message conversation with <strong style="color: var(--black);">${escapeHtml(creatorName)}</strong> on Discord. ${pasteHint}
+                            We opened <strong style="color: var(--black);">${escapeHtml(creatorName)}</strong>'s profile on Discord. Click <strong>💬 Message</strong> on their profile, then ${pasteHint.toLowerCase()}
                             <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
-                                <a href="discord://-/channels/@me/${discUserId}" class="btn-primary" style="font-size: 11.5px; padding: 6px 14px; background: #5865F2; color: #FFF; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                <a href="discord://-/users/${discUserId}" class="btn-primary" style="font-size: 11.5px; padding: 6px 14px; background: #5865F2; color: #FFF; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
                                     💬 Open in Discord App
                                 </a>
                                 <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11.5px; padding: 6px 14px; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
@@ -2096,7 +2096,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                     📋 Copy User ID (${discUserId})
                                 </button>
                             </div>
-                            <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord conversation ↗</a></span>
+                            <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
                         `;
                         setTimeout(() => {
                             const btnCopyId = document.getElementById("btn-copy-creator-discord-id");
@@ -2150,12 +2150,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             await executeDiscordOpen();
 
-            // Open Discord DM conversation directly within active user gesture so browser popup blocker does not block it
+            // Open Discord profile directly within active user gesture so browser popup blocker does not block it
             if (discUserId) {
                 try {
                     const ifr = document.createElement("iframe");
                     ifr.style.display = "none";
-                    ifr.src = `discord://-/channels/@me/${discUserId}`;
+                    ifr.src = `discord://-/users/${discUserId}`;
                     document.body.appendChild(ifr);
                     setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
                 } catch (_) {}
@@ -4060,13 +4060,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (state.discordProfile) {
                 state.discordProfile.discord_user_id = cleanId;
                 state.discordProfile.status = "sendable";
-                state.discordProfile.url = `https://discord.com/channels/@me/${cleanId}`;
+                state.discordProfile.url = `https://discord.com/users/${cleanId}`;
             } else {
                 state.discordProfile = {
                     discord_user_id: cleanId,
                     discord_source: "manual",
                     status: "sendable",
-                    url: `https://discord.com/channels/@me/${cleanId}`
+                    url: `https://discord.com/users/${cleanId}`
                 };
             }
             if (discordStatusBadge) {
@@ -4081,38 +4081,38 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
             if (btnDirectProfile) {
-                btnDirectProfile.href = `https://discord.com/channels/@me/${cleanId}`;
+                btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
                 btnDirectProfile.classList.remove("hidden");
                 btnDirectProfile.onclick = (e) => {
                     e.preventDefault();
                     try {
                         const ifr = document.createElement("iframe");
                         ifr.style.display = "none";
-                        ifr.src = `discord://-/channels/@me/${cleanId}`;
+                        ifr.src = `discord://-/users/${cleanId}`;
                         document.body.appendChild(ifr);
                         setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
                     } catch (_) {}
-                    openPlatformUrl(`https://discord.com/channels/@me/${cleanId}`);
+                    openPlatformUrl(`https://discord.com/users/${cleanId}`);
                 };
             }
             if (hubDiscordHeadHandle) {
-                hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord conversation">User ID ${cleanId} ↗</span>`;
+                hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</span>`;
                 hubDiscordHeadHandle.onclick = () => {
                     try {
                         const ifr = document.createElement("iframe");
                         ifr.style.display = "none";
-                        ifr.src = `discord://-/channels/@me/${cleanId}`;
+                        ifr.src = `discord://-/users/${cleanId}`;
                         document.body.appendChild(ifr);
                         setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
                     } catch (_) {}
-                    openPlatformUrl(`https://discord.com/channels/@me/${cleanId}`);
+                    openPlatformUrl(`https://discord.com/users/${cleanId}`);
                 };
             }
             if (btnSendDiscordBot) {
                 btnSendDiscordBot.disabled = false;
                 if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
             }
-            showToast("✓ Discord User ID saved. Ready to open conversation & DM!");
+            showToast("✓ Discord User ID saved. Ready to open profile & DM!");
         };
 
         discordUserIdInput.addEventListener("keydown", (e) => {
@@ -4136,31 +4136,31 @@ document.addEventListener("DOMContentLoaded", () => {
                     discordStatusBadge.style.borderColor = "#22C55E";
                 }
                 if (btnDirectProfile) {
-                    btnDirectProfile.href = `https://discord.com/channels/@me/${clean}`;
+                    btnDirectProfile.href = `https://discord.com/users/${clean}`;
                     btnDirectProfile.classList.remove("hidden");
                     btnDirectProfile.onclick = (e) => {
                         e.preventDefault();
                         try {
                             const ifr = document.createElement("iframe");
                             ifr.style.display = "none";
-                            ifr.src = `discord://-/channels/@me/${clean}`;
+                            ifr.src = `discord://-/users/${clean}`;
                             document.body.appendChild(ifr);
                             setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
                         } catch (_) {}
-                        openPlatformUrl(`https://discord.com/channels/@me/${clean}`);
+                        openPlatformUrl(`https://discord.com/users/${clean}`);
                     };
                 }
                 if (hubDiscordHeadHandle) {
-                    hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord conversation">User ID ${clean} ↗</span>`;
+                    hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</span>`;
                     hubDiscordHeadHandle.onclick = () => {
                         try {
                             const ifr = document.createElement("iframe");
                             ifr.style.display = "none";
-                            ifr.src = `discord://-/channels/@me/${clean}`;
+                            ifr.src = `discord://-/users/${clean}`;
                             document.body.appendChild(ifr);
                             setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} }, 2000);
                         } catch (_) {}
-                        openPlatformUrl(`https://discord.com/channels/@me/${clean}`);
+                        openPlatformUrl(`https://discord.com/users/${clean}`);
                     };
                 }
                 if (btnSendDiscordBot) {
