@@ -134,10 +134,6 @@
             <span>📋 Message copied to clipboard, just click paste in DM</span>
         </div>
 
-        <div id="discord-mutual-note" style="display: none; margin-bottom: 16px; padding: 10px 12px; background: #EEF2FF; border: 1.5px solid #6366F1; border-radius: 4px; font-size: 12px; color: #3730A3; line-height: 1.45; text-align: left;">
-            💡 <strong>Note:</strong> You must share a mutual server or be friends with the user on Discord to open their profile or message them.
-        </div>
-
         <a id="btn-open-now" href="#" class="btn-action">
             Open Profile ↗
         </a>
@@ -156,13 +152,10 @@
             const timerDisplay = document.getElementById("timer-display");
             const timerSec = document.getElementById("timer-sec");
             const btnOpenNow = document.getElementById("btn-open-now");
-            const discordMutualNote = document.getElementById("discord-mutual-note");
 
             btnOpenNow.href = targetUrl;
 
-            if (platform.toLowerCase().includes("discord")) {
-                if (discordMutualNote) discordMutualNote.style.display = "block";
-            } else {
+            if (platform.toLowerCase() !== "discord") {
                 btnOpenNow.style.background = "#15803D";
                 timerDisplay.style.color = "#15803D";
                 timerDisplay.style.background = "#DCFCE7";
