@@ -155,9 +155,7 @@
 
             btnOpenNow.href = targetUrl;
 
-            if (platform.toLowerCase() === "discord") {
-                btnOpenNow.textContent = "Open Profile ↗";
-            } else {
+            if (platform.toLowerCase() !== "discord") {
                 btnOpenNow.style.background = "#15803D";
                 timerDisplay.style.color = "#15803D";
                 timerDisplay.style.background = "#DCFCE7";
