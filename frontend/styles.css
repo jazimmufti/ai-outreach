@@ -2732,32 +2732,7 @@ body {
  * Copy & Redirect High-Visibility Overlay Banner
  * -------------------------------------------------------------------------- */
 .copy-redirect-overlay {
-    position: fixed;
-    top: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(-24px);
-    z-index: 9999999;
-    width: 92%;
-    max-width: 480px;
-    background: #0E3929;
-    color: #FFFFFF;
-    border: 2.5px solid #00D26A;
-    border-radius: 8px;
-    padding: 16px 20px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: var(--font-heading);
-}
-
-.copy-redirect-overlay.active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateX(-50%) translateY(0);
+    display: none !important;
 }
 
 .copy-redirect-icon-box {

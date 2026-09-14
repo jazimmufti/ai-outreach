@@ -155,7 +155,13 @@
 
             btnOpenNow.href = targetUrl;
 
-            if (platform.toLowerCase() !== "discord") {
+            if (platform.toLowerCase() === "discord") {
+                if (targetUrl.includes("/users/")) {
+                    btnOpenNow.textContent = "Open Profile ↗";
+                } else {
+                    btnOpenNow.textContent = "Open Discord DMs ↗";
+                }
+            } else {
                 btnOpenNow.style.background = "#15803D";
                 timerDisplay.style.color = "#15803D";
                 timerDisplay.style.background = "#DCFCE7";

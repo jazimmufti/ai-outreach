@@ -1967,12 +1967,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
-        const isMobile = isMobileDevice();
-        const pasteHint = isMobile ? "Just paste into the chat." : "Just paste (Ctrl+V) into the chat.";
 
         if (clickedBtn) {
             clickedBtn.disabled = true;
-            clickedBtn.innerHTML = `<span>📋 Copied! Opening in 4s...</span>`;
+            clickedBtn.innerHTML = `<span>📋 Copied! Opening...</span>`;
         }
 
         if (btnIgCopyText) {
@@ -1988,54 +1986,17 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 5000);
         }
 
+        // Do not display the floating #copy-redirect-overlay popup here on the main page.
+        // The dedicated redirect page already displays the countdown and copy banner.
         const overlay = document.getElementById("copy-redirect-overlay");
-        const titleEl = document.getElementById("copy-redirect-title");
-        const subEl = document.getElementById("copy-redirect-sub");
-        const previewEl = document.getElementById("copy-redirect-preview");
-        const timerEl = document.getElementById("copy-redirect-timer");
+        if (overlay) overlay.classList.remove("active");
 
-        if (titleEl) titleEl.textContent = "Message Copied to Clipboard!";
-        if (timerEl) timerEl.textContent = "4";
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">4</strong>s... ${pasteHint}`;
-        if (previewEl && text) {
-            const previewClean = text.replace(/\s+/g, " ").trim();
-            previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
-        }
-        if (overlay) overlay.classList.add("active");
-
-        // Tick second 1 (3 seconds remaining)
-        await new Promise(r => setTimeout(r, 1000));
-        const timer3 = document.getElementById("copy-redirect-timer");
-        if (timer3) timer3.textContent = "3";
-        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 3s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">3</strong>s... ${pasteHint}`;
-
-        // Tick second 2 (2 seconds remaining)
-        await new Promise(r => setTimeout(r, 1000));
-        const timer2 = document.getElementById("copy-redirect-timer");
-        if (timer2) timer2.textContent = "2";
-        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 2s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">2</strong>s... ${pasteHint}`;
-
-        // Tick second 3 (1 second remaining)
-        await new Promise(r => setTimeout(r, 1000));
-        const timer1 = document.getElementById("copy-redirect-timer");
-        if (timer1) timer1.textContent = "1";
-        if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in 1s...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} in <strong id="copy-redirect-timer">1</strong>s... ${pasteHint}`;
-
-        // Tick second 4 (0s -> opening)
-        await new Promise(r => setTimeout(r, 1000));
-        if (clickedBtn) clickedBtn.innerHTML = `<span>🚀 Opening ${meta.name}...</span>`;
-        if (subEl) subEl.innerHTML = `Opening ${meta.name} now...`;
-
-        // Execute navigation
+        // Execute navigation immediately
         if (typeof openAction === "function") {
             await openAction();
         }
 
         setTimeout(() => {
-            if (overlay) overlay.classList.remove("active");
             if (clickedBtn) {
                 clickedBtn.disabled = false;
                 clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta.name} & Send ↗</span>`;
@@ -2839,9 +2800,15 @@ document.addEventListener("DOMContentLoaded", () => {
             igProfileBadge.textContent = isUserProvided ? "PROVIDED PROFILE" : "DETECTED PROFILE";
         }
         const igDiscordNotice = document.getElementById("ig-discord-requirement-notice");
+        const parsedDiscord = pLower.includes("discord") ? parseDiscordInput(p.discord_user_id || p.discord_username || p.username || p.url || "") : null;
         if (igDiscordNotice) {
             if (pLower.includes("discord")) {
                 igDiscordNotice.classList.remove("hidden");
+                if (parsedDiscord && parsedDiscord.type === "username") {
+                    igDiscordNotice.innerHTML = `💡 <strong>Discord Username Note:</strong> Discord only supports direct profile links with numeric User IDs. With a username, this opens Discord DMs to message <strong>${escapeHtml(parsedDiscord.display)}</strong>. (To open their direct profile card, enter their 17-20 digit User ID).`;
+                } else {
+                    igDiscordNotice.innerHTML = `💡 <strong>Before opening Discord:</strong> You must share at least one mutual server or be friends with the user on Discord to open their profile directly.`;
+                }
             } else {
                 igDiscordNotice.classList.add("hidden");
             }
@@ -2856,7 +2823,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (igFoundLink) {
             igFoundLink.href = url;
-            igFoundLink.innerHTML = `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+            const isDiscordUsername = pLower.includes("discord") && (!url || !url.includes("/users/"));
+            const linkLabel = isDiscordUsername ? "Open Discord DMs" : "Open Profile";
+            igFoundLink.innerHTML = `<span>${linkLabel}</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
             igFoundLink.onclick = async (e) => {
                 if (e) e.preventDefault();
                 const draftText = (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden") ? igConfirmedMessageDraft.value.trim() : "") ||
@@ -2918,8 +2887,29 @@ document.addEventListener("DOMContentLoaded", () => {
             igConfirmedIcon.innerHTML = meta.icon;
             igConfirmedIcon.title = meta.name;
         }
+        const igConfirmedDiscordNotice = document.getElementById("ig-confirmed-discord-notice");
+        if (igConfirmedDiscordNotice) {
+            if (pLower.includes("discord")) {
+                igConfirmedDiscordNotice.classList.remove("hidden");
+                if (parsedDiscord && parsedDiscord.type === "username") {
+                    igConfirmedDiscordNotice.innerHTML = `💡 <strong>Discord Username Note:</strong> Discord only supports direct profile links with numeric User IDs. With a username, this opens Discord DMs to message <strong>${escapeHtml(parsedDiscord.display)}</strong>.`;
+                } else {
+                    igConfirmedDiscordNotice.innerHTML = `💡 <strong>Before opening Discord:</strong> You must share at least one mutual server or be friends with the user on Discord to open their profile directly.`;
+                }
+            } else {
+                igConfirmedDiscordNotice.classList.add("hidden");
+            }
+        }
         if (btnIgOpenSend) {
-            btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
+            if (pLower.includes("discord")) {
+                if (parsedDiscord && parsedDiscord.type === "id") {
+                    btnIgOpenSend.innerHTML = `<span>Open Discord Profile & Send ↗</span>`;
+                } else {
+                    btnIgOpenSend.innerHTML = `<span>Open Discord DMs & Send ↗</span>`;
+                }
+            } else {
+                btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
+            }
         }
     }
 
