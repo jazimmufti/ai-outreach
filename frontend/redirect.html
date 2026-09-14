@@ -120,12 +120,6 @@
             font-size: 12.5px;
             color: #6B7280;
         }
-
-        .fallback-note a {
-            color: var(--discord);
-            font-weight: 700;
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -145,7 +139,7 @@
         </a>
 
         <p class="fallback-note">
-            If not redirected, <a id="link-open-fallback" href="#">click here to open profile ↗</a>
+            If not redirected automatically, click the button above
         </p>
     </div>
 
@@ -158,16 +152,13 @@
             const timerDisplay = document.getElementById("timer-display");
             const timerSec = document.getElementById("timer-sec");
             const btnOpenNow = document.getElementById("btn-open-now");
-            const linkOpenFallback = document.getElementById("link-open-fallback");
 
             btnOpenNow.href = targetUrl;
-            linkOpenFallback.href = targetUrl;
 
             if (platform.toLowerCase() !== "discord") {
                 btnOpenNow.style.background = "#15803D";
                 timerDisplay.style.color = "#15803D";
                 timerDisplay.style.background = "#DCFCE7";
-                linkOpenFallback.style.color = "#15803D";
             }
 
             let secondsLeft = 4;
@@ -183,9 +174,6 @@
             }, 1000);
 
             btnOpenNow.addEventListener("click", () => {
-                clearInterval(interval);
-            });
-            linkOpenFallback.addEventListener("click", () => {
                 clearInterval(interval);
             });
         })();
