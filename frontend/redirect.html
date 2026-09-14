@@ -146,9 +146,10 @@
     <script>
         (function() {
             const params = new URLSearchParams(window.location.search);
-            const targetUrl = params.get("url") || "https://discord.com";
             const platform = params.get("platform") || "Discord";
             const pLower = platform.toLowerCase();
+            const defaultUrl = pLower.includes("instagram") || pLower === "ig" ? "https://www.instagram.com" : "https://discord.com";
+            const targetUrl = params.get("url") || defaultUrl;
 
             const timerDisplay = document.getElementById("timer-display");
             const timerSec = document.getElementById("timer-sec");
