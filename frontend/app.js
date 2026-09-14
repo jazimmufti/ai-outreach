@@ -2830,13 +2830,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 3. Step 2 Fallback View
         if (igFallbackHeading) {
-            igFallbackHeading.textContent = `Enter the correct ${meta.name} profile`;
+            igFallbackHeading.textContent = isDiscord ? "Enter Creator's Discord User ID" : `Enter the correct ${meta.name} profile`;
         }
         if (igFallbackDesc) {
-            igFallbackDesc.textContent = `Enter their ${meta.name} handle or profile URL to continue.`;
+            if (isDiscordServer) {
+                const sUrl = serverInviteUrl || "discord.gg";
+                igFallbackDesc.innerHTML = `📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(sUrl)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong> to continue.`;
+            } else if (isDiscord) {
+                igFallbackDesc.textContent = "Enter creator's 17-20 digit Discord User ID to continue.";
+            } else {
+                igFallbackDesc.textContent = `Enter their ${meta.name} handle or profile URL to continue.`;
+            }
         }
         if (igManualEntryInput) {
-            igManualEntryInput.placeholder = `@handle or ${meta.name.toLowerCase()}.com/handle`;
+            igManualEntryInput.placeholder = isDiscord 
+                ? "Enter 17-20 digit Discord User ID (e.g. 1166052187869294673)" 
+                : `@handle or ${meta.name.toLowerCase()}.com/handle`;
         }
 
         // 4. Step 2 Confirmed View
@@ -3149,53 +3158,141 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
-                const actionBtnText = isDiscordServerProfile ? "Visit Server ↗" : "Send DM ↗";
-                const actionBtnTitle = isDiscordServerProfile ? "Visit Discord Server to find Creator" : `Send DM on ${escapeHtml(meta.name)}`;
+                const isServerNoUserId = (cfg.key === "discord" && isDiscordServerProfile && !isNumericId && !detectedProfile.discord_user_id);
 
-                item.innerHTML = `
-                    <div class="other-social-left">
-                        <div class="other-social-icon" style="background: ${meta.bgColor};">
-                            ${meta.icon}
-                        </div>
-                        <div class="other-social-meta">
-                            <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
-                            <span class="other-social-handle" title="${escapeHtml(displayHandle)}">${escapeHtml(displayHandle)}</span>
-                        </div>
-                    </div>
-                    <div class="other-social-actions">
-                        <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="${actionBtnTitle}">${actionBtnText}</button>
-                        <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
-                            ${isSelected ? '✓ Selected' : 'Select'}
-                        </button>
-                    </div>
-                `;
+                if (isServerNoUserId) {
+                    const serverInviteUrl = detectedProfile.discord_invite || detectedProfile.url || "https://discord.com";
+                    const m = serverInviteUrl.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+                    const serverShort = m ? `discord.gg/${m[1]}` : serverInviteUrl.replace(/^https?:\/\//i, '');
 
-                const dmBtn = item.querySelector(".other-social-open-dm-btn");
-                if (dmBtn) {
-                    dmBtn.onclick = (e) => {
+                    item.innerHTML = `
+                        <div class="other-social-left">
+                            <div class="other-social-icon" style="background: ${meta.bgColor};">
+                                ${meta.icon}
+                            </div>
+                            <div class="other-social-meta">
+                                <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
+                                <span class="other-social-not-detected" style="color: #4338CA; font-size: 11px;" title="This is a server invitation link, so enter user id">This is a server invitation link, so enter user id</span>
+                            </div>
+                        </div>
+                        <div class="other-social-actions">
+                            <a href="${escapeHtml(serverInviteUrl)}" target="_blank" rel="noopener noreferrer" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; text-decoration: none; padding: 4px 8px; font-size: 11px; display: inline-flex; align-items: center;" title="Open server in Discord to look up creator's User ID">Visit Server ↗</a>
+                            <button type="button" class="other-social-enter-btn" title="Enter Discord User ID">
+                                <span>Enter User ID</span>
+                            </button>
+                        </div>
+                    `;
+
+                    const drawer = document.createElement("div");
+                    drawer.className = "other-social-drawer hidden font-mono";
+                    drawer.innerHTML = `
+                        <div style="font-size: 11.5px; color: #4338CA; margin-bottom: 8px; line-height: 1.45; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 4px; padding: 6px 8px;">
+                            📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(serverShort)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong>.
+                        </div>
+                        <input type="text" class="retro-input font-mono other-social-manual-input" placeholder="Enter 17-20 digit Discord User ID (e.g. 1166052187869294673)">
+                        <button type="button" class="btn-primary other-social-drawer-save">Save</button>
+                        <button type="button" class="other-social-drawer-cancel" title="Cancel">✕</button>
+                    `;
+
+                    const enterBtn = item.querySelector(".other-social-enter-btn");
+                    const inputEl = drawer.querySelector(".other-social-manual-input");
+                    const saveBtn = drawer.querySelector(".other-social-drawer-save");
+                    const cancelBtn = drawer.querySelector(".other-social-drawer-cancel");
+
+                    enterBtn.onclick = (e) => {
                         e.stopPropagation();
-                        if (isDiscordServerProfile) {
-                            const sUrl = detectedProfile.discord_invite || detectedProfile.url || "https://discord.com";
-                            openPlatformUrl(sUrl);
+                        const isHidden = drawer.classList.contains("hidden");
+                        drawer.classList.toggle("hidden", !isHidden);
+                        if (isHidden) {
+                            setTimeout(() => inputEl.focus(), 50);
+                        }
+                    };
+
+                    cancelBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        drawer.classList.add("hidden");
+                    };
+
+                    const doSave = () => {
+                        const val = inputEl.value.trim();
+                        if (!val) {
+                            inputEl.focus();
+                            inputEl.style.borderColor = "var(--red)";
                             return;
                         }
-                        dispatchSocialOutreach({
-                            profile: detectedProfile,
-                            platform: detectedProfile.platform || cfg.platformName,
-                            handle: detectedProfile.username || detectedProfile.discord_user_id || detectedProfile.platform,
-                            url: detectedProfile.url,
-                            button: dmBtn,
-                            returnScreen: "verify_instagram"
-                        });
+                        const ok = cfg.save(val);
+                        if (ok) {
+                            renderDiscoveredOtherSocials();
+                        } else {
+                            inputEl.focus();
+                            inputEl.style.borderColor = "var(--red)";
+                        }
                     };
-                }
 
-                const selectBtn = item.querySelector(".other-social-select-btn");
-                if (selectBtn) {
-                    selectBtn.onclick = (e) => {
+                    saveBtn.onclick = (e) => {
                         e.stopPropagation();
-                        selectActiveSocialProfile(detectedProfile);
+                        doSave();
                     };
+
+                    inputEl.onkeydown = (e) => {
+                        if (e.key === "Enter") {
+                            e.preventDefault();
+                            doSave();
+                        } else if (e.key === "Escape") {
+                            drawer.classList.add("hidden");
+                        }
+                    };
+
+                    wrapper.appendChild(drawer);
+                } else {
+                    const actionBtnText = isDiscordServerProfile ? "Visit Server ↗" : "Send DM ↗";
+                    const actionBtnTitle = isDiscordServerProfile ? "Visit Discord Server to find Creator" : `Send DM on ${escapeHtml(meta.name)}`;
+
+                    item.innerHTML = `
+                        <div class="other-social-left">
+                            <div class="other-social-icon" style="background: ${meta.bgColor};">
+                                ${meta.icon}
+                            </div>
+                            <div class="other-social-meta">
+                                <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
+                                <span class="other-social-handle" title="${escapeHtml(displayHandle)}">${escapeHtml(displayHandle)}</span>
+                            </div>
+                        </div>
+                        <div class="other-social-actions">
+                            <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="${actionBtnTitle}">${actionBtnText}</button>
+                            <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
+                                ${isSelected ? '✓ Selected' : 'Select'}
+                            </button>
+                        </div>
+                    `;
+
+                    const dmBtn = item.querySelector(".other-social-open-dm-btn");
+                    if (dmBtn) {
+                        dmBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            if (isDiscordServerProfile) {
+                                const sUrl = detectedProfile.discord_invite || detectedProfile.url || "https://discord.com";
+                                openPlatformUrl(sUrl);
+                                return;
+                            }
+                            dispatchSocialOutreach({
+                                profile: detectedProfile,
+                                platform: detectedProfile.platform || cfg.platformName,
+                                handle: detectedProfile.username || detectedProfile.discord_user_id || detectedProfile.platform,
+                                url: detectedProfile.url,
+                                button: dmBtn,
+                                returnScreen: "verify_instagram"
+                            });
+                        };
+                    }
+
+                    const selectBtn = item.querySelector(".other-social-select-btn");
+                    if (selectBtn) {
+                        selectBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            selectActiveSocialProfile(detectedProfile);
+                        };
+                    }
                 }
             } else {
                 // Platform NOT detected
@@ -3297,6 +3394,21 @@ document.addEventListener("DOMContentLoaded", () => {
             ? String(rawHandle).replace(/^@+/, '')
             : formatHandle(rawHandle);
 
+        const isDiscord = pLower.includes("discord");
+        const snowflake = isDiscord ? extractDiscordSnowflake(social.discord_user_id || rawHandle || social.url) : null;
+        const isDiscordServer = isDiscord && !snowflake && Boolean(
+            social.discord_invite ||
+            (social.url && (social.url.includes("discord.gg") || social.url.includes("discord.com/invite") || social.url.includes("discord.io") || social.url.includes("discord.me") || social.url.includes("/servers/"))) ||
+            (String(rawHandle).includes("discord.gg") || String(rawHandle).includes("discord.com/invite") || String(rawHandle).includes("discord.io") || String(rawHandle).includes("discord.me"))
+        );
+
+        if (isDiscordServer) {
+            showInstagramFallback(false, true);
+            renderDiscoveredOtherSocials();
+            showToast("This is a server invitation link, so enter user ID.", "info");
+            return;
+        }
+
         let defaultBase = "https://instagram.com";
         if (pLower === "x" || pLower.includes("twitter")) defaultBase = "https://x.com";
         else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
@@ -3357,15 +3469,32 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!state.activeSocialProfile && state.instagramProfile) {
             state.activeSocialProfile = state.instagramProfile;
         }
+        if (!state.activeSocialProfile && state.socialProfiles && state.socialProfiles.length > 0) {
+            const firstDiscord = state.socialProfiles.find(s => (s.platform || "").toLowerCase() === "discord");
+            if (firstDiscord) {
+                state.activeSocialProfile = firstDiscord;
+            }
+        }
 
         const active = state.activeSocialProfile || state.instagramProfile;
+        const pLower = (active?.platform || "").toLowerCase();
+        const isDiscord = pLower.includes("discord");
+        const snowflake = isDiscord ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
+        const isDiscordServer = isDiscord && !snowflake && Boolean(
+            active?.discord_invite ||
+            (active?.url && (active.url.includes("discord.gg") || active.url.includes("discord.com/invite") || active.url.includes("discord.io") || active.url.includes("discord.me") || active.url.includes("/servers/"))) ||
+            (active?.username && (active.username.includes("discord.gg") || active.username.includes("discord.com/invite") || active.username.includes("discord.io") || active.username.includes("discord.me")))
+        );
 
-        if (active && active.username) {
+        if (isDiscordServer) {
+            // When server is discovered, directly show enter user id just in the case of where discord is not detected
+            showInstagramFallback(false, true);
+        } else if (active && active.username) {
             if (igFoundView) igFoundView.classList.remove("hidden");
             if (igFallbackView) igFallbackView.classList.add("hidden");
             if (igConfirmedView) igConfirmedView.classList.add("hidden");
 
-            const handle = formatHandle(active.username);
+            const handle = isDiscord && snowflake ? `User ID: ${snowflake}` : formatHandle(active.username);
             const isIg = (active.platform || "").toLowerCase().includes("instagram") || (active.platform || "").toLowerCase() === "ig";
             if (isIg) {
                 state.finalInstagramHandle = handle;
@@ -3380,29 +3509,63 @@ document.addEventListener("DOMContentLoaded", () => {
         renderDiscoveredOtherSocials();
     }
 
-    function showInstagramFallback(isInitialNotFound = false) {
+    function showInstagramFallback(isInitialNotFound = false, isDiscordServerInvite = false) {
         if (igFoundView) igFoundView.classList.add("hidden");
         if (igFallbackView) igFallbackView.classList.remove("hidden");
         if (igConfirmedView) igConfirmedView.classList.add("hidden");
 
-        const active = state.activeSocialProfile || state.instagramProfile || { platform: "Instagram" };
+        const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
         const meta = getSocialMediaMeta(active.platform);
+        const pLower = (active.platform || "").toLowerCase();
+        const isDiscord = pLower.includes("discord");
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "Creator";
 
+        const discProfile = state.discordProfile || (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
+        const serverInviteUrl = (active && (active.discord_invite || (active.url && (active.url.includes("discord.gg") || active.url.includes("discord.com/invite") || active.url.includes("discord.io") || active.url.includes("discord.me")) ? active.url : null))) ||
+                                (discProfile && (discProfile.discord_invite || discProfile.url));
+        const isServer = isDiscordServerInvite || (isDiscord && Boolean(
+            serverInviteUrl && (serverInviteUrl.includes("discord.gg") || serverInviteUrl.includes("discord.com/invite") || serverInviteUrl.includes("discord.io") || serverInviteUrl.includes("discord.me") || serverInviteUrl.includes("/servers/"))
+        ));
+
         if (igFallbackHeading) {
-            igFallbackHeading.textContent = `Enter the correct ${meta.name} profile`;
+            igFallbackHeading.textContent = isDiscord ? "Enter Creator's Discord User ID" : `Enter the correct ${meta.name} profile`;
         }
 
         if (igFallbackDesc) {
-            igFallbackDesc.textContent = isInitialNotFound
-                ? `We couldn't locate a verified ${meta.name} profile on ${creatorName}'s channel. Enter their handle or link to continue.`
-                : `Enter their ${meta.name} handle or profile URL to continue.`;
+            if (isServer) {
+                const sUrlText = serverInviteUrl || "discord.gg";
+                igFallbackDesc.innerHTML = `📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(sUrlText)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong> to continue.`;
+            } else if (isDiscord) {
+                igFallbackDesc.textContent = isInitialNotFound
+                    ? `We couldn't locate a verified Discord User ID for ${creatorName}. Enter their 17-20 digit Discord User ID to continue.`
+                    : `Enter creator's 17-20 digit Discord User ID to continue.`;
+            } else {
+                igFallbackDesc.textContent = isInitialNotFound
+                    ? `We couldn't locate a verified ${meta.name} profile on ${creatorName}'s channel. Enter their handle or link to continue.`
+                    : `Enter their ${meta.name} handle or profile URL to continue.`;
+            }
+        }
+
+        const igServerVisitRow = document.getElementById("ig-server-visit-row");
+        const igServerVisitLink = document.getElementById("ig-server-visit-link");
+        if (igServerVisitRow && igServerVisitLink) {
+            if (isServer && serverInviteUrl) {
+                igServerVisitLink.href = serverInviteUrl;
+                igServerVisitRow.classList.remove("hidden");
+            } else {
+                igServerVisitRow.classList.add("hidden");
+            }
         }
 
         if (igManualEntryInput) {
-            igManualEntryInput.placeholder = `@handle or ${meta.name.toLowerCase()}.com/handle`;
-            igManualEntryInput.value = state.finalInstagramHandle || "";
+            if (isDiscord) {
+                igManualEntryInput.placeholder = "Enter 17-20 digit Discord User ID (e.g. 1166052187869294673)";
+                igManualEntryInput.value = state.finalDiscordUserId || "";
+            } else {
+                igManualEntryInput.placeholder = `@handle or ${meta.name.toLowerCase()}.com/handle`;
+                igManualEntryInput.value = state.finalInstagramHandle || "";
+            }
             validateManualIgInput();
         }
 
@@ -3414,10 +3577,13 @@ document.addEventListener("DOMContentLoaded", () => {
             if (otherSocials.length > 0) {
                 igSocialChipsWrapper.classList.remove("hidden");
                 otherSocials.forEach(s => {
+                    const sLower = (s.platform || "").toLowerCase();
+                    const isDisServer = sLower.includes("discord") && (s.discord_invite || (s.url && s.url.includes("discord.gg")));
+                    const chipLabel = isDisServer ? "Discord: Server Invite (Enter User ID)" : `${s.platform}: ${s.username || s.platform}`;
                     const btn = document.createElement("button");
                     btn.type = "button";
                     btn.className = "helper-chip-btn";
-                    btn.innerHTML = `<span>🔗</span><span>${escapeHtml(s.platform)}: ${escapeHtml(s.username || s.platform)}</span>`;
+                    btn.innerHTML = `<span>${sLower.includes("discord") ? "💬" : "🔗"}</span><span>${escapeHtml(chipLabel)}</span>`;
                     btn.onclick = () => {
                         selectActiveSocialProfile(s);
                     };
@@ -3576,8 +3742,15 @@ document.addEventListener("DOMContentLoaded", () => {
     function validateManualIgInput() {
         if (!igManualEntryInput) return;
         const val = igManualEntryInput.value.trim();
-        const isValid = val.length > 1;
-        if (btnIgManualSubmit) btnIgManualSubmit.disabled = !isValid;
+        const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+        const pLower = (active.platform || "").toLowerCase();
+        if (pLower.includes("discord")) {
+            const snowflake = extractDiscordSnowflake(val);
+            if (btnIgManualSubmit) btnIgManualSubmit.disabled = !snowflake;
+        } else {
+            const isValid = val.length > 1;
+            if (btnIgManualSubmit) btnIgManualSubmit.disabled = !isValid;
+        }
     }
 
     if (igManualEntryInput) {
@@ -3661,8 +3834,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (btnIgManualSubmit) btnIgManualSubmit.disabled = true;
                 const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
                 const pLower = (active.platform || "").toLowerCase();
+                const isDiscord = pLower.includes("discord");
                 const meta = getSocialMediaMeta(active.platform);
-                const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(handle) : null;
+                const snowflake = isDiscord ? extractDiscordSnowflake(handle) : null;
+
+                if (isDiscord && !snowflake) {
+                    showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                    if (btnIgManualSubmit) btnIgManualSubmit.disabled = false;
+                    return;
+                }
+
                 let formatted = formatHandle(handle);
                 if (snowflake) formatted = `User ID: ${snowflake}`;
 
@@ -3752,16 +3933,25 @@ document.addEventListener("DOMContentLoaded", () => {
     // Step 2 Back navigation to Step 1 or Previous Sub-view
     if (btnBackIg) {
         btnBackIg.onclick = () => {
+            const active = state.activeSocialProfile || state.instagramProfile;
+            const pLower = (active?.platform || "").toLowerCase();
+            const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
+            const isDiscordServer = pLower.includes("discord") && !snowflake;
+
             // If on confirmed view, return to Step 2 detected selection view
             if (igConfirmedView && !igConfirmedView.classList.contains("hidden")) {
+                if (isDiscordServer) {
+                    showInstagramFallback(false, true);
+                    return;
+                }
                 if (igFoundView) igFoundView.classList.remove("hidden");
                 if (igConfirmedView) igConfirmedView.classList.add("hidden");
                 if (igFallbackView) igFallbackView.classList.add("hidden");
                 renderDiscoveredOtherSocials();
                 return;
             }
-            // If on fallback view and we have a discovered profile, return to detected view
-            if (igFallbackView && !igFallbackView.classList.contains("hidden") && state.instagramProfile && state.instagramProfile.username) {
+            // If on fallback view and we have a discovered profile (not a Discord server), return to detected view
+            if (igFallbackView && !igFallbackView.classList.contains("hidden") && state.instagramProfile && state.instagramProfile.username && !isDiscordServer) {
                 if (igFoundView) igFoundView.classList.remove("hidden");
                 if (igFallbackView) igFallbackView.classList.add("hidden");
                 if (igConfirmedView) igConfirmedView.classList.add("hidden");
@@ -3785,7 +3975,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnIgFallbackBack) {
         btnIgFallbackBack.onclick = () => {
-            if (state.instagramProfile && state.instagramProfile.username) {
+            const active = state.activeSocialProfile || state.instagramProfile;
+            const pLower = (active?.platform || "").toLowerCase();
+            const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
+            const isDiscordServer = pLower.includes("discord") && !snowflake;
+
+            if (state.instagramProfile && state.instagramProfile.username && !isDiscordServer) {
                 if (igFoundView) igFoundView.classList.remove("hidden");
                 if (igFallbackView) igFallbackView.classList.add("hidden");
                 if (igConfirmedView) igConfirmedView.classList.add("hidden");
@@ -3903,18 +4098,18 @@ document.addEventListener("DOMContentLoaded", () => {
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
         } else if (isDiscordServer) {
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = "DISCORD SERVER · USER ID NEEDED";
+                discordStatusBadge.textContent = "ENTER USER ID";
                 discordStatusBadge.style.background = "#FEF3C7";
                 discordStatusBadge.style.color = "#92400E";
                 discordStatusBadge.style.borderColor = "#F59E0B";
             }
             if (discordIdentificationBanner) {
                 discordIdentificationBanner.classList.remove("hidden");
-                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Discord Server Detected — Creator User ID Required";
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = serverInviteUrl || "Discord Server";
                 if (discordServerExplanation) {
                     discordServerExplanation.classList.remove("hidden");
-                    discordServerExplanation.innerHTML = `📢 <strong>Discord Server Detected:</strong> A community server invite was found in the video description (<strong>${escapeHtml(serverInviteUrl || "discord.gg")}</strong>). Discord servers cannot receive direct messages. To send a DM, please enter the creator's <strong>17-20 digit Discord User ID</strong> below.`;
+                    discordServerExplanation.innerHTML = `📢 <strong>Discord Server Detected:</strong> This is a server invitation link (<strong>${escapeHtml(serverInviteUrl || "discord.gg")}</strong>). Discord servers cannot receive direct messages, so enter creator's <strong>17-20 digit Discord User ID</strong> below.`;
                 }
                 if (btnDiscordVisitServer && serverInviteUrl) {
                     btnDiscordVisitServer.href = serverInviteUrl;
@@ -3925,7 +4120,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message to creator (Enter User ID)";
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Enter creator Discord User ID to send via bot";
         } else if (disc) {
             if (discordStatusBadge) {
                 discordStatusBadge.textContent = "USER ID NEEDED";

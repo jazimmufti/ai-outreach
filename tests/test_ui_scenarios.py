@@ -143,6 +143,29 @@ class TestUIScenariosAndBranding(unittest.TestCase):
         self.assertEqual(updated.creator_response, "confirmed")
         self.assertEqual(updated.stage, OutreachStage.VERIFIED)
 
+    def test_discord_server_discovery_enter_user_id_ui(self):
+        """Verify UI elements and logic for displaying Enter User ID when Discord server is discovered."""
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        html = res.text
+
+        # Verify fallback view contains server visit helper row
+        self.assertIn('id="ig-server-visit-row"', html)
+        self.assertIn('id="ig-server-visit-link"', html)
+        self.assertIn("Visit Server ↗", html)
+
+        # Verify server explanation in Outreach Hub informs user about server invite
+        self.assertIn("This is a server invitation link", html)
+        self.assertIn("Discord servers cannot receive direct messages", html)
+
+        # Verify app.js serves the updated logic
+        js_res = self.client.get("/static/app.js")
+        self.assertEqual(js_res.status_code, 200)
+        js_text = js_res.text
+        self.assertIn("This is a server invitation link, so enter user id", js_text)
+        self.assertIn("isServerNoUserId", js_text)
+
 
 if __name__ == "__main__":
     unittest.main()
+
