@@ -339,8 +339,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 }, 200);
             } catch (err) {
                 console.warn("Anchor click fallback failed:", err);
-                window.location.href = url;
             }
+            // Fallback: If opening in a new tab was blocked (e.g. after delayed countdown),
+            // navigate current window so the redirection is guaranteed to happen
+            try {
+                window.location.href = url;
+            } catch (_) {}
         }
     }
 
@@ -2142,35 +2146,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // Open Discord with the pre-opened window or direct open
-                if (discUserId) {
-                    if (targetWin && !targetWin.closed) {
-                        try {
-                            targetWin.location.href = targetUrl;
-                        } catch (_) {
-                            openPlatformUrl(targetUrl);
-                        }
-                    } else {
-                        openPlatformUrl(targetUrl);
-                    }
-                } else {
-                    if (targetWin && !targetWin.closed) {
-                        try {
-                            targetWin.location.href = targetUrl;
-                        } catch (_) {
-                            openPlatformUrl(targetUrl);
-                        }
-                    } else {
-                        openPlatformUrl(targetUrl);
-                    }
-                }
+                // Open Discord profile or server invite
+                openPlatformUrl(targetUrl);
             };
-
-            // Pre-open window reference synchronously inside active user gesture so 4s countdown doesn't get blocked
-            let targetWin = null;
-            try {
-                targetWin = window.open("about:blank", "_blank");
-            } catch (_) {}
 
             await showCopyAndRedirectCountdown({
                 text: text,
@@ -2749,25 +2727,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const isCountedPlatform = isIg || pLower.includes("discord");
                 if (isCountedPlatform) {
-                    let targetWin = null;
-                    try {
-                        targetWin = window.open("about:blank", "_blank");
-                    } catch (_) {}
-
                     await showCopyAndRedirectCountdown({
                         text: draftText,
                         meta: meta,
                         clickedBtn: igFoundLink,
                         openAction: () => {
-                            if (targetWin && !targetWin.closed) {
-                                try {
-                                    targetWin.location.href = url;
-                                } catch (_) {
-                                    openPlatformUrl(url);
-                                }
-                            } else {
-                                openPlatformUrl(url);
-                            }
+                            openPlatformUrl(url);
                         }
                     });
                 } else {
@@ -4014,13 +3979,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (state.discordProfile) {
                     state.discordProfile.discord_user_id = extracted;
                     state.discordProfile.status = "sendable";
-                    state.discordProfile.url = `https://discord.com/channels/@me/${extracted}`;
+                    state.discordProfile.url = `https://discord.com/users/${extracted}`;
                 } else {
                     state.discordProfile = {
                         discord_user_id: extracted,
                         discord_source: "manual",
                         status: "sendable",
-                        url: `https://discord.com/channels/@me/${extracted}`
+                        url: `https://discord.com/users/${extracted}`
                     };
                 }
             }
@@ -4102,16 +4067,14 @@ document.addEventListener("DOMContentLoaded", () => {
             if (btnDirectProfile) {
                 btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
                 btnDirectProfile.classList.remove("hidden");
-                btnDirectProfile.onclick = (e) => {
-                    e.preventDefault();
-                    openPlatformUrl(`https://discord.com/users/${cleanId}`);
+                btnDirectProfile.onclick = () => {
+                    const text = discordMessageBody ? discordMessageBody.value.trim() : "";
+                    if (text) copyTextToClipboard(text);
                 };
             }
             if (hubDiscordHeadHandle) {
-                hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</span>`;
-                hubDiscordHeadHandle.onclick = () => {
-                    openPlatformUrl(`https://discord.com/users/${cleanId}`);
-                };
+                hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${cleanId}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</a>`;
+                hubDiscordHeadHandle.onclick = null;
             }
             if (btnSendDiscordBot) {
                 btnSendDiscordBot.disabled = false;
@@ -4143,16 +4106,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (btnDirectProfile) {
                     btnDirectProfile.href = `https://discord.com/users/${clean}`;
                     btnDirectProfile.classList.remove("hidden");
-                    btnDirectProfile.onclick = (e) => {
-                        e.preventDefault();
-                        openPlatformUrl(`https://discord.com/users/${clean}`);
+                    btnDirectProfile.onclick = () => {
+                        const text = discordMessageBody ? discordMessageBody.value.trim() : "";
+                        if (text) copyTextToClipboard(text);
                     };
                 }
                 if (hubDiscordHeadHandle) {
-                    hubDiscordHeadHandle.innerHTML = `Direct message to <span style="text-decoration: underline; cursor: pointer; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</span>`;
-                    hubDiscordHeadHandle.onclick = () => {
-                        openPlatformUrl(`https://discord.com/users/${clean}`);
-                    };
+                    hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${clean}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</a>`;
+                    hubDiscordHeadHandle.onclick = null;
                 }
                 if (btnSendDiscordBot) {
                     btnSendDiscordBot.disabled = false;
