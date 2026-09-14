@@ -2304,14 +2304,34 @@ document.addEventListener("DOMContentLoaded", () => {
         const creatorName = c.name || c.channel_name || "Creator";
 
         if (state.discoveredEmail && state.discoveredEmail.email) {
-            // Real email found
+            // Email available
             if (emailFoundView) emailFoundView.classList.remove("hidden");
             if (emailFallbackView) emailFallbackView.classList.add("hidden");
 
+            const isEmailUserProvided = Boolean(
+                state.manualEmail ||
+                (state.discoveredEmail && (state.discoveredEmail.user_provided || String(state.discoveredEmail.source || '').toLowerCase().includes('manual')))
+            );
+
+            const emailStepSubheading = document.getElementById("email-step-subheading");
+            if (emailStepSubheading) {
+                if (isEmailUserProvided) {
+                    emailStepSubheading.innerHTML = `Contact email provided for <strong id="email-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+                } else {
+                    emailStepSubheading.innerHTML = `We found a contact email for <strong id="email-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+                }
+            }
+
             if (emailFoundCreatorName) emailFoundCreatorName.textContent = creatorName;
             if (emailFoundAddress) emailFoundAddress.textContent = state.discoveredEmail.email;
+
+            const emailFoundBadge = document.getElementById("email-found-badge");
+            if (emailFoundBadge) {
+                emailFoundBadge.textContent = isEmailUserProvided ? "PROVIDED EMAIL" : "REAL EMAIL DETECTED";
+            }
+
             if (emailFoundSourceTag) {
-                emailFoundSourceTag.textContent = `Source: ${state.discoveredEmail.source || 'Publicly Published'}`;
+                emailFoundSourceTag.textContent = `Source: ${state.discoveredEmail.source || (isEmailUserProvided ? 'Manual entry' : 'Publicly Published')}`;
             }
         } else {
             // No public email found -> go directly to fallback input
@@ -2662,6 +2682,33 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --------------------------------------------------------------------------
+    // Helper: Determine if a profile was manually provided by the user
+    // --------------------------------------------------------------------------
+    function isProfileUserProvided(p) {
+        if (!p) return false;
+        if (p.user_provided === true || p.is_user_provided === true || p.isManual === true) return true;
+        const src = String(p.source || p.discord_source || '').toLowerCase();
+        if (src.includes('manual') || src.includes('user')) return true;
+
+        const pLower = String(p.platform || '').toLowerCase();
+        if (pLower.includes('discord')) {
+            const snowflake = extractDiscordSnowflake(p.discord_user_id || p.username || p.url || '');
+            if (snowflake) {
+                return true;
+            }
+            if (state.finalDiscordUserId && String(state.finalDiscordUserId) === String(p.discord_user_id || p.username)) {
+                return true;
+            }
+        }
+        if (pLower.includes('instagram') || pLower === 'ig') {
+            if (state.instagramProfile && (state.instagramProfile.source === 'Manual entry' || state.instagramProfile.user_provided)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // --------------------------------------------------------------------------
     // Helper: Dynamic Platform UI Updater for Step 2 & Confirmed View
     // --------------------------------------------------------------------------
     function updateStep2PlatformUI(profile) {
@@ -2687,6 +2734,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "Creator";
 
+        const isUserProvided = isProfileUserProvided(p);
+
         // 1. Top Navigation Step Pills
         if (igStepPill) {
             igStepPill.textContent = `2 · ${meta.name.toUpperCase()}`;
@@ -2700,10 +2749,26 @@ document.addEventListener("DOMContentLoaded", () => {
             igStepHeading.textContent = `Confirm ${meta.name} Profile`;
         }
         if (igStepSubheading) {
-            igStepSubheading.innerHTML = `We found a ${meta.name} profile for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+            if (isUserProvided) {
+                igStepSubheading.innerHTML = `${meta.name} profile provided for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+            } else {
+                igStepSubheading.innerHTML = `We found a ${meta.name} profile for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+            }
         }
         if (igFoundCreatorName) {
             igFoundCreatorName.textContent = creatorName;
+        }
+        const igProfileBadge = document.getElementById("ig-profile-badge");
+        if (igProfileBadge) {
+            igProfileBadge.textContent = isUserProvided ? "PROVIDED PROFILE" : "DETECTED PROFILE";
+        }
+        const igDiscordNotice = document.getElementById("ig-discord-requirement-notice");
+        if (igDiscordNotice) {
+            if (pLower.includes("discord")) {
+                igDiscordNotice.classList.remove("hidden");
+            } else {
+                igDiscordNotice.classList.add("hidden");
+            }
         }
         if (igDiscoveredIcon) {
             igDiscoveredIcon.style.background = meta.bgColor;
@@ -2832,7 +2897,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         platform: "Instagram",
                         username: clean,
                         url: state.finalInstagramUrl,
-                        source: "Manual entry"
+                        source: "Manual entry",
+                        user_provided: true
                     };
                     if (!state.socialProfiles) state.socialProfiles = [];
                     const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase().includes("instagram"));
@@ -2870,6 +2936,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         username: `@${raw}`,
                         url: `https://x.com/${raw}`,
                         source: "Manual entry",
+                        user_provided: true,
                         confidence: "high"
                     };
                     if (!state.socialProfiles) state.socialProfiles = [];
@@ -2910,6 +2977,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         username: `@${clean}`,
                         url: `https://facebook.com/${clean}`,
                         source: "Manual entry",
+                        user_provided: true,
                         confidence: "high"
                     };
                     if (!state.socialProfiles) state.socialProfiles = [];
@@ -2937,7 +3005,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             username: discUserId,
                             discord_user_id: discUserId,
                             url: `https://discord.com/users/${discUserId}`,
-                            status: "sendable"
+                            status: "sendable",
+                            source: (state.discordProfile && state.discordProfile.source) || "Manual entry",
+                            user_provided: true
                         };
                     }
                     if (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.discord_username || state.discordProfile.url)) {
@@ -2949,7 +3019,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_username: dp.discord_username || null,
                             discord_user_id: dp.discord_user_id || null,
                             url: dp.url || dp.discord_invite || "https://discord.com",
-                            status: dp.status || "discovered"
+                            status: dp.status || "discovered",
+                            source: dp.source || dp.discord_source || null,
+                            user_provided: dp.user_provided || dp.source === "Manual entry" || false
                         };
                     }
                     const found = cleanSocials.find(s => (s.platform || "").toLowerCase() === "discord");
@@ -2977,7 +3049,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         status: "sendable",
                         discord_user_id: trimmed,
                         url: `https://discord.com/users/${trimmed}`,
-                        source: "Manual entry"
+                        source: "Manual entry",
+                        user_provided: true
                     };
                     const discObj = {
                         platform: "Discord",
@@ -2985,6 +3058,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         discord_user_id: trimmed,
                         url: `https://discord.com/users/${trimmed}`,
                         source: "Manual entry",
+                        user_provided: true,
                         confidence: "high",
                         status: "sendable"
                     };
@@ -3359,6 +3433,16 @@ document.addEventListener("DOMContentLoaded", () => {
             igConfirmedMessageDraft.value = draftMsg;
         }
 
+        const igConfirmedDiscordNotice = document.getElementById("ig-confirmed-discord-notice");
+        if (igConfirmedDiscordNotice) {
+            const pLower = (active.platform || "").toLowerCase();
+            if (pLower.includes("discord")) {
+                igConfirmedDiscordNotice.classList.remove("hidden");
+            } else {
+                igConfirmedDiscordNotice.classList.add("hidden");
+            }
+        }
+
         // Render other discovered profiles below the action buttons
         renderConfirmedOtherProfiles();
     }
@@ -3507,7 +3591,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         status: "sendable",
                         discord_user_id: snowflake,
                         url: url,
-                        source: active.source || "Discovered"
+                        source: active.source || (isProfileUserProvided(active) ? "Manual entry" : "Discovered"),
+                        user_provided: active.user_provided || isProfileUserProvided(active)
                     };
                 }
 
@@ -3569,6 +3654,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (pLower.includes("instagram")) {
                     state.finalInstagramHandle = formatted;
                     state.finalInstagramUrl = url;
+                    state.instagramProfile = {
+                        platform: "Instagram",
+                        username: formatted,
+                        url: url,
+                        source: "Manual entry",
+                        user_provided: true
+                    };
                 }
                 if (snowflake) {
                     state.finalDiscordUserId = snowflake;
@@ -3576,9 +3668,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         status: "sendable",
                         discord_user_id: snowflake,
                         url: url,
-                        source: "Manual entry"
+                        source: "Manual entry",
+                        user_provided: true
                     };
                 }
+                active.user_provided = true;
+                active.source = "Manual entry";
                 state.instagramConfirmed = true;
 
                 if (state.sessionId) {
@@ -4050,11 +4145,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (state.discordProfile) {
                 state.discordProfile.discord_user_id = cleanId;
                 state.discordProfile.status = "sendable";
+                state.discordProfile.source = "Manual entry";
+                state.discordProfile.user_provided = true;
                 state.discordProfile.url = `https://discord.com/users/${cleanId}`;
             } else {
                 state.discordProfile = {
                     discord_user_id: cleanId,
                     discord_source: "manual",
+                    source: "Manual entry",
+                    user_provided: true,
                     status: "sendable",
                     url: `https://discord.com/users/${cleanId}`
                 };

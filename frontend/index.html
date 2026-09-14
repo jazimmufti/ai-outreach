@@ -187,8 +187,8 @@
 
                 <!-- State A: Real Email Discovered -->
                 <div id="email-found-view">
-                    <h1 class="card-main-heading">Confirm Contact Email</h1>
-                    <p class="body-copy">
+                    <h1 class="card-main-heading" id="email-step-heading">Confirm Contact Email</h1>
+                    <p class="body-copy" id="email-step-subheading">
                         We found a contact email for <strong id="email-found-creator-name">Creator</strong>.
                     </p>
 
@@ -307,7 +307,7 @@
                         </div>
                         <div class="lookup-value-col">
                             <div class="lookup-header-meta">
-                                <span class="lookup-badge font-mono">DETECTED PROFILE</span>
+                                <span class="lookup-badge font-mono" id="ig-profile-badge">DETECTED PROFILE</span>
                             </div>
                             <div class="lookup-content-row">
                                 <span class="lookup-username-stylish" id="ig-found-handle">@handle</span>
@@ -317,6 +317,11 @@
                                 </a>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Discord Mutual Requirement Notice (visible only when platform is Discord) -->
+                    <div id="ig-discord-requirement-notice" class="hidden" style="margin: 12px 0 14px; padding: 10px 13px; background: #EEF2FF; border: 1.5px solid #6366F1; border-radius: 4px; font-size: 11.5px; color: #3730A3; line-height: 1.45; text-align: left;">
+                        💡 <strong>Before opening Discord:</strong> You must share at least one mutual server or be friends with the user on Discord to open their profile or message them.
                     </div>
 
                     <p class="body-copy" style="margin-bottom: 14px; font-weight: 600;">
@@ -422,6 +427,11 @@
                             <span class="badge badge-high font-mono" style="font-size: 10px;">Ready to Send</span>
                         </div>
                         <textarea id="ig-confirmed-message-draft" class="retro-textarea font-mono" rows="4"></textarea>
+                    </div>
+
+                    <!-- Discord Mutual Requirement Notice for confirmed view -->
+                    <div id="ig-confirmed-discord-notice" class="hidden" style="margin: 12px 0 14px; padding: 10px 13px; background: #EEF2FF; border: 1.5px solid #6366F1; border-radius: 4px; font-size: 11.5px; color: #3730A3; line-height: 1.45; text-align: left;">
+                        💡 <strong>Before opening Discord:</strong> You must share at least one mutual server or be friends with the user on Discord to open their profile or message them.
                     </div>
 
                     <!-- Two primary action options: Open Instagram & Send, and Copy Message -->
