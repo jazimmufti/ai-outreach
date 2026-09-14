@@ -1763,6 +1763,7 @@ document.addEventListener("DOMContentLoaded", () => {
             sessionId: sessionId,
             backendOrigin: window.location.origin,
             senderHandle: state.senderHandle || null,
+            skipTabCreate: true,
             source: "arclent"
         }, "*");
 
@@ -2107,12 +2108,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
+        const cleanIgUsername = isInstagram ? normalizeInstagramHandle(handle || targetHandleOrUrl) : "";
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
+        const destinationUrl = isInstagram && cleanIgUsername ? `https://www.instagram.com/${encodeURIComponent(cleanIgUsername)}/` : dmUrl;
 
         let redirectWin = null;
-        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}&text=${encodeURIComponent(text || '')}`;
+        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(destinationUrl)}&handle=${encodeURIComponent(cleanIgUsername || handle || '')}&text=${encodeURIComponent(text || '')}`;
         const fullRedirectPage = new URL(redirectPage, window.location.origin).href;
+
+        // Post outreach message to extension via bridge so activeOutreachSession is persisted in chrome.storage.local
+        if (isInstagram && cleanIgUsername) {
+            state.pendingExtensionSession = {
+                username: cleanIgUsername,
+                handle: formatHandle(cleanIgUsername),
+                message: text,
+                sessionId: state.sessionId
+            };
+
+            window.postMessage({
+                type: "ARCLENT_INSTAGRAM_OUTREACH",
+                username: cleanIgUsername,
+                message: text,
+                sessionId: state.sessionId,
+                backendOrigin: window.location.origin,
+                senderHandle: state.senderHandle || null,
+                skipTabCreate: true,
+                source: "arclent"
+            }, "*");
+        }
 
         // Synchronously open platform or redirect page in a new tab within the user gesture on all devices
         if (isInstagram) {
@@ -2149,7 +2173,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (vDmReadyGuideText) {
                 const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
                 const fallbackTarget = 'target="_blank" rel="noopener noreferrer"';
-                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${destinationUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
             }
 
             if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
@@ -2787,9 +2811,31 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
                     let redirectWin = null;
-                    const redirectTargetUrl = isIg ? getDirectMessageUrl("Instagram", cleanHandle) : url;
-                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(redirectTargetUrl)}&handle=${encodeURIComponent(cleanHandle || '')}&text=${encodeURIComponent(draftText || '')}`;
+                    const igHandle = isIg ? cleanHandle : "";
+                    const redirectTargetUrl = isIg ? (igHandle ? `https://www.instagram.com/${encodeURIComponent(igHandle)}/` : getDirectMessageUrl("Instagram", cleanHandle)) : url;
+                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(redirectTargetUrl)}&handle=${encodeURIComponent(igHandle || cleanHandle || '')}&text=${encodeURIComponent(draftText || '')}`;
                     const fullRedirectPage = new URL(redirectPage, window.location.origin).href;
+
+                    if (isIg && igHandle) {
+                        state.pendingExtensionSession = {
+                            username: igHandle,
+                            handle: formatHandle(igHandle),
+                            message: draftText,
+                            sessionId: state.sessionId
+                        };
+
+                        window.postMessage({
+                            type: "ARCLENT_INSTAGRAM_OUTREACH",
+                            username: igHandle,
+                            message: draftText,
+                            sessionId: state.sessionId,
+                            backendOrigin: window.location.origin,
+                            senderHandle: state.senderHandle || null,
+                            skipTabCreate: true,
+                            source: "arclent"
+                        }, "*");
+                    }
+
                     try {
                         redirectWin = openPlatformUrl(fullRedirectPage);
                     } catch (_) {}

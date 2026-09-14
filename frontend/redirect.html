@@ -179,12 +179,28 @@
             }
 
             // Fallback clipboard copying
+            const textParam = params.get("text") || params.get("msg") || localStorage.getItem("arclent_last_copied_draft");
             try {
-                const textParam = params.get("text") || params.get("msg") || localStorage.getItem("arclent_last_copied_draft");
                 if (textParam && navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(textParam).catch(() => {});
                 }
             } catch (_) {}
+
+            // For Instagram, ensure extension receives outreach draft before navigation
+            if (pLower.includes("instagram") || pLower === "ig") {
+                const handleParam = params.get("handle") || "";
+                if (handleParam && textParam) {
+                    try {
+                        window.postMessage({
+                            type: "ARCLENT_INSTAGRAM_OUTREACH",
+                            username: handleParam,
+                            message: textParam,
+                            skipTabCreate: true,
+                            source: "arclent"
+                        }, "*");
+                    } catch (_) {}
+                }
+            }
 
             let secondsLeft = 3;
             const interval = setInterval(() => {
