@@ -154,15 +154,14 @@ class TestUIScenariosAndBranding(unittest.TestCase):
         self.assertIn('id="ig-server-visit-link"', html)
         self.assertIn("Visit Server ↗", html)
 
-        # Verify server explanation in Outreach Hub informs user about server invite
-        self.assertIn("This is a server invitation link", html)
-        self.assertIn("Discord servers cannot receive direct messages", html)
+        # Verify server explanation informs user about server invite
+        self.assertIn("This is a Discord server invite link. Enter the Creator’s User ID to continue.", html)
 
         # Verify app.js serves the updated logic
         js_res = self.client.get("/static/app.js")
         self.assertEqual(js_res.status_code, 200)
         js_text = js_res.text
-        self.assertIn("This is a server invitation link, so enter user id", js_text)
+        self.assertIn("This is a Discord server invite link. Enter the Creator’s User ID to continue.", js_text)
         self.assertIn("isServerNoUserId", js_text)
 
 

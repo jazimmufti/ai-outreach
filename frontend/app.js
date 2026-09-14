@@ -2834,8 +2834,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (igFallbackDesc) {
             if (isDiscordServer) {
-                const sUrl = serverInviteUrl || "discord.gg";
-                igFallbackDesc.innerHTML = `📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(sUrl)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong> to continue.`;
+                igFallbackDesc.innerHTML = `<strong>This is a Discord server invite link. Enter the Creator’s User ID to continue.</strong>`;
             } else if (isDiscord) {
                 igFallbackDesc.textContent = "Enter creator's 17-20 digit Discord User ID to continue.";
             } else {
@@ -3172,7 +3171,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             </div>
                             <div class="other-social-meta">
                                 <span class="other-social-platform-name">${escapeHtml(cfg.displayName)}</span>
-                                <span class="other-social-not-detected" style="color: #4338CA; font-size: 11px;" title="This is a server invitation link, so enter user id">This is a server invitation link, so enter user id</span>
+                                <span class="other-social-not-detected" style="color: #4338CA; font-size: 11px; font-weight: 700;" title="This is a Discord server invite link. Enter the Creator’s User ID to continue.">This is a Discord server invite link. Enter the Creator’s User ID to continue.</span>
                             </div>
                         </div>
                         <div class="other-social-actions">
@@ -3186,9 +3185,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const drawer = document.createElement("div");
                     drawer.className = "other-social-drawer hidden font-mono";
                     drawer.innerHTML = `
-                        <div style="font-size: 11.5px; color: #4338CA; margin-bottom: 8px; line-height: 1.45; background: #EEF2FF; border: 1px solid #C7D2FE; border-radius: 4px; padding: 6px 8px;">
-                            📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(serverShort)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong>.
-                        </div>
                         <input type="text" class="retro-input font-mono other-social-manual-input" placeholder="Enter 17-20 digit Discord User ID (e.g. 1166052187869294673)">
                         <button type="button" class="btn-primary other-social-drawer-save">Save</button>
                         <button type="button" class="other-social-drawer-cancel" title="Cancel">✕</button>
@@ -3405,7 +3401,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isDiscordServer) {
             showInstagramFallback(false, true);
             renderDiscoveredOtherSocials();
-            showToast("This is a server invitation link, so enter user ID.", "info");
+            showToast("This is a Discord server invite link. Enter the Creator’s User ID to continue.", "info");
             return;
         }
 
@@ -3534,8 +3530,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (igFallbackDesc) {
             if (isServer) {
-                const sUrlText = serverInviteUrl || "discord.gg";
-                igFallbackDesc.innerHTML = `📢 <strong>Discord Server Invite:</strong> This is a server invitation link (<strong>${escapeHtml(sUrlText)}</strong>), so enter creator's <strong>17-20 digit Discord User ID</strong> to continue.`;
+                igFallbackDesc.innerHTML = `<strong>This is a Discord server invite link. Enter the Creator’s User ID to continue.</strong>`;
             } else if (isDiscord) {
                 igFallbackDesc.textContent = isInitialNotFound
                     ? `We couldn't locate a verified Discord User ID for ${creatorName}. Enter their 17-20 digit Discord User ID to continue.`
@@ -4109,7 +4104,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = serverInviteUrl || "Discord Server";
                 if (discordServerExplanation) {
                     discordServerExplanation.classList.remove("hidden");
-                    discordServerExplanation.innerHTML = `📢 <strong>Discord Server Detected:</strong> This is a server invitation link (<strong>${escapeHtml(serverInviteUrl || "discord.gg")}</strong>). Discord servers cannot receive direct messages, so enter creator's <strong>17-20 digit Discord User ID</strong> below.`;
+                    discordServerExplanation.innerHTML = `📢 <strong>This is a Discord server invite link. Enter the Creator’s User ID to continue.</strong>`;
                 }
                 if (btnDiscordVisitServer && serverInviteUrl) {
                     btnDiscordVisitServer.href = serverInviteUrl;
