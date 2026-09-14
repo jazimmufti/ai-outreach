@@ -494,6 +494,95 @@ Twitter: [/ badogblue](https://twitter.com/badogblue)
         self.assertTrue(len(discord_profiles) >= 1)
         self.assertTrue(any("discord.gg" in (p.discord_invite or p.url or "") for p in discord_profiles))
 
+    def test_role_differentiation_video_editor_vs_content_editor(self):
+        """Verify video editor and editor match, but video editor and content editor do not match."""
+        from app.services.youtube_description_parser import is_credit_role_matching
+
+        # 1. Video editor and editor are the same
+        self.assertTrue(is_credit_role_matching("editor", "Video editor"))
+        self.assertTrue(is_credit_role_matching("video editor", "Video editor"))
+        self.assertTrue(is_credit_role_matching("edited by", "Video editor"))
+        self.assertTrue(is_credit_role_matching("edits by", "Video editor"))
+        self.assertTrue(is_credit_role_matching("video editing", "Video editor"))
+        self.assertTrue(is_credit_role_matching("cutter", "Video editor"))
+        self.assertTrue(is_credit_role_matching("video editor", "Editor"))
+        self.assertTrue(is_credit_role_matching("editor", "Editor"))
+
+        # 2. Video editor and content editor are different
+        self.assertFalse(is_credit_role_matching("content editor", "Video editor"))
+        self.assertFalse(is_credit_role_matching("content edit", "Video editor"))
+        self.assertFalse(is_credit_role_matching("video editor", "Content editor"))
+        self.assertFalse(is_credit_role_matching("editor", "Content editor"))
+
+        # 3. Content editor matches only content editor
+        self.assertTrue(is_credit_role_matching("content editor", "Content editor"))
+        self.assertTrue(is_credit_role_matching("content editing", "Content editor"))
+
+        # 4. Other distinct roles
+        self.assertFalse(is_credit_role_matching("thumbnail", "Video editor"))
+        self.assertFalse(is_credit_role_matching("sound editor", "Video editor"))
+        self.assertFalse(is_credit_role_matching("vfx artist", "Video editor"))
+
+        # 5. Generic credits match any role
+        self.assertTrue(is_credit_role_matching("credits", "Video editor"))
+        self.assertTrue(is_credit_role_matching("contributor", "Video editor"))
+
+    def test_discord_jazim_mufti_auto_verification(self):
+        """Test auto-verification for jazim.mufti - 1166052187869294673 connected Arclent user."""
+        from app.services.auto_verification import verify_contribution_from_description
+
+        # Description with username
+        desc_username = "Video editor: jazim.mufti\nThanks for watching!"
+        res1 = verify_contribution_from_description(
+            desc_username,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertTrue(res1.verified)
+        self.assertEqual(res1.platform, "Discord")
+        self.assertEqual(res1.status, "auto_verified")
+
+        # Description with ID
+        desc_id = "Video editor: 1166052187869294673\nEnjoy!"
+        res2 = verify_contribution_from_description(
+            desc_id,
+            linked_discord_account="jazim.mufti",
+            user_role="Video editor"
+        )
+        self.assertTrue(res2.verified)
+        self.assertEqual(res2.platform, "Discord")
+        self.assertEqual(res2.status, "auto_verified")
+
+        # Description with both username and ID
+        desc_both = "Video editor: jazim.mufti - 1166052187869294673"
+        res3 = verify_contribution_from_description(
+            desc_both,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertTrue(res3.verified)
+        self.assertEqual(res3.platform, "Discord")
+
+        # Description with Content editor should NOT auto-verify for Video editor
+        desc_content_editor = "Content editor: jazim.mufti\nEnjoy!"
+        res4 = verify_contribution_from_description(
+            desc_content_editor,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertFalse(res4.verified)
+
+        # Unlinked user when credits are found returns fallback_no_linked_account
+        res_unlinked = verify_contribution_from_description(
+            desc_username,
+            linked_discord_account=None,
+            linked_account=None,
+            user_role="Video editor"
+        )
+        self.assertFalse(res_unlinked.verified)
+        self.assertEqual(res_unlinked.status, "fallback_no_linked_account")
+        self.assertEqual(res_unlinked.platform, "Discord")
+
     def test_frontend_discord_workflow_parity(self):
         """Verify frontend index.html and app.js have Discord parity with Instagram."""
         with open("frontend/index.html", "r", encoding="utf-8") as f:
@@ -509,7 +598,7 @@ Twitter: [/ badogblue](https://twitter.com/badogblue)
 
         # app.js variables and handlers
         self.assertIn('linkedDiscordAccount', js)
-        self.assertIn('151600386127968346', js)
+        self.assertIn('1166052187869294673', js)
         self.assertIn('https://discord.com/users/', js)
         self.assertIn('showConnectDiscordModal', js)
         self.assertIn('/api/outreach/verify-linked-discord-account', js)
@@ -517,5 +606,6 @@ Twitter: [/ badogblue](https://twitter.com/badogblue)
 
 if __name__ == "__main__":
     unittest.main()
+
 
 

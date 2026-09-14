@@ -416,12 +416,12 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (storedDiscord) {
             state.linkedDiscordAccount = storedDiscord.replace(/^@+/, "");
         } else {
-            // Assume 151600386127968346 Discord account is already connected by default
-            state.linkedDiscordAccount = "151600386127968346";
+            // Assume 1166052187869294673 / jazim.mufti Discord account is already connected by default
+            state.linkedDiscordAccount = "1166052187869294673";
         }
     } catch (_) {
         state.linkedInstagramAccount = "ummer.04";
-        state.linkedDiscordAccount = "151600386127968346";
+        state.linkedDiscordAccount = "1166052187869294673";
     }
 
     function saveSessionState() {
@@ -1034,7 +1034,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (btnModalCdSubmit) {
                 btnModalCdSubmit.disabled = false;
-                btnModalCdSubmit.textContent = "Connect Discord & Auto-Verify ⚡";
+                btnModalCdSubmit.textContent = "Connect & Auto-Verify ⚡";
             }
 
             if (verifyData && verifyData.verified) {
@@ -1375,7 +1375,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Early credit detection right when processing starts & metadata is parsed
                     if (data.step === 2 && data.status === "completed" && data.extracted_accounts && data.extracted_accounts.length > 0) {
-                        const hasDiscordCredits = data.extracted_accounts.some(a => /^\d{17,20}$/.test(String(a).trim()) || String(a).toLowerCase().includes("discord"));
+                        const hasDiscordCredits = data.extracted_accounts.some(a => {
+                            const s = String(a).trim().toLowerCase();
+                            return /^\d{17,20}$/.test(s) || s.includes("discord") || s === "jazim.mufti" || s === "jazimmufti" || s === "1166052187869294673";
+                        });
                         if (hasDiscordCredits && !state.linkedDiscordAccount) {
                             showConnectDiscordModal(data.extracted_accounts);
                         } else if (!state.linkedInstagramAccount && !hasDiscordCredits) {
@@ -1523,7 +1526,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const isDiscordCredit = data.auto_verification && (
             data.auto_verification.platform === "Discord" ||
             data.auto_verification.method === "youtube_description_discord_match" ||
-            extracted.some(a => /^\d{17,20}$/.test(String(a).trim()) || String(a).toLowerCase().includes("discord"))
+            extracted.some(a => {
+                const s = String(a).trim().toLowerCase();
+                return /^\d{17,20}$/.test(s) || s.includes("discord") || s === "jazim.mufti" || s === "jazimmufti" || s === "1166052187869294673";
+            })
         );
 
         // CASE 2A: Credits are mentioned for Discord and user hasn't linked Discord

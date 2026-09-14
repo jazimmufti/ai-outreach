@@ -927,7 +927,7 @@
                 <button type="button" class="modal-close-btn" id="btn-modal-cd-close" aria-label="Close modal">✕</button>
                 
                 <div class="modal-badge-row">
-                    <span class="modal-badge font-mono" style="background: #5865F2; color: #FFF; border-color: #111827;">⚡ DISCORD CREDITS DETECTED IN DESCRIPTION</span>
+                    <span class="modal-badge font-mono">⚡ CREDITS DETECTED IN DESCRIPTION</span>
                 </div>
 
                 <h2 class="modal-heading" id="modal-cd-title">Credits are already mentioned!</h2>
@@ -942,31 +942,31 @@
 
                 <!-- Suggested chips -->
                 <div id="modal-cd-chips-container" class="modal-chips-container hidden">
-                    <span class="modal-chips-label font-mono">Suggested Discord ID:</span>
+                    <span class="modal-chips-label font-mono">Suggested handle:</span>
                     <div id="modal-cd-chips-row" class="modal-chips-row"></div>
                 </div>
 
                 <form id="modal-cd-form">
                     <div class="modal-input-group">
-                        <label for="modal-cd-input" class="retro-label font-mono">Your Discord User ID / Username</label>
+                        <label for="modal-cd-input" class="retro-label font-mono">Your Discord Username or User ID</label>
                         <div class="input-wrapper modal-input-wrapper">
-                            <span class="input-prefix font-mono">💬</span>
+                            <span class="input-prefix font-mono">@</span>
                             <input 
                                 type="text" 
                                 id="modal-cd-input" 
                                 class="retro-input font-mono" 
-                                placeholder="151600386127968346"
+                                placeholder="jazim.mufti or 1166052187869294673"
                                 autocomplete="off"
                                 autocapitalize="none"
                                 spellcheck="false"
                             >
                         </div>
-                        <span id="modal-cd-err" class="input-error-msg hidden">Please enter your Discord User ID</span>
+                        <span id="modal-cd-err" class="input-error-msg hidden">Please enter your Discord username or User ID</span>
                     </div>
 
                     <div class="modal-actions-row">
-                        <button type="submit" id="btn-modal-cd-submit" class="btn-primary" style="flex: 1; background: #5865F2; border-color: #111827; color: #FFF;">
-                            <span>Connect Discord & Auto-Verify ⚡</span>
+                        <button type="submit" id="btn-modal-cd-submit" class="btn-primary" style="flex: 1;">
+                            <span>Connect & Auto-Verify ⚡</span>
                         </button>
                         <button type="button" id="btn-modal-cd-skip" class="btn-secondary">
                             <span>Skip (Verify Manually)</span>

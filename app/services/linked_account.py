@@ -15,8 +15,17 @@ from typing import Optional
 LINKED_INSTAGRAM_ACCOUNT: Optional[str] = None
 DEFAULT_LINKED_PLATFORM: Optional[str] = None
 
-# Default linked Discord account for Arclent sender/creator
-DEFAULT_LINKED_DISCORD_ACCOUNT: Optional[str] = "151600386127968346"
+# Default linked Discord account for Arclent sender/creator (jazim.mufti - 1166052187869294673)
+DEFAULT_LINKED_DISCORD_ACCOUNT: Optional[str] = "1166052187869294673"
+DEFAULT_LINKED_DISCORD_USERNAME: Optional[str] = "jazim.mufti"
+
+# Known Discord aliases for connected Arclent users
+DISCORD_USER_ALIASES: dict[str, list[str]] = {
+    "1166052187869294673": ["jazim.mufti", "jazimmufti", "1166052187869294673"],
+    "jazim.mufti": ["1166052187869294673", "jazim.mufti", "jazimmufti"],
+    "jazimmufti": ["1166052187869294673", "jazim.mufti", "jazimmufti"],
+    "151600386127968346": ["151600386127968346"],
+}
 
 # Internal mutable holder allowing overrides during testing without modifying production code.
 _current_linked_account: Optional[str] = LINKED_INSTAGRAM_ACCOUNT
@@ -40,6 +49,40 @@ def normalize_discord_account(account: Optional[str]) -> Optional[str]:
     return cleaned if cleaned else None
 
 
+def get_discord_account_aliases(account: Optional[str]) -> list[str]:
+    """Return all known aliases (snowflake ID, username variants) for a Discord account."""
+    norm = normalize_discord_account(account)
+    if not norm:
+        return []
+    aliases = set()
+    aliases.add(norm)
+    aliases.add(norm.replace(".", ""))
+    if norm in DISCORD_USER_ALIASES:
+        for a in DISCORD_USER_ALIASES[norm]:
+            aliases.add(a.lower())
+            aliases.add(a.lower().replace(".", ""))
+    return list(aliases)
+
+
+def is_matching_discord_account(candidate: Optional[str], linked_account: Optional[str]) -> bool:
+    """Check if a candidate Discord credit in a description matches the linked Discord account."""
+    if not candidate or not linked_account:
+        return False
+    cand_norm = normalize_discord_account(candidate)
+    link_norm = normalize_discord_account(linked_account)
+    if not cand_norm or not link_norm:
+        return False
+    if cand_norm == link_norm:
+        return True
+    cand_clean = cand_norm.replace(".", "")
+    link_clean = link_norm.replace(".", "")
+    if cand_clean == link_clean:
+        return True
+    linked_aliases = get_discord_account_aliases(linked_account)
+    cand_aliases = get_discord_account_aliases(candidate)
+    return bool(set(linked_aliases).intersection(set(cand_aliases)))
+
+
 def get_linked_instagram_account() -> Optional[str]:
     """Retrieve the currently linked Instagram account for the Arclent creator.
     
@@ -53,7 +96,7 @@ def get_linked_discord_account() -> Optional[str]:
     """Retrieve the currently linked Discord account (ID or username) for the Arclent user.
     
     Returns:
-        Normalized Discord account (e.g. '151600386127968346'), or None if not linked.
+        Normalized Discord account (e.g. '1166052187869294673'), or None if not linked.
     """
     return normalize_discord_account(_current_linked_discord_account)
 
@@ -106,7 +149,7 @@ def reset_dummy_linked_instagram_account() -> None:
 
 
 def reset_dummy_linked_discord_account() -> None:
-    """Reset the dummy linked Discord account back to default ('151600386127968346')."""
+    """Reset the dummy linked Discord account back to default ('1166052187869294673')."""
     global _current_linked_discord_account
     _current_linked_discord_account = DEFAULT_LINKED_DISCORD_ACCOUNT
 

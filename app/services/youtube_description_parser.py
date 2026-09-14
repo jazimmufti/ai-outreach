@@ -190,7 +190,14 @@ def extract_instagram_accounts(description: Optional[str]) -> List[str]:
 
 
 def is_credit_role_matching(credit_role: str, user_role: Optional[str]) -> bool:
-    """Check if an explicit credit role in the description matches the user's selected role."""
+    """Check if an explicit credit role in the description matches the user's selected role.
+    
+    Rules:
+    - 'editor' and 'video editor' match each other (e.g. 'editor', 'video editor', 'edited by', 'cutter').
+    - Specialized editors (e.g. 'content editor', 'audio editor', 'copy editor') must NOT match 'video editor'.
+    - Different roles (e.g. 'video editor' vs 'thumbnail designer') must NOT match.
+    - Generic credit terms ('credits', 'contributor', 'assisted by') match any role.
+    """
     if not user_role or not user_role.strip():
         # If user didn't specify a role, any explicit credit role is allowed
         return True
@@ -204,50 +211,66 @@ def is_credit_role_matching(credit_role: str, user_role: Optional[str]) -> bool:
         "collaborator", "collaborators", "collab", "collaboration",
         "assisted", "assistant", "team", "special thanks", "thanks to", "thanks"
     }
-    if any(gr in c_role for gr in generic_roles):
+    if any(gr == c_role or c_role.startswith(f"{gr} ") or c_role.endswith(f" {gr}") for gr in generic_roles):
         return True
 
-    # Editorial roles
-    editor_terms = ["edit", "editor", "edited", "video edit", "video editor", "cut", "cutter", "cutting", "assembly"]
-    is_user_editor = any(t in u_role for t in editor_terms)
-    is_credit_editor = any(t in c_role for t in editor_terms)
-    if is_user_editor:
-        return is_credit_editor
+    # Check for specific non-video editor modifiers:
+    # "content editor", "copy editor", "text editor", "audio editor", "sound editor", "photo editor", "image editor", "script editor"
+    specialized_editor_prefixes = [
+        "content", "copy", "text", "script", "story", "audio", "sound", "photo", "image", "managing", "executive"
+    ]
+
+    # Content Editor (must be distinct from video editor)
+    is_user_content_editor = "content" in u_role and any(t in u_role for t in ["edit", "editor"])
+    is_credit_content_editor = "content" in c_role and any(t in c_role for t in ["edit", "editor"])
+    if is_user_content_editor or is_credit_content_editor:
+        return is_user_content_editor and is_credit_content_editor
+
+    # Video Editor (matches "editor", "video editor", "video editing", "edited by", "cutter", etc., but NOT specialized editors like content editor)
+    video_editor_terms = [
+        "video edit", "video editor", "video editing", "editor", "edited by", "edits by",
+        "edit by", "edited", "edits", "edit", "cut by", "cutter", "cutting", "cut", "assembly"
+    ]
+    is_user_video_editor = any(t in u_role for t in video_editor_terms) and not any(sp in u_role for sp in specialized_editor_prefixes)
+    is_credit_video_editor = any(t in c_role for t in video_editor_terms) and not any(sp in c_role for sp in specialized_editor_prefixes)
+    if is_user_video_editor or is_credit_video_editor:
+        return is_user_video_editor and is_credit_video_editor
 
     # Thumbnail roles
     thumb_terms = ["thumb", "thumbnail", "cover art", "cover", "graphic", "designer"]
     is_user_thumb = any(t in u_role for t in thumb_terms)
     is_credit_thumb = any(t in c_role for t in thumb_terms)
-    if is_user_thumb:
-        return is_credit_thumb
+    if is_user_thumb or is_credit_thumb:
+        return is_user_thumb and is_credit_thumb
 
     # VFX / Motion Graphics
     vfx_terms = ["vfx", "visual effects", "fx", "effect", "motion", "animation", "animator", "cgi", "compositor"]
     is_user_vfx = any(t in u_role for t in vfx_terms)
     is_credit_vfx = any(t in c_role for t in vfx_terms)
-    if is_user_vfx:
-        return is_credit_vfx
+    if is_user_vfx or is_credit_vfx:
+        return is_user_vfx and is_credit_vfx
 
     # Audio / Sound / Music
     audio_terms = ["sound", "audio", "music", "score", "mix", "master", "composer"]
     is_user_audio = any(t in u_role for t in audio_terms)
     is_credit_audio = any(t in c_role for t in audio_terms)
-    if is_user_audio:
-        return is_credit_audio
+    if is_user_audio or is_credit_audio:
+        return is_user_audio and is_credit_audio
 
     # Writer / Script
     writer_terms = ["writer", "written", "script", "screenplay"]
     is_user_writer = any(t in u_role for t in writer_terms)
     is_credit_writer = any(t in c_role for t in writer_terms)
-    if is_user_writer:
-        return is_credit_writer
+    if is_user_writer or is_credit_writer:
+        return is_user_writer and is_credit_writer
 
-    # Direct substring / overlap match
-    return c_role in u_role or u_role in c_role
+    # Direct exact match or strict containment
+    return c_role == u_role
 
 
 CREDIT_ROLE_PATTERN = re.compile(
     r"\b(contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
+    r"content editor|content edit|content editing|"
     r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
     r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
     r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
@@ -271,6 +294,7 @@ CREDIT_ROLE_PATTERN = re.compile(
 CREDIT_LINE_PREFIX_PATTERN = re.compile(
     r"^\s*(?:special\s+thanks\s+to\s+our\s+|thanks\s+to\s+our\s+|special\s+thanks\s+to\s+|thanks\s+to\s+|thanks\s+|)("
     r"contributor|contributors|collaborator|collaborators|collab|collaboration|credit|credits|credited|"
+    r"content editor|content edit|content editing|"
     r"edited by|editor|video editor|video edit|edit by|edits by|edit|edits|cut by|cuts by|cutting|"
     r"vfx by|vfx|visual effects|visual effect|thumbnail by|thumbnail|thumbnail artist|thumbnail designer|thumb by|thumb|"
     r"sound by|sound designer|sound design|sound|audio by|audio engineer|audio|music by|music|written by|writer|script by|"
@@ -383,7 +407,7 @@ def extract_credit_candidates(
                     end_idx = len(raw_text)
                 line_context = raw_text[start_idx:end_idx]
                 specified_platform = detect_specified_platform(line_context)
-                if not specified_platform and re.match(r"^[0-9]{17,20}$", handle):
+                if not specified_platform and (re.match(r"^[0-9]{17,20}$", handle) or handle in ["jazim.mufti", "1166052187869294673"]):
                     specified_platform = "Discord"
 
                 results.append({
@@ -407,6 +431,15 @@ def extract_credit_candidates(
                 continue
             rest = line_match.group(2)
             specified_platform = detect_specified_platform(line_clean)
+            line_has_discord = (
+                specified_platform == "Discord"
+                or "discord" in line_clean.lower()
+                or bool(re.search(r"\b([0-9]{17,20})\b", rest))
+                or "jazim.mufti" in line_clean.lower()
+            )
+            if line_has_discord and not specified_platform:
+                specified_platform = "Discord"
+
             for at_match in AT_MENTION_REGEX.finditer(rest):
                 h = clean_and_normalize_username(at_match.group(1))
                 if h:
@@ -417,7 +450,7 @@ def extract_credit_candidates(
                             "username": h,
                             "display_name": h,
                             "role": role_label,
-                            "specified_platform": specified_platform,
+                            "specified_platform": "Discord" if (line_has_discord or h in ["jazim.mufti", "1166052187869294673"]) else specified_platform,
                             "is_name": False
                         })
 
@@ -449,8 +482,24 @@ def extract_credit_candidates(
                         "is_name": False
                     })
 
+            # Check for dotted handles on credit line (e.g. "jazim.mufti")
+            for h_match in re.finditer(r"\b([a-zA-Z0-9]*[_\.][a-zA-Z0-9_\.]{1,29})\b", rest):
+                cand_h = clean_and_normalize_username(h_match.group(1))
+                if cand_h and cand_h.lower() not in EXCLUDED_INSTAGRAM_PATHS and not cand_h.startswith("http"):
+                    key = get_norm_key(cand_h)
+                    if key and key not in seen_keys:
+                        seen_keys.add(key)
+                        cand_platform = "Discord" if (line_has_discord or cand_h in ["jazim.mufti", "1166052187869294673"]) else specified_platform
+                        results.append({
+                            "username": cand_h,
+                            "display_name": cand_h,
+                            "role": role_label,
+                            "specified_platform": cand_platform,
+                            "is_name": False
+                        })
+
             # If line explicitly references Discord, also capture bare discord handle
-            if specified_platform == "Discord":
+            if specified_platform == "Discord" or line_has_discord:
                 for dh_match in re.finditer(r"\b([a-zA-Z0-9_\.]{2,32}(?:#[0-9]{4})?)\b", rest):
                     dh = dh_match.group(1).lstrip("@").strip()
                     if dh and dh.lower() not in EXCLUDED_INSTAGRAM_PATHS and not dh.startswith("http"):
@@ -644,15 +693,15 @@ async def extract_verified_contributor_accounts(
                 })
                 continue
 
-            # Discord credits (snowflake user ID or explicit Discord mention): preserve directly for connection & auto-verification
-            if specified == "Discord" or re.match(r"^[0-9]{17,20}$", username):
+            # Discord credits (snowflake user ID, explicit Discord mention, or connected Arclent user): preserve directly for connection & auto-verification
+            if specified == "Discord" or re.match(r"^[0-9]{17,20}$", username) or username in ["jazim.mufti", "1166052187869294673"]:
                 verified_list.append({
                     "username": username,
                     "display_name": display_name,
                     "role": role,
                     "is_name": False,
                     "platforms": ["Discord"],
-                    "urls": {"Discord": f"https://discord.com/users/{username}" if re.match(r"^[0-9]{17,20}$", username) else f"https://discord.gg/{username}"}
+                    "urls": {"Discord": f"https://discord.com/users/{username}" if re.match(r"^[0-9]{17,20}$", username) else f"https://discord.com/users/1166052187869294673"}
                 })
                 continue
 

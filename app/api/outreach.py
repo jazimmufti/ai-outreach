@@ -40,7 +40,11 @@ from app.services.session_manager import (
 )
 from app.services.message_generator import generate_outreach_message
 from app.services.gmail_service import get_gmail_status, send_test_email
-from app.services.linked_account import normalize_instagram_username, normalize_discord_account
+from app.services.linked_account import (
+    normalize_instagram_username,
+    normalize_discord_account,
+    is_matching_discord_account
+)
 from app.services import discord_service
 from app.services.auto_verification import (
     verify_contribution_from_description,
@@ -1408,7 +1412,9 @@ async def verify_linked_discord_account_endpoint(payload: VerifyLinkedDiscordAcc
 
     clean_norm = norm_comp(clean_account)
     is_match = any(
-        acc.lower() == clean_account.lower() or norm_comp(acc) == clean_norm
+        acc.lower() == clean_account.lower()
+        or norm_comp(acc) == clean_norm
+        or is_matching_discord_account(acc, clean_account)
         for acc in extracted
     )
 
