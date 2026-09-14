@@ -3,18 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Opening Outreach Destination — Arclent</title>
+    <title>Redirecting — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-cream: #FAF7F2;
             --black: #111827;
             --white: #FFFFFF;
-            --primary: #15803D;
             --discord: #5865F2;
-            --amber: #D97706;
             --font-main: 'DM Sans', system-ui, -apple-system, sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
             --font-heading: 'Space Grotesk', system-ui, sans-serif;
@@ -30,80 +28,61 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
         }
 
         .redirect-card {
             background: var(--white);
-            border: 2px solid var(--black);
+            border: 2.5px solid var(--black);
             box-shadow: 6px 6px 0px var(--black);
             border-radius: 6px;
-            max-width: 480px;
+            max-width: 440px;
             width: 100%;
-            padding: 28px;
+            padding: 32px 28px;
             text-align: center;
         }
 
-        .badge-header {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-family: var(--font-mono);
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-            padding: 4px 10px;
-            border: 1.5px solid var(--black);
-            border-radius: 4px;
-            margin-bottom: 16px;
-        }
-
         .countdown-circle {
-            width: 72px;
-            height: 72px;
+            width: 76px;
+            height: 76px;
             border-radius: 50%;
-            border: 3px solid var(--black);
+            border: 2.5px solid var(--black);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 16px;
+            margin: 0 auto 20px;
             font-family: var(--font-heading);
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 800;
             background: #EEF2FF;
             color: var(--discord);
             box-shadow: 3px 3px 0px var(--black);
-            transition: transform 0.2s ease;
         }
 
-        h1 {
+        .main-countdown {
             font-family: var(--font-heading);
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 800;
-            margin-bottom: 8px;
             color: var(--black);
-        }
-
-        p.subtext {
-            font-size: 13px;
-            color: #4B5563;
-            line-height: 1.5;
             margin-bottom: 16px;
+            line-height: 1.3;
         }
 
-        .clipboard-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+        .clipboard-banner {
             background: #DCFCE7;
-            border: 1.5px solid #16A34A;
-            color: #166534;
+            border: 2px solid #16A34A;
+            color: #15803D;
             font-family: var(--font-mono);
-            font-size: 11.5px;
+            font-size: 13px;
             font-weight: 700;
-            padding: 6px 12px;
-            border-radius: 4px;
-            margin-bottom: 18px;
+            padding: 12px 14px;
+            border-radius: 6px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 2px 2px 0px rgba(22, 163, 74, 0.4);
         }
 
         .btn-action {
@@ -112,11 +91,11 @@
             justify-content: center;
             gap: 8px;
             width: 100%;
-            padding: 12px 18px;
+            padding: 13px 20px;
             background: var(--discord);
             color: var(--white);
             font-family: var(--font-heading);
-            font-size: 14px;
+            font-size: 14.5px;
             font-weight: 700;
             text-decoration: none;
             border: 2px solid var(--black);
@@ -136,68 +115,38 @@
             box-shadow: 1px 1px 0px var(--black);
         }
 
-        .privacy-notice {
-            margin-top: 18px;
-            background: #F8FAFC;
-            border: 1px solid #CBD5E1;
-            border-radius: 4px;
-            padding: 10px 12px;
-            font-size: 11.5px;
-            color: #475569;
-            text-align: left;
-            line-height: 1.45;
+        .fallback-note {
+            margin-top: 14px;
+            font-size: 12.5px;
+            color: #6B7280;
         }
 
-        .privacy-notice strong {
-            color: #1E293B;
-        }
-
-        .progress-bar-wrap {
-            width: 100%;
-            height: 6px;
-            background: #E5E7EB;
-            border: 1px solid var(--black);
-            border-radius: 3px;
-            overflow: hidden;
-            margin-bottom: 18px;
-        }
-
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--discord);
-            width: 100%;
-            transition: width 1s linear;
+        .fallback-note a {
+            color: var(--discord);
+            font-weight: 700;
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
     <div class="redirect-card">
-        <div class="badge-header" id="platform-badge" style="background: #5865F2; color: #FFF;">
-            💬 Discord Outreach
-        </div>
-
         <div class="countdown-circle" id="timer-display">4</div>
 
-        <div class="progress-bar-wrap">
-            <div class="progress-bar-fill" id="progress-fill"></div>
-        </div>
+        <h1 class="main-countdown">
+            Redirecting in <span id="timer-sec">4</span> seconds...
+        </h1>
 
-        <h1 id="redirect-title">Opening Discord Profile...</h1>
-        <p class="subtext" id="redirect-sub">
-            Redirecting in <strong id="timer-sec">4</strong> seconds. Your collaborator draft was copied to your clipboard.
-        </p>
-
-        <div class="clipboard-pill">
-            ✓ Draft message copied to clipboard
+        <div class="clipboard-banner">
+            <span>📋 Message copied to clipboard, just click paste in DM</span>
         </div>
 
         <a id="btn-open-now" href="#" class="btn-action">
-            Open Discord Profile Now ↗
+            Open Profile ↗
         </a>
 
-        <div class="privacy-notice" id="discord-privacy-box">
-            💡 <strong>Discord Privacy Rule:</strong> Discord displays full profiles if you share at least <strong>1 mutual server</strong> or are <strong>friends</strong>. If the profile card shows "Unable to load", you can paste their User ID into Discord's <em>Add Friend</em> box or join their public server first.
-        </div>
+        <p class="fallback-note">
+            If not redirected, <a id="link-open-fallback" href="#">click here to open profile ↗</a>
+        </p>
     </div>
 
     <script>
@@ -205,26 +154,20 @@
             const params = new URLSearchParams(window.location.search);
             const targetUrl = params.get("url") || "https://discord.com";
             const platform = params.get("platform") || "Discord";
-            const handle = params.get("handle") || "";
 
             const timerDisplay = document.getElementById("timer-display");
             const timerSec = document.getElementById("timer-sec");
-            const progressFill = document.getElementById("progress-fill");
             const btnOpenNow = document.getElementById("btn-open-now");
-            const redirectTitle = document.getElementById("redirect-title");
-            const platformBadge = document.getElementById("platform-badge");
-            const privacyBox = document.getElementById("discord-privacy-box");
+            const linkOpenFallback = document.getElementById("link-open-fallback");
 
             btnOpenNow.href = targetUrl;
+            linkOpenFallback.href = targetUrl;
+
             if (platform.toLowerCase() !== "discord") {
-                platformBadge.textContent = `${platform} Outreach`;
-                platformBadge.style.background = "#15803D";
-                redirectTitle.textContent = `Opening ${platform}...`;
-                btnOpenNow.textContent = `Open ${platform} Now ↗`;
                 btnOpenNow.style.background = "#15803D";
-                if (privacyBox) privacyBox.style.display = "none";
-            } else if (handle) {
-                redirectTitle.textContent = `Opening User ID ${handle}...`;
+                timerDisplay.style.color = "#15803D";
+                timerDisplay.style.background = "#DCFCE7";
+                linkOpenFallback.style.color = "#15803D";
             }
 
             let secondsLeft = 4;
@@ -232,7 +175,6 @@
                 secondsLeft--;
                 if (timerDisplay) timerDisplay.textContent = secondsLeft > 0 ? secondsLeft : "🚀";
                 if (timerSec) timerSec.textContent = secondsLeft > 0 ? secondsLeft : "0";
-                if (progressFill) progressFill.style.width = (secondsLeft / 4 * 100) + "%";
 
                 if (secondsLeft <= 0) {
                     clearInterval(interval);
@@ -241,6 +183,9 @@
             }, 1000);
 
             btnOpenNow.addEventListener("click", () => {
+                clearInterval(interval);
+            });
+            linkOpenFallback.addEventListener("click", () => {
                 clearInterval(interval);
             });
         })();
