@@ -6,7 +6,7 @@
  * This script will NEVER click Send, submit a form, or trigger Enter keypresses.
  * Message auto-fill stops immediately once text is placed in the composer for user review.
  */
-
+// hello world
 (() => {
     // Prevent duplicate injection
     if (window.__ARCLENT_CONTENT_SCRIPT_INITIALIZED__) return;
@@ -115,7 +115,7 @@
                         await navigator.clipboard.writeText(copyText);
                         copyBtn.textContent = "✓ Copied to Clipboard!";
                         setTimeout(() => { if (copyBtn) copyBtn.textContent = "📋 Copy Message to Clipboard"; }, 2500);
-                    } catch (_) {}
+                    } catch (_) { }
                 };
             }
         }
@@ -150,7 +150,7 @@
     function findInstagramMessageButton() {
         // Strategy A: Standard button/link with text "Message" or "Send message"
         const candidates = Array.from(document.querySelectorAll('button, div[role="button"], a[role="button"], a[href*="/direct/t/"], a[href*="/direct/new/"]'));
-        
+
         for (const el of candidates) {
             // Check visible text
             const text = (el.textContent || "").trim().toLowerCase();
@@ -318,7 +318,7 @@
         isProcessing = true;
         // Mark as processing immediately to lock against concurrent SPA observers
         sessionData.status = "processing";
-        await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+        await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => { });
 
         console.log("[Arclent Extension] Processing pending outreach for:", sessionData.username);
 
@@ -331,7 +331,7 @@
                     type: "warning"
                 });
                 sessionData.status = "pending";
-                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => { });
                 isProcessing = false;
                 return;
             }
@@ -357,7 +357,7 @@
                     console.warn("[Arclent Extension] Message button not found on profile. Attempting direct navigation...");
                     window.location.href = `https://ig.me/m/${encodeURIComponent(targetUser)}`;
                     sessionData.status = "pending";
-                    await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+                    await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => { });
                     isProcessing = false;
                     return;
                 }
@@ -382,10 +382,10 @@
                     username: sessionData.username,
                     sessionId: sessionData.sessionId,
                     reason: "Message composer element not found."
-                }).catch(() => {});
+                }).catch(() => { });
 
                 sessionData.status = "failed";
-                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => { });
                 isProcessing = false;
                 return;
             }
@@ -401,7 +401,7 @@
 
                 // Immediately mark session as completed in storage so it cannot be triggered again on SPA URL changes
                 sessionData.status = "completed";
-                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => { });
 
                 // Auto-detect logged-in user handle on Instagram
                 let loggedInUser = null;
@@ -451,7 +451,7 @@
                         for (const s of scripts) {
                             const text = s.textContent || "";
                             const match = text.match(/"viewer"\s*:\s*\{[^}]*"username"\s*:\s*"([a-zA-Z0-9._]+)"/i) ||
-                                          text.match(/"current_user"\s*:\s*\{[^}]*"username"\s*:\s*"([a-zA-Z0-9._]+)"/i);
+                                text.match(/"current_user"\s*:\s*\{[^}]*"username"\s*:\s*"([a-zA-Z0-9._]+)"/i);
                             if (match && match[1]) {
                                 const u = match[1].toLowerCase();
                                 const systemNames = ["instagram", "direct", "explore", "reels", "stories", "accounts", "p", "reel"];
@@ -479,8 +479,8 @@
                                 sender_handle: loggedInUser,
                                 sender_identity: `${loggedInUser} on Arclent`
                             })
-                        }).catch(() => {});
-                    } catch (_) {}
+                        }).catch(() => { });
+                    } catch (_) { }
                 }
 
                 // Show clear success banner guiding user to review and click Send manually
@@ -497,7 +497,7 @@
                     sessionId: sessionData.sessionId,
                     senderHandle: loggedInUser,
                     success: true
-                }).catch(() => {});
+                }).catch(() => { });
 
             } else {
                 console.warn("[Arclent Extension] Verification failed after insertion.");
@@ -514,7 +514,7 @@
                     username: sessionData.username,
                     sessionId: sessionData.sessionId,
                     reason: "Verification failed after DOM insertion."
-                }).catch(() => {});
+                }).catch(() => { });
             }
 
         } catch (err) {
