@@ -2061,6 +2061,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 ? `https://discord.com/users/${discUserId}`
                 : inviteUrl;
 
+            const isMob = isMobileDevice();
+
+            // On desktop, synchronously open the dedicated redirect page in a new tab within the active user gesture.
+            // This guarantees automatic new-tab countdown and navigation without browser popup blocker interference.
+            let redirectWin = null;
+            if (!isMob) {
+                try {
+                    const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
+                    redirectWin = window.open(redirectPage, "_blank");
+                } catch (_) {}
+            }
+
             const executeDiscordOpen = async () => {
                 state.stageBeforeDelivery = options.returnScreen || "outreach_hub";
                 state.stage = "sent";
@@ -2078,7 +2090,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     vDmReadyConfirmPrompt.textContent = "Did you click Send in Discord?";
                 }
 
-                const isMob = isMobileDevice();
                 if (vDmReadySub) {
                     vDmReadySub.textContent = "Your draft message was copied to clipboard. Ready to paste and send in Discord.";
                 }
@@ -2094,9 +2105,15 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11.5px; padding: 6px 14px; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
                                     🌐 Open in Discord Web
                                 </a>
+                                <a href="https://discordlookup.com/user/${discUserId}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11.5px; padding: 6px 14px; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;" title="Lookup public user info without mutual server">
+                                    🔍 Lookup User Info
+                                </a>
                                 <button type="button" id="btn-copy-creator-discord-id" class="btn-secondary" style="font-size: 11.5px; padding: 6px 14px; border-radius: 4px; cursor: pointer;">
                                     📋 Copy User ID (${discUserId})
                                 </button>
+                            </div>
+                            <div style="margin-top: 10px; font-size: 11.5px; color: #475569; background: #F8FAFC; border: 1px solid #CBD5E1; padding: 8px 12px; border-radius: 4px; text-align: left; line-height: 1.45;">
+                                💡 <strong>Discord Privacy Rule:</strong> Discord displays full profiles and allows DMs only if you share at least <strong>1 mutual server</strong> or are <strong>friends</strong> with them. If Discord shows "Unable to load profile", copy their User ID above to send a Friend Request in Discord or join their public server first.
                             </div>
                             <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
                         `;
@@ -2144,8 +2161,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // Open Discord profile or server invite
-                openPlatformUrl(targetUrl);
+                // If popup was blocked or running on mobile, execute openPlatformUrl
+                if (!redirectWin || redirectWin.closed) {
+                    openPlatformUrl(targetUrl);
+                }
             };
 
             await showCopyAndRedirectCountdown({
@@ -2725,12 +2744,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const isCountedPlatform = isIg || pLower.includes("discord");
                 if (isCountedPlatform) {
+                    let redirectWin = null;
+                    if (!isMobileDevice()) {
+                        try {
+                            const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
+                            redirectWin = window.open(redirectPage, "_blank");
+                        } catch (_) {}
+                    }
                     await showCopyAndRedirectCountdown({
                         text: draftText,
                         meta: meta,
                         clickedBtn: igFoundLink,
                         openAction: () => {
-                            openPlatformUrl(url);
+                            if (!redirectWin || redirectWin.closed) {
+                                openPlatformUrl(url);
+                            }
                         }
                     });
                 } else {
