@@ -39,6 +39,49 @@ document.addEventListener("DOMContentLoaded", () => {
         return null;
     }
 
+    function parseDiscordInput(val) {
+        if (!val) return null;
+        const str = String(val).trim();
+        const snowflake = extractDiscordSnowflake(str);
+        if (snowflake) {
+            return {
+                type: "id",
+                id: snowflake,
+                username: null,
+                display: `User ID: ${snowflake}`,
+                handle: snowflake,
+                url: `https://discord.com/users/${snowflake}`,
+                appUrl: `discord://-/users/${snowflake}`
+            };
+        }
+        const inviteMatch = str.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+        if (inviteMatch) {
+            return {
+                type: "invite",
+                id: null,
+                username: null,
+                display: `discord.gg/${inviteMatch[1]}`,
+                handle: inviteMatch[1],
+                url: `https://discord.gg/${inviteMatch[1]}`,
+                appUrl: `https://discord.gg/${inviteMatch[1]}`
+            };
+        }
+        let username = str.replace(/^https?:\/\/(www\.)?discord\.com\/(users\/|channels\/@me\/)?/i, '').trim();
+        username = username.replace(/^@+/, '').replace(/\/$/, '').trim();
+        if (username.length >= 2) {
+            return {
+                type: "username",
+                id: null,
+                username: username,
+                display: `@${username}`,
+                handle: `@${username}`,
+                url: "https://discord.com/channels/@me",
+                appUrl: "discord://-/channels/@me"
+            };
+        }
+        return null;
+    }
+
     // --------------------------------------------------------------------------
     // Social Media Icons & Metadata Helper
     // --------------------------------------------------------------------------
@@ -373,6 +416,7 @@ document.addEventListener("DOMContentLoaded", () => {
         instagramConfirmed: false,
         discordProfile: null,
         finalDiscordUserId: null,
+        finalDiscordUsername: null,
         discordConfirmed: false,
         socialProfiles: [],
         message: null,
@@ -2030,18 +2074,18 @@ document.addEventListener("DOMContentLoaded", () => {
             (openInstagramBtn && !openInstagramBtn.closest(".hidden") ? openInstagramBtn : null)));
 
         if (platformName.toLowerCase() === "discord") {
-            const discUserId = extractDiscordSnowflake(options.handle) ||
-                state.finalDiscordUserId ||
-                (state.discordProfile ? extractDiscordSnowflake(state.discordProfile.discord_user_id) : null);
+            const parsedDisc = parseDiscordInput(options.handle || state.finalDiscordUserId || state.finalDiscordUsername || (state.discordProfile ? (state.discordProfile.discord_user_id || state.discordProfile.discord_username) : ""));
+            const discUserId = parsedDisc?.type === "id" ? parsedDisc.id : (extractDiscordSnowflake(options.handle) || state.finalDiscordUserId || (state.discordProfile ? extractDiscordSnowflake(state.discordProfile.discord_user_id) : null));
+            const discUsername = parsedDisc?.type === "username" ? parsedDisc.username : (state.finalDiscordUsername || (state.discordProfile ? state.discordProfile.discord_username : (!discUserId && options.handle ? String(options.handle).replace(/^@+/, '') : null)));
 
             const inviteUrl = (options.profile && (options.profile.discord_invite || options.profile.url)) ||
                 (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url));
 
             const hasServerInvite = inviteUrl && (inviteUrl.includes("discord.gg") || inviteUrl.includes("discord.com/invite") || inviteUrl.includes("discord.io") || inviteUrl.includes("discord.me"));
 
-            // If neither user ID nor server invite was discovered, prompt for user ID
-            if (!discUserId && !hasServerInvite) {
-                showToast("Discord detected, but creator's Discord user ID could not be identified automatically. Enter their User ID to send.", "info");
+            // If neither user ID, username, nor server invite was discovered, prompt for user ID or username
+            if (!discUserId && !discUsername && !hasServerInvite) {
+                showToast("Discord detected, but creator's Discord user ID or username could not be identified automatically. Enter their User ID or username to send.", "info");
                 state.stage = "outreach_hub";
                 renderOutreachHub();
                 showScreen("outreachHub", 4);
@@ -2059,7 +2103,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const targetUrl = discUserId 
                 ? `https://discord.com/users/${discUserId}`
-                : inviteUrl;
+                : (discUsername ? `https://discord.com/channels/@me` : inviteUrl);
 
             const isMob = isMobileDevice();
 
@@ -2068,7 +2112,8 @@ document.addEventListener("DOMContentLoaded", () => {
             let redirectWin = null;
             if (!isMob) {
                 try {
-                    const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
+                    const redirectHandle = discUserId || (discUsername ? `@${discUsername}` : '');
+                    const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(redirectHandle)}`;
                     redirectWin = window.open(redirectPage, "_blank");
                 } catch (_) {}
             }
@@ -2078,10 +2123,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 state.stage = "sent";
                 state.selectedChannel = "discord";
                 if (discUserId) state.finalDiscordUserId = discUserId;
+                if (discUsername) state.finalDiscordUsername = discUsername;
                 saveSessionState();
 
                 if (vDmReadyTitle) {
-                    vDmReadyTitle.textContent = hasServerInvite && !discUserId ? "Discord Server Ready" : "Discord DM Ready";
+                    vDmReadyTitle.textContent = hasServerInvite && !discUserId && !discUsername ? "Discord Server Ready" : "Discord DM Ready";
                 }
                 if (vDmReadyActionTitle) {
                     vDmReadyActionTitle.textContent = "Review & Click Send in Discord";
@@ -2107,6 +2153,19 @@ document.addEventListener("DOMContentLoaded", () => {
                                 </a>
                             </div>
                             <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
+                        `;
+                    } else if (discUsername) {
+                        vDmReadyGuideText.innerHTML = `
+                            We opened Discord. Search or message <strong style="color: var(--black);">${escapeHtml(formatHandle(discUsername))}</strong> in Discord, then ${pasteHint.toLowerCase()}
+                            <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">
+                                <a href="discord://-/channels/@me" class="btn-primary" style="font-size: 11.5px; padding: 6px 14px; background: #5865F2; color: #FFF; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                    💬 Open in Discord App
+                                </a>
+                                <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" class="btn-secondary" style="font-size: 11.5px; padding: 6px 14px; text-decoration: none; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                                    🌐 Open in Discord Web
+                                </a>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord ↗</a></span>
                         `;
                     } else {
                         const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
@@ -2696,6 +2755,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (snowflake) {
                 return true;
             }
+            if (p.discord_username || state.finalDiscordUsername) {
+                return true;
+            }
             if (state.finalDiscordUserId && String(state.finalDiscordUserId) === String(p.discord_user_id || p.username)) {
                 return true;
             }
@@ -2721,15 +2783,29 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
         else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
 
-        const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(p.discord_user_id || p.username || p.url) : null;
         let handle;
-        if (pLower.includes("discord") && snowflake) {
-            handle = `User ID: ${snowflake}`;
+        let url;
+        if (pLower.includes("discord")) {
+            const parsed = parseDiscordInput(p.discord_user_id || p.discord_username || p.username || p.url || "");
+            if (parsed && parsed.type === "id") {
+                handle = `User ID: ${parsed.id}`;
+                url = p.url || parsed.url;
+            } else if (parsed && parsed.type === "username") {
+                handle = parsed.display;
+                url = p.url || parsed.url;
+            } else if (parsed && parsed.type === "invite") {
+                handle = parsed.display;
+                url = p.url || parsed.url;
+            } else {
+                handle = formatHandle(p.username || platformKey);
+                url = p.url || "https://discord.com/channels/@me";
+            }
         } else {
             handle = formatHandle(p.username || platformKey);
+            const cleanHandle = handle.replace('@', '');
+            url = p.url || `${defaultBase}/${cleanHandle}`;
         }
-        const cleanHandle = snowflake || handle.replace('@', '');
-        const url = p.url || (snowflake ? `https://discord.com/users/${snowflake}` : `${defaultBase}/${cleanHandle}`);
+        const cleanHandle = handle.replace(/^User ID:\s*/i, '').replace('@', '');
 
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "Creator";
@@ -2995,8 +3071,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 key: "discord",
                 platformName: "Discord",
                 displayName: "DISCORD",
-                enterButtonLabel: "Enter User ID",
-                placeholder: "Enter 17-20 digit Discord User ID (e.g. 1029384756...)",
+                enterButtonLabel: "Enter Profile",
+                placeholder: "Enter Discord User ID or username (e.g. @creator or 116605...)",
                 getProfile: () => {
                     const discUserId = state.finalDiscordUserId || (state.discordProfile && state.discordProfile.discord_user_id);
                     if (discUserId) {
@@ -3005,6 +3081,18 @@ document.addEventListener("DOMContentLoaded", () => {
                             username: discUserId,
                             discord_user_id: discUserId,
                             url: `https://discord.com/users/${discUserId}`,
+                            status: "sendable",
+                            source: (state.discordProfile && state.discordProfile.source) || "Manual entry",
+                            user_provided: true
+                        };
+                    }
+                    const discUsername = state.finalDiscordUsername || (state.discordProfile && state.discordProfile.discord_username);
+                    if (discUsername) {
+                        return {
+                            platform: "Discord",
+                            username: formatHandle(discUsername),
+                            discord_username: discUsername,
+                            url: (state.discordProfile && state.discordProfile.url) || "https://discord.com/channels/@me",
                             status: "sendable",
                             source: (state.discordProfile && state.discordProfile.source) || "Manual entry",
                             user_provided: true
@@ -3039,24 +3127,45 @@ document.addEventListener("DOMContentLoaded", () => {
                     return null;
                 },
                 save: (val) => {
-                    const trimmed = extractDiscordSnowflake(val);
-                    if (!trimmed) {
-                        showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                    const parsed = parseDiscordInput(val);
+                    if (!parsed) {
+                        showToast("Please enter a valid Discord User ID or username.", "error");
                         return false;
                     }
-                    state.finalDiscordUserId = trimmed;
-                    state.discordProfile = {
-                        status: "sendable",
-                        discord_user_id: trimmed,
-                        url: `https://discord.com/users/${trimmed}`,
-                        source: "Manual entry",
-                        user_provided: true
-                    };
+                    if (parsed.type === "id") {
+                        state.finalDiscordUserId = parsed.id;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_user_id: parsed.id,
+                            url: parsed.url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    } else if (parsed.type === "username") {
+                        state.finalDiscordUsername = parsed.username;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_username: parsed.username,
+                            username: parsed.display,
+                            url: parsed.url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    } else {
+                        state.discordProfile = {
+                            status: "discovered",
+                            discord_invite: parsed.url,
+                            url: parsed.url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    }
                     const discObj = {
                         platform: "Discord",
-                        username: trimmed,
-                        discord_user_id: trimmed,
-                        url: `https://discord.com/users/${trimmed}`,
+                        username: parsed.display,
+                        discord_user_id: parsed.id || null,
+                        discord_username: parsed.username || null,
+                        url: parsed.url,
                         source: "Manual entry",
                         user_provided: true,
                         confidence: "high",
@@ -3066,7 +3175,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase() === "discord");
                     if (idx >= 0) state.socialProfiles[idx] = discObj;
                     else state.socialProfiles.push(discObj);
-                    showToast(`✓ Discord User ID ${trimmed} saved!`);
+                    showToast(`✓ Discord ${parsed.display} saved!`);
                     return true;
                 }
             }
@@ -3279,11 +3388,16 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
         else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
 
-        const url = social.url || `${defaultBase}/${cleanHandle.replace('@', '')}`;
+        const url = social.url || (pLower.includes("discord")
+            ? (isNumericId ? `https://discord.com/users/${cleanHandle}` : "https://discord.com/channels/@me")
+            : `${defaultBase}/${cleanHandle.replace('@', '')}`);
 
         if (pLower.includes("discord")) {
-            if (isNumericId) {
-                state.finalDiscordUserId = cleanHandle;
+            const parsed = parseDiscordInput(social.discord_user_id || social.discord_username || social.username || social.url || "");
+            if (parsed && parsed.type === "id") {
+                state.finalDiscordUserId = parsed.id;
+            } else if (parsed && parsed.type === "username") {
+                state.finalDiscordUsername = parsed.username;
             }
         } else if (pLower.includes("instagram") || pLower === "ig") {
             state.instagramProfile = {
@@ -3574,27 +3688,48 @@ document.addEventListener("DOMContentLoaded", () => {
                 else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
                 else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
 
-                const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
-                const handle = (pLower.includes("discord") && snowflake) ? `User ID: ${snowflake}` : (active ? formatHandle(active.username) : "@creator");
+                const isDisc = pLower.includes("discord");
+                let handle;
+                let url;
+                if (isDisc) {
+                    const parsed = parseDiscordInput(active?.discord_user_id || active?.discord_username || active?.username || active?.url || "");
+                    if (parsed && parsed.type === "id") {
+                        handle = `User ID: ${parsed.id}`;
+                        url = active?.url || parsed.url;
+                        state.finalDiscordUserId = parsed.id;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_user_id: parsed.id,
+                            url: url,
+                            source: active?.source || (isProfileUserProvided(active) ? "Manual entry" : "Discovered"),
+                            user_provided: active?.user_provided || isProfileUserProvided(active)
+                        };
+                    } else if (parsed && parsed.type === "username") {
+                        handle = parsed.display;
+                        url = active?.url || parsed.url;
+                        state.finalDiscordUsername = parsed.username;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_username: parsed.username,
+                            username: parsed.display,
+                            url: url,
+                            source: active?.source || (isProfileUserProvided(active) ? "Manual entry" : "Discovered"),
+                            user_provided: active?.user_provided || isProfileUserProvided(active)
+                        };
+                    } else {
+                        handle = formatHandle(active?.username || "Discord");
+                        url = active?.url || "https://discord.com/channels/@me";
+                    }
+                } else {
+                    handle = active ? formatHandle(active.username) : "@creator";
+                    const cleanHandle = handle.replace('@', '');
+                    url = active ? (active.url || `${defaultBase}/${cleanHandle}`) : `${defaultBase}/${cleanHandle}`;
+                    if (pLower.includes("instagram")) {
+                        state.finalInstagramHandle = handle;
+                        state.finalInstagramUrl = url;
+                    }
+                }
                 const meta = getSocialMediaMeta(active ? active.platform : "Instagram");
-                const cleanHandle = snowflake || handle.replace('@', '');
-                const url = active ? (active.url || (snowflake ? `https://discord.com/users/${snowflake}` : `${defaultBase}/${cleanHandle}`)) : `${defaultBase}/${cleanHandle}`;
-
-                const isIg = pLower.includes("instagram");
-                if (isIg) {
-                    state.finalInstagramHandle = handle;
-                    state.finalInstagramUrl = url;
-                }
-                if (pLower.includes("discord") && snowflake) {
-                    state.finalDiscordUserId = snowflake;
-                    state.discordProfile = {
-                        status: "sendable",
-                        discord_user_id: snowflake,
-                        url: url,
-                        source: active.source || (isProfileUserProvided(active) ? "Manual entry" : "Discovered"),
-                        user_provided: active.user_provided || isProfileUserProvided(active)
-                    };
-                }
 
                 if (state.sessionId) {
                     await fetch("/api/outreach/confirm-instagram", {
@@ -3638,39 +3773,57 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (btnIgManualSubmit) btnIgManualSubmit.disabled = true;
                 const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
                 const pLower = (active.platform || "").toLowerCase();
-                const meta = getSocialMediaMeta(active.platform);
-                const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(handle) : null;
-                let formatted = formatHandle(handle);
-                if (snowflake) formatted = `User ID: ${snowflake}`;
+                const isDisc = pLower.includes("discord");
+                let formatted;
+                let url;
+                if (isDisc) {
+                    const parsed = parseDiscordInput(handle);
+                    if (!parsed) {
+                        showToast("Please enter a valid Discord User ID or username.", "error");
+                        return;
+                    }
+                    formatted = parsed.display;
+                    url = parsed.url;
+                    if (parsed.type === "id") {
+                        state.finalDiscordUserId = parsed.id;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_user_id: parsed.id,
+                            url: url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    } else {
+                        state.finalDiscordUsername = parsed.username;
+                        state.discordProfile = {
+                            status: "sendable",
+                            discord_username: parsed.username,
+                            username: parsed.display,
+                            url: url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    }
+                } else {
+                    formatted = formatHandle(handle);
+                    let defaultBase = "https://instagram.com";
+                    if (pLower === "x" || pLower.includes("twitter")) defaultBase = "https://x.com";
+                    else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
 
-                let defaultBase = "https://instagram.com";
-                if (pLower === "x" || pLower.includes("twitter")) defaultBase = "https://x.com";
-                else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
-                else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
+                    const cleanHandle = formatted.replace('@', '');
+                    url = `${defaultBase}/${cleanHandle}`;
 
-                const cleanHandle = snowflake || formatted.replace('@', '');
-                const url = snowflake ? `https://discord.com/users/${snowflake}` : `${defaultBase}/${cleanHandle}`;
-                
-                if (pLower.includes("instagram")) {
-                    state.finalInstagramHandle = formatted;
-                    state.finalInstagramUrl = url;
-                    state.instagramProfile = {
-                        platform: "Instagram",
-                        username: formatted,
-                        url: url,
-                        source: "Manual entry",
-                        user_provided: true
-                    };
-                }
-                if (snowflake) {
-                    state.finalDiscordUserId = snowflake;
-                    state.discordProfile = {
-                        status: "sendable",
-                        discord_user_id: snowflake,
-                        url: url,
-                        source: "Manual entry",
-                        user_provided: true
-                    };
+                    if (pLower.includes("instagram")) {
+                        state.finalInstagramHandle = formatted;
+                        state.finalInstagramUrl = url;
+                        state.instagramProfile = {
+                            platform: "Instagram",
+                            username: formatted,
+                            url: url,
+                            source: "Manual entry",
+                            user_provided: true
+                        };
+                    }
                 }
                 active.user_provided = true;
                 active.source = "Manual entry";
@@ -3829,15 +3982,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const disc = state.discordProfile || (state.socialProfiles || []).find(s => (s.platform || "").toLowerCase() === "discord");
         const discUserId = state.finalDiscordUserId || (disc ? (disc.discord_user_id || (/^[0-9]{17,20}$/.test(disc.username || '') ? disc.username : null)) : null);
-        const isSendable = !!discUserId;
+        const discUsername = state.finalDiscordUsername || (disc ? (disc.discord_username || (!discUserId && disc.username && !disc.username.includes('discord.gg') ? disc.username : null)) : null);
+        const isSendable = !!(discUserId || discUsername);
 
         if (hubSummaryDiscordVal) {
             if (discUserId) {
                 hubSummaryDiscordVal.textContent = `User ID: ${discUserId}`;
                 hubSummaryDiscordVal.style.color = "var(--green)";
-            } else if (disc && (disc.discord_username || disc.username)) {
-                hubSummaryDiscordVal.textContent = `Handle: ${disc.discord_username || disc.username}`;
-                hubSummaryDiscordVal.style.color = "var(--text-main)";
+            } else if (discUsername) {
+                hubSummaryDiscordVal.textContent = `@${String(discUsername).replace(/^@+/, '')}`;
+                hubSummaryDiscordVal.style.color = "var(--green)";
             } else if (disc && (disc.discord_invite || disc.url)) {
                 hubSummaryDiscordVal.textContent = `Invite: ${disc.discord_invite || disc.url}`;
                 hubSummaryDiscordVal.style.color = "var(--text-main)";
@@ -3855,19 +4009,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (isSendable) {
-            state.finalDiscordUserId = discUserId;
+            if (discUserId) state.finalDiscordUserId = discUserId;
+            if (discUsername) state.finalDiscordUsername = discUsername;
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = "READY · BOT ACTIVE";
+                discordStatusBadge.textContent = "READY · DISCORD DM";
                 discordStatusBadge.style.background = "#DCFCE7";
                 discordStatusBadge.style.color = "#166534";
                 discordStatusBadge.style.borderColor = "#22C55E";
             }
             if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
+            const targetUrl = discUserId ? `https://discord.com/users/${discUserId}` : `https://discord.com/channels/@me`;
+            const displayHandle = discUserId ? `User ID ${discUserId}` : `@${String(discUsername).replace(/^@+/, '')}`;
+            if (hubDiscordHeadHandle) {
+                hubDiscordHeadHandle.innerHTML = `Direct message to <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord">${displayHandle} ↗</a>`;
+                hubDiscordHeadHandle.onclick = null;
+            }
         } else if (disc) {
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = "USER ID NEEDED";
+                discordStatusBadge.textContent = "USER ID / USERNAME NEEDED";
                 discordStatusBadge.style.background = "#FEF3C7";
                 discordStatusBadge.style.color = "#92400E";
                 discordStatusBadge.style.borderColor = "#F59E0B";
@@ -3878,11 +4038,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via Discord DM";
         } else {
             // Discord NOT detected from video description -> show clean manual entry
             if (discordStatusBadge) {
-                discordStatusBadge.textContent = "ENTER USER ID";
+                discordStatusBadge.textContent = "ENTER USER ID / USERNAME";
                 discordStatusBadge.style.background = "#FEF3C7";
                 discordStatusBadge.style.color = "#92400E";
                 discordStatusBadge.style.borderColor = "#F59E0B";
@@ -3894,7 +4054,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
-            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Enter creator Discord User ID to send via bot";
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Enter creator Discord User ID or Username to send DM";
         }
 
         // 4. Other Socials Grid (Displays all other channels including Instagram, X, Reddit, LinkedIn, Facebook)
@@ -4072,21 +4232,39 @@ document.addEventListener("DOMContentLoaded", () => {
 
     async function sendDiscordOutreachMessage(opts = {}) {
         let userId = opts.recipientId || state.finalDiscordUserId;
+        let username = state.finalDiscordUsername;
         if (discordUserIdInput && discordUserIdInput.value.trim()) {
-            const extracted = extractDiscordSnowflake(discordUserIdInput.value.trim());
-            if (extracted) {
-                userId = extracted;
-                state.finalDiscordUserId = extracted;
+            const parsed = parseDiscordInput(discordUserIdInput.value.trim());
+            if (parsed) {
+                if (parsed.type === "id") {
+                    userId = parsed.id;
+                    username = null;
+                    state.finalDiscordUserId = parsed.id;
+                    state.finalDiscordUsername = null;
+                } else if (parsed.type === "username") {
+                    username = parsed.username;
+                    userId = null;
+                    state.finalDiscordUsername = parsed.username;
+                    state.finalDiscordUserId = null;
+                }
                 if (state.discordProfile) {
-                    state.discordProfile.discord_user_id = extracted;
+                    state.discordProfile.discord_user_id = parsed.type === "id" ? parsed.id : null;
+                    state.discordProfile.discord_username = parsed.type === "username" ? parsed.username : null;
+                    state.discordProfile.username = parsed.type === "username" ? parsed.username : parsed.id;
                     state.discordProfile.status = "sendable";
-                    state.discordProfile.url = `https://discord.com/users/${extracted}`;
+                    state.discordProfile.source = "Manual entry";
+                    state.discordProfile.user_provided = true;
+                    state.discordProfile.url = parsed.url;
                 } else {
                     state.discordProfile = {
-                        discord_user_id: extracted,
+                        discord_user_id: parsed.type === "id" ? parsed.id : null,
+                        discord_username: parsed.type === "username" ? parsed.username : null,
+                        username: parsed.type === "username" ? parsed.username : parsed.id,
                         discord_source: "manual",
+                        source: "Manual entry",
+                        user_provided: true,
                         status: "sendable",
-                        url: `https://discord.com/users/${extracted}`
+                        url: parsed.url
                     };
                 }
             }
@@ -4095,8 +4273,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const inviteUrl = (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url));
         const hasServerInvite = inviteUrl && (inviteUrl.includes("discord.gg") || inviteUrl.includes("discord.com/invite") || inviteUrl.includes("discord.io") || inviteUrl.includes("discord.me"));
 
-        if (!userId && !hasServerInvite) {
-            showToast("Please enter the creator's 17-20 digit Discord User ID above.", "info");
+        if (!userId && !username && !hasServerInvite) {
+            showToast("Please enter the creator's Discord User ID (17-20 digits) or Username above.", "info");
             if (discordIdentificationBanner) discordIdentificationBanner.classList.remove("hidden");
             if (discordUserIdInput) {
                 discordUserIdInput.focus();
@@ -4123,7 +4301,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         await dispatchSocialOutreach({
             platform: "Discord",
-            handle: userId,
+            handle: userId || (username ? `@${username}` : null),
             text: text,
             button: btnSendDiscordBot,
             returnScreen: opts.returnScreen || "outreach_hub"
@@ -4132,30 +4310,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnDiscordSetId && discordUserIdInput) {
         btnDiscordSetId.onclick = () => {
-            const rawId = discordUserIdInput.value.trim();
-            const cleanId = extractDiscordSnowflake(rawId);
-            if (!cleanId) {
-                showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+            const rawVal = discordUserIdInput.value.trim();
+            const parsed = parseDiscordInput(rawVal);
+            if (!parsed) {
+                showToast("Please enter a valid Discord User ID (17-20 digits) or Username (@creator).", "error");
                 discordUserIdInput.style.borderColor = "var(--red)";
                 return;
             }
-            discordUserIdInput.value = cleanId;
+            if (parsed.type === "id") {
+                discordUserIdInput.value = parsed.id;
+                state.finalDiscordUserId = parsed.id;
+                state.finalDiscordUsername = null;
+            } else if (parsed.type === "username") {
+                discordUserIdInput.value = `@${parsed.username}`;
+                state.finalDiscordUsername = parsed.username;
+                state.finalDiscordUserId = null;
+            } else if (parsed.type === "invite") {
+                discordUserIdInput.value = parsed.url;
+            }
             discordUserIdInput.style.borderColor = "var(--green)";
-            state.finalDiscordUserId = cleanId;
+
             if (state.discordProfile) {
-                state.discordProfile.discord_user_id = cleanId;
+                state.discordProfile.discord_user_id = parsed.type === "id" ? parsed.id : null;
+                state.discordProfile.discord_username = parsed.type === "username" ? parsed.username : null;
+                state.discordProfile.username = parsed.type === "username" ? parsed.username : parsed.id;
                 state.discordProfile.status = "sendable";
                 state.discordProfile.source = "Manual entry";
                 state.discordProfile.user_provided = true;
-                state.discordProfile.url = `https://discord.com/users/${cleanId}`;
+                state.discordProfile.url = parsed.url;
             } else {
                 state.discordProfile = {
-                    discord_user_id: cleanId,
+                    discord_user_id: parsed.type === "id" ? parsed.id : null,
+                    discord_username: parsed.type === "username" ? parsed.username : null,
+                    username: parsed.type === "username" ? parsed.username : parsed.id,
                     discord_source: "manual",
                     source: "Manual entry",
                     user_provided: true,
                     status: "sendable",
-                    url: `https://discord.com/users/${cleanId}`
+                    url: parsed.url
                 };
             }
             if (discordStatusBadge) {
@@ -4165,12 +4357,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 discordStatusBadge.style.borderColor = "#22C55E";
             }
             if (hubSummaryDiscordVal) {
-                hubSummaryDiscordVal.textContent = `User ID: ${cleanId}`;
+                hubSummaryDiscordVal.textContent = parsed.display;
                 hubSummaryDiscordVal.style.color = "var(--green)";
             }
             const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
             if (btnDirectProfile) {
-                btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
+                btnDirectProfile.href = parsed.url;
+                btnDirectProfile.textContent = parsed.type === "id" ? "Open Discord Profile ↗" : "Open Discord ↗";
                 btnDirectProfile.classList.remove("hidden");
                 btnDirectProfile.onclick = () => {
                     const text = discordMessageBody ? discordMessageBody.value.trim() : "";
@@ -4178,14 +4371,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 };
             }
             if (hubDiscordHeadHandle) {
-                hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${cleanId}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</a>`;
+                hubDiscordHeadHandle.innerHTML = `Direct message to <a href="${parsed.url}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord">${parsed.display} ↗</a>`;
                 hubDiscordHeadHandle.onclick = null;
             }
             if (btnSendDiscordBot) {
                 btnSendDiscordBot.disabled = false;
                 if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
             }
-            showToast("✓ Discord User ID saved. Ready to open profile & DM!");
+            showToast(`✓ Discord ${parsed.type === 'id' ? 'User ID' : 'Username'} saved. Ready to open Discord & DM!`);
         };
 
         discordUserIdInput.addEventListener("keydown", (e) => {
@@ -4197,11 +4390,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         discordUserIdInput.addEventListener("input", () => {
             const val = discordUserIdInput.value.trim();
-            const clean = extractDiscordSnowflake(val);
+            const parsed = parseDiscordInput(val);
             const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
-            if (clean) {
+            if (parsed) {
                 discordUserIdInput.style.borderColor = "var(--green)";
-                state.finalDiscordUserId = clean;
+                if (parsed.type === "id") {
+                    state.finalDiscordUserId = parsed.id;
+                    state.finalDiscordUsername = null;
+                } else if (parsed.type === "username") {
+                    state.finalDiscordUsername = parsed.username;
+                    state.finalDiscordUserId = null;
+                }
                 if (discordStatusBadge) {
                     discordStatusBadge.textContent = "READY · DISCORD DM";
                     discordStatusBadge.style.background = "#DCFCE7";
@@ -4209,7 +4408,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     discordStatusBadge.style.borderColor = "#22C55E";
                 }
                 if (btnDirectProfile) {
-                    btnDirectProfile.href = `https://discord.com/users/${clean}`;
+                    btnDirectProfile.href = parsed.url;
+                    btnDirectProfile.textContent = parsed.type === "id" ? "Open Discord Profile ↗" : "Open Discord ↗";
                     btnDirectProfile.classList.remove("hidden");
                     btnDirectProfile.onclick = () => {
                         const text = discordMessageBody ? discordMessageBody.value.trim() : "";
@@ -4217,7 +4417,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     };
                 }
                 if (hubDiscordHeadHandle) {
-                    hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${clean}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</a>`;
+                    hubDiscordHeadHandle.innerHTML = `Direct message to <a href="${parsed.url}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord">${parsed.display} ↗</a>`;
                     hubDiscordHeadHandle.onclick = null;
                 }
                 if (btnSendDiscordBot) {
