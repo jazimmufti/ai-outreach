@@ -169,7 +169,11 @@
 
                 if (secondsLeft <= 0) {
                     clearInterval(interval);
-                    window.location.replace(targetUrl);
+                    try {
+                        window.location.replace(targetUrl);
+                    } catch (_) {
+                        window.location.href = targetUrl;
+                    }
                 }
             }, 1000);
 

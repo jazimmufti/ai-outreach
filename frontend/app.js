@@ -602,6 +602,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const hubDiscordBlock = document.getElementById("hub-discord-block");
     const discordStatusBadge = document.getElementById("discord-status-badge");
     const discordIdentificationBanner = document.getElementById("discord-identification-banner");
+    const discordIdBannerTitle = document.getElementById("discord-id-banner-title");
+    const discordServerExplanation = document.getElementById("discord-server-explanation");
+    const btnDiscordVisitServer = document.getElementById("btn-discord-visit-server");
+    const discordIdTip = document.getElementById("discord-id-tip");
     const discordDiscoveredTarget = document.getElementById("discord-discovered-target");
     const discordUserIdInput = document.getElementById("discord-user-id-input");
     const btnDiscordSetId = document.getElementById("btn-discord-set-id");
@@ -2002,9 +2006,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const hasServerInvite = inviteUrl && (inviteUrl.includes("discord.gg") || inviteUrl.includes("discord.com/invite") || inviteUrl.includes("discord.io") || inviteUrl.includes("discord.me"));
 
-            // If neither user ID nor server invite was discovered, prompt for user ID
-            if (!discUserId && !hasServerInvite) {
-                showToast("Discord detected, but creator's Discord user ID could not be identified automatically. Enter their User ID to send.", "info");
+            // Direct messages cannot be sent to a server itself; require creator's Discord User ID
+            if (!discUserId) {
+                if (hasServerInvite) {
+                    showToast("Discord server detected. Direct messaging requires the creator's 17-20 digit Discord User ID.", "info");
+                } else {
+                    showToast("Discord detected, but creator's Discord user ID could not be identified automatically. Enter their User ID to send.", "info");
+                }
                 state.stage = "outreach_hub";
                 renderOutreachHub();
                 showScreen("outreachHub", 4);
@@ -2020,21 +2028,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            const targetUrl = discUserId 
-                ? `https://discord.com/users/${discUserId}`
-                : inviteUrl;
+            const targetUrl = `https://discord.com/users/${discUserId}`;
+            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
 
-            const isMob = isMobileDevice();
-
-            // On desktop, synchronously open the dedicated redirect page in a new tab within the active user gesture.
-            // This guarantees automatic new-tab countdown and navigation without browser popup blocker interference.
+            // Synchronously open the dedicated redirect page in a new tab within active user gesture.
+            // Supports both desktop and mobile browsers.
             let redirectWin = null;
-            if (!isMob) {
-                try {
-                    const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
-                    redirectWin = window.open(redirectPage, "_blank");
-                } catch (_) {}
-            }
+            try {
+                redirectWin = window.open(redirectPage, "_blank");
+            } catch (_) {}
 
             const executeDiscordOpen = async () => {
                 state.stageBeforeDelivery = options.returnScreen || "outreach_hub";
@@ -2104,9 +2106,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // If popup was blocked or running on mobile, execute openPlatformUrl
+                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so 4s countdown delay is guaranteed
                 if (!redirectWin || redirectWin.closed) {
-                    openPlatformUrl(targetUrl);
+                    openPlatformUrl(redirectPage);
                 }
             };
 
@@ -2126,6 +2128,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
+
+        let redirectWin = null;
+        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}`;
+        if (!extensionInstalled && isInstagram) {
+            try {
+                redirectWin = window.open(redirectPage, "_blank");
+            } catch (_) {}
+        }
 
         const executeOpen = async () => {
             if (extensionInstalled) {
@@ -2190,8 +2200,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Start live verification polling
                 startVerificationPolling();
 
-                // Open Instagram or destination platform
-                openPlatformUrl(dmUrl);
+                // Open Instagram or destination platform with countdown delay
+                if (isInstagram && !extensionInstalled) {
+                    if (!redirectWin || redirectWin.closed) {
+                        openPlatformUrl(redirectPage);
+                    }
+                } else {
+                    openPlatformUrl(dmUrl);
+                }
             }
         };
 
@@ -2684,15 +2700,28 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (pLower.includes("facebook") || pLower === "fb") defaultBase = "https://facebook.com";
         else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
 
-        const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(p.discord_user_id || p.username || p.url) : null;
+        const isDiscord = pLower.includes("discord");
+        const snowflake = isDiscord ? extractDiscordSnowflake(p.discord_user_id || p.username || p.url) : null;
+        const isDiscordServer = isDiscord && !snowflake && Boolean(
+            p.discord_invite ||
+            (p.url && (p.url.includes("discord.gg") || p.url.includes("discord.com/invite") || p.url.includes("discord.io") || p.url.includes("discord.me") || p.url.includes("/servers/"))) ||
+            (p.username && (p.username.includes("discord.gg") || p.username.includes("discord.com/invite") || p.username.includes("discord.io") || p.username.includes("discord.me")))
+        );
+        const serverInviteUrl = isDiscordServer ? (p.discord_invite || p.url || (p.username && p.username.startsWith("http") ? p.username : `https://${p.username}`)) : null;
+
         let handle;
-        if (pLower.includes("discord") && snowflake) {
+        if (isDiscord && snowflake) {
             handle = `User ID: ${snowflake}`;
+        } else if (isDiscordServer) {
+            const m = (serverInviteUrl || "").match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+            handle = m ? `discord.gg/${m[1]}` : (serverInviteUrl || "Discord Server").replace(/^https?:\/\//i, '');
         } else {
             handle = formatHandle(p.username || platformKey);
         }
         const cleanHandle = snowflake || handle.replace('@', '');
-        const url = p.url || (snowflake ? `https://discord.com/users/${snowflake}` : `${defaultBase}/${cleanHandle}`);
+        const url = isDiscordServer 
+            ? (serverInviteUrl || "https://discord.com") 
+            : (p.url || (snowflake ? `https://discord.com/users/${snowflake}` : `${defaultBase}/${cleanHandle}`));
 
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "Creator";
@@ -2709,10 +2738,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // 2. Step 2 Main Detected View
         if (igStepHeading) {
-            igStepHeading.textContent = `Confirm ${meta.name} Profile`;
+            igStepHeading.textContent = isDiscordServer ? "Discord Server Detected" : `Confirm ${meta.name} Profile`;
         }
         if (igStepSubheading) {
-            if (isUserProvided) {
+            if (isDiscordServer) {
+                igStepSubheading.innerHTML = `We found a Discord community server for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
+            } else if (isUserProvided) {
                 igStepSubheading.innerHTML = `${meta.name} profile provided for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
             } else {
                 igStepSubheading.innerHTML = `We found a ${meta.name} profile for <strong id="ig-found-creator-name">${escapeHtml(creatorName)}</strong>.`;
@@ -2723,12 +2754,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const igProfileBadge = document.getElementById("ig-profile-badge");
         if (igProfileBadge) {
-            igProfileBadge.textContent = isUserProvided ? "PROVIDED PROFILE" : "DETECTED PROFILE";
+            if (isDiscordServer) {
+                igProfileBadge.textContent = "DISCORD SERVER";
+                igProfileBadge.style.background = "#EEF2FF";
+                igProfileBadge.style.color = "#4338CA";
+                igProfileBadge.style.borderColor = "#6366F1";
+            } else {
+                igProfileBadge.textContent = isUserProvided ? "PROVIDED PROFILE" : "DETECTED PROFILE";
+                igProfileBadge.style.background = "";
+                igProfileBadge.style.color = "";
+                igProfileBadge.style.borderColor = "";
+            }
         }
         const igDiscordNotice = document.getElementById("ig-discord-requirement-notice");
         if (igDiscordNotice) {
-            if (pLower.includes("discord")) {
+            if (isDiscordServer) {
                 igDiscordNotice.classList.remove("hidden");
+                igDiscordNotice.innerHTML = `📢 <strong>Discord Server Detected:</strong> This is a community server, not a direct user account. Discord servers cannot receive direct messages. To message <strong>${escapeHtml(creatorName)}</strong> directly, you will need their <strong>17-20 digit Discord User ID</strong>. You can visit the server below, right-click the creator's avatar/name in the member list, select <em>Copy User ID</em>, and paste it.`;
+            } else if (isDiscord) {
+                igDiscordNotice.classList.remove("hidden");
+                igDiscordNotice.innerHTML = `💡 <strong>Before opening Discord:</strong> You must share at least one mutual server or be friends with the user on Discord to open their profile.`;
             } else {
                 igDiscordNotice.classList.add("hidden");
             }
@@ -2743,29 +2788,33 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (igFoundLink) {
             igFoundLink.href = url;
-            igFoundLink.innerHTML = `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
+            igFoundLink.innerHTML = isDiscordServer
+                ? `<span>Visit Server</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`
+                : `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
             igFoundLink.onclick = async (e) => {
                 if (e) e.preventDefault();
+                if (isDiscordServer) {
+                    openPlatformUrl(url);
+                    return;
+                }
                 const draftText = (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden") ? igConfirmedMessageDraft.value.trim() : "") ||
                                   (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
                                   generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
                 
-                const isCountedPlatform = isIg || pLower.includes("discord");
+                const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
                     let redirectWin = null;
-                    if (!isMobileDevice()) {
-                        try {
-                            const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
-                            redirectWin = window.open(redirectPage, "_blank");
-                        } catch (_) {}
-                    }
+                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
+                    try {
+                        redirectWin = window.open(redirectPage, "_blank");
+                    } catch (_) {}
                     await showCopyAndRedirectCountdown({
                         text: draftText,
                         meta: meta,
                         clickedBtn: igFoundLink,
                         openAction: () => {
                             if (!redirectWin || redirectWin.closed) {
-                                openPlatformUrl(url);
+                                openPlatformUrl(redirectPage);
                             }
                         }
                     });
@@ -3055,15 +3104,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isNumericId = /^[0-9]{17,20}$/.test(String(rawHandle).replace(/^@+/, ''));
                 
                 let displayHandle;
+                let isDiscordServerProfile = false;
                 if (cfg.key === "discord") {
                     if (isNumericId || detectedProfile.discord_user_id) {
                         displayHandle = `User ID: ${detectedProfile.discord_user_id || String(rawHandle).replace(/^@+/, '')}`;
                     } else if (detectedProfile.discord_invite) {
+                        isDiscordServerProfile = true;
                         const m = detectedProfile.discord_invite.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
-                        displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.discord_invite.replace(/^https?:\/\//i, '');
+                        displayHandle = m ? `Server: discord.gg/${m[1]}` : `Server: ${detectedProfile.discord_invite.replace(/^https?:\/\//i, '')}`;
                     } else if (detectedProfile.url && (detectedProfile.url.includes("discord.gg") || detectedProfile.url.includes("discord.com/invite") || detectedProfile.url.includes("discord.io") || detectedProfile.url.includes("discord.me"))) {
+                        isDiscordServerProfile = true;
                         const m = detectedProfile.url.match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
-                        displayHandle = m ? `discord.gg/${m[1]}` : detectedProfile.url.replace(/^https?:\/\//i, '');
+                        displayHandle = m ? `Server: discord.gg/${m[1]}` : `Server: ${detectedProfile.url.replace(/^https?:\/\//i, '')}`;
                     } else if (detectedProfile.discord_username) {
                         displayHandle = formatHandle(detectedProfile.discord_username);
                     } else {
@@ -3097,6 +3149,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                 }
 
+                const actionBtnText = isDiscordServerProfile ? "Visit Server ↗" : "Send DM ↗";
+                const actionBtnTitle = isDiscordServerProfile ? "Visit Discord Server to find Creator" : `Send DM on ${escapeHtml(meta.name)}`;
+
                 item.innerHTML = `
                     <div class="other-social-left">
                         <div class="other-social-icon" style="background: ${meta.bgColor};">
@@ -3108,7 +3163,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                     </div>
                     <div class="other-social-actions">
-                        <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="Send DM on ${escapeHtml(meta.name)}">Send DM ↗</button>
+                        <button type="button" class="other-social-open-dm-btn other-social-open-link" style="background: var(--bg-cream); border: 1.5px solid var(--black); font-weight: 700; cursor: pointer;" title="${actionBtnTitle}">${actionBtnText}</button>
                         <button type="button" class="other-social-select-btn ${isSelected ? 'active-selected' : ''}" title="Use this handle for outreach">
                             ${isSelected ? '✓ Selected' : 'Select'}
                         </button>
@@ -3119,6 +3174,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (dmBtn) {
                     dmBtn.onclick = (e) => {
                         e.stopPropagation();
+                        if (isDiscordServerProfile) {
+                            const sUrl = detectedProfile.discord_invite || detectedProfile.url || "https://discord.com";
+                            openPlatformUrl(sUrl);
+                            return;
+                        }
                         dispatchSocialOutreach({
                             profile: detectedProfile,
                             platform: detectedProfile.platform || cfg.platformName,
@@ -3794,15 +3854,26 @@ document.addEventListener("DOMContentLoaded", () => {
         const discUserId = state.finalDiscordUserId || (disc ? (disc.discord_user_id || (/^[0-9]{17,20}$/.test(disc.username || '') ? disc.username : null)) : null);
         const isSendable = !!discUserId;
 
+        const isDiscordServer = Boolean(
+            disc && !discUserId && (
+                disc.discord_invite ||
+                (disc.url && (disc.url.includes("discord.gg") || disc.url.includes("discord.com/invite") || disc.url.includes("discord.io") || disc.url.includes("discord.me") || disc.url.includes("/servers/"))) ||
+                (disc.username && (disc.username.includes("discord.gg") || disc.username.includes("discord.com/invite") || disc.username.includes("discord.io") || disc.username.includes("discord.me")))
+            )
+        );
+        const serverInviteUrl = isDiscordServer ? (disc.discord_invite || disc.url || (disc.username && disc.username.startsWith("http") ? disc.username : `https://${disc.username}`)) : null;
+
         if (hubSummaryDiscordVal) {
             if (discUserId) {
                 hubSummaryDiscordVal.textContent = `User ID: ${discUserId}`;
                 hubSummaryDiscordVal.style.color = "var(--green)";
+            } else if (isDiscordServer) {
+                const m = (serverInviteUrl || "").match(/discord(?:\.gg|\.com\/invite|\.io|\.me)\/([a-zA-Z0-9_\-]+)/i);
+                const shortServer = m ? `discord.gg/${m[1]}` : (serverInviteUrl || "Server").replace(/^https?:\/\//i, '');
+                hubSummaryDiscordVal.textContent = `Server: ${shortServer} (User ID needed)`;
+                hubSummaryDiscordVal.style.color = "var(--amber)";
             } else if (disc && (disc.discord_username || disc.username)) {
                 hubSummaryDiscordVal.textContent = `Handle: ${disc.discord_username || disc.username}`;
-                hubSummaryDiscordVal.style.color = "var(--text-main)";
-            } else if (disc && (disc.discord_invite || disc.url)) {
-                hubSummaryDiscordVal.textContent = `Invite: ${disc.discord_invite || disc.url}`;
                 hubSummaryDiscordVal.style.color = "var(--text-main)";
             } else {
                 hubSummaryDiscordVal.textContent = "Not detected (Manual)";
@@ -3826,8 +3897,35 @@ document.addEventListener("DOMContentLoaded", () => {
                 discordStatusBadge.style.borderColor = "#22C55E";
             }
             if (discordIdentificationBanner) discordIdentificationBanner.classList.add("hidden");
+            if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+            if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = `Direct message to ID ${discUserId}`;
+        } else if (isDiscordServer) {
+            if (discordStatusBadge) {
+                discordStatusBadge.textContent = "DISCORD SERVER · USER ID NEEDED";
+                discordStatusBadge.style.background = "#FEF3C7";
+                discordStatusBadge.style.color = "#92400E";
+                discordStatusBadge.style.borderColor = "#F59E0B";
+            }
+            if (discordIdentificationBanner) {
+                discordIdentificationBanner.classList.remove("hidden");
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Discord Server Detected — Creator User ID Required";
+                if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = serverInviteUrl || "Discord Server";
+                if (discordServerExplanation) {
+                    discordServerExplanation.classList.remove("hidden");
+                    discordServerExplanation.innerHTML = `📢 <strong>Discord Server Detected:</strong> A community server invite was found in the video description (<strong>${escapeHtml(serverInviteUrl || "discord.gg")}</strong>). Discord servers cannot receive direct messages. To send a DM, please enter the creator's <strong>17-20 digit Discord User ID</strong> below.`;
+                }
+                if (btnDiscordVisitServer && serverInviteUrl) {
+                    btnDiscordVisitServer.href = serverInviteUrl;
+                    btnDiscordVisitServer.classList.remove("hidden");
+                }
+                if (discordIdTip) {
+                    discordIdTip.innerHTML = `💡 Need their User ID? Click 'Visit Server' above, right-click the creator's avatar or name in the server member list, select <em>Copy User ID</em>, and paste it here.`;
+                }
+            }
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+            if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message to creator (Enter User ID)";
         } else if (disc) {
             if (discordStatusBadge) {
                 discordStatusBadge.textContent = "USER ID NEEDED";
@@ -3837,8 +3935,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (discordIdentificationBanner) {
                 discordIdentificationBanner.classList.remove("hidden");
-                const targetStr = (disc && (disc.discord_invite || disc.discord_username || disc.url || disc.username)) || "Server invite";
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
+                if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+                if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
+                const targetStr = disc.discord_username || disc.username || "Discord";
                 if (discordDiscoveredTarget) discordDiscoveredTarget.textContent = targetStr;
+                if (discordIdTip) {
+                    discordIdTip.innerHTML = `💡 Right-click creator profile in Discord &rarr; <em>Copy User ID</em>`;
+                }
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
             if (hubDiscordHeadHandle) hubDiscordHeadHandle.textContent = "Direct message via official bot";
@@ -3852,8 +3956,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (discordIdentificationBanner) {
                 discordIdentificationBanner.classList.remove("hidden");
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
+                if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+                if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
                 if (discordFoundDetails) {
                     discordFoundDetails.innerHTML = `<span style="color: var(--text-muted);">Discord not detected in description</span>`;
+                }
+                if (discordIdTip) {
+                    discordIdTip.innerHTML = `💡 Right-click creator profile in Discord &rarr; <em>Copy User ID</em>`;
                 }
             }
             if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
@@ -4058,8 +4168,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const inviteUrl = (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.url));
         const hasServerInvite = inviteUrl && (inviteUrl.includes("discord.gg") || inviteUrl.includes("discord.com/invite") || inviteUrl.includes("discord.io") || inviteUrl.includes("discord.me"));
 
-        if (!userId && !hasServerInvite) {
-            showToast("Please enter the creator's 17-20 digit Discord User ID above.", "info");
+        if (!userId) {
+            if (hasServerInvite) {
+                showToast("A Discord server was detected. Please enter the creator's 17-20 digit Discord User ID to send outreach.", "info");
+            } else {
+                showToast("Please enter the creator's 17-20 digit Discord User ID above.", "info");
+            }
             if (discordIdentificationBanner) discordIdentificationBanner.classList.remove("hidden");
             if (discordUserIdInput) {
                 discordUserIdInput.focus();
@@ -4131,6 +4245,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 hubSummaryDiscordVal.textContent = `User ID: ${cleanId}`;
                 hubSummaryDiscordVal.style.color = "var(--green)";
             }
+            if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+            if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
+            if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
             const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
             if (btnDirectProfile) {
                 btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
@@ -4165,6 +4282,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (clean) {
                 discordUserIdInput.style.borderColor = "var(--green)";
                 state.finalDiscordUserId = clean;
+                if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+                if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
                 if (discordStatusBadge) {
                     discordStatusBadge.textContent = "READY · DISCORD DM";
                     discordStatusBadge.style.background = "#DCFCE7";
