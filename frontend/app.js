@@ -318,33 +318,31 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // On Desktop:
+        // On Desktop: Always open in a new tab (_blank), never redirect the current tab
         let openedWin = null;
         try {
-            openedWin = window.open(url, "_blank", "noopener,noreferrer");
+            openedWin = window.open(url, "_blank");
+            if (openedWin) {
+                try { openedWin.focus(); } catch (_) {}
+                return;
+            }
         } catch (e) {
             console.warn("window.open failed:", e);
         }
 
-        if (!openedWin || openedWin.closed || typeof openedWin.closed === "undefined") {
-            try {
-                const a = document.createElement("a");
-                a.href = url;
-                a.target = "_blank";
-                a.rel = "noopener noreferrer";
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    try { document.body.removeChild(a); } catch (_) {}
-                }, 200);
-            } catch (err) {
-                console.warn("Anchor click fallback failed:", err);
-            }
-            // Fallback: If opening in a new tab was blocked (e.g. after delayed countdown),
-            // navigate current window so the redirection is guaranteed to happen
-            try {
-                window.location.href = url;
-            } catch (_) {}
+        // Anchor fallback for new tab
+        try {
+            const a = document.createElement("a");
+            a.href = url;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                try { document.body.removeChild(a); } catch (_) {}
+            }, 300);
+        } catch (err) {
+            console.warn("Anchor click fallback failed:", err);
         }
     }
 
