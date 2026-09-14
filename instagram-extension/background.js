@@ -79,17 +79,6 @@ async function handleIncomingMessage(request, sender) {
         // Persist session in chrome.storage.local
         await chrome.storage.local.set({ activeOutreachSession: sessionData });
 
-        // If skipTabCreate or delayOpen is requested, the tab is already opened / managed by Arclent countdown
-        if (request.skipTabCreate || request.delayOpen || request.managedRedirect) {
-            console.log("[Arclent Extension] Outreach session persisted for redirect countdown flow.");
-            return {
-                success: true,
-                status: "session_saved",
-                username: username,
-                sessionId: sessionId
-            };
-        }
-
         // Look for existing Instagram tab
         let targetTab = null;
         try {

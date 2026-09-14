@@ -294,24 +294,43 @@ document.addEventListener("DOMContentLoaded", () => {
         return isMobileUA || isTouchMac || isNarrowTouch;
     }
 
-    // Helper: Safely open URL in a new tab on every device (desktop and mobile).
-    // Avoids replacing or navigating away from the current Arclent tab.
+    // Helper: Safely open URL. On mobile, direct navigation triggers OS Universal Links into the native app,
+    // avoids mobile browser popup blockers, and preserves session. On desktop, opens in a new tab.
     function openPlatformUrl(url) {
-        if (!url) return null;
+        if (!url) return;
+        const isMobile = isMobileDevice();
 
-        // Try standard window.open first
+        if (isMobile) {
+            // Direct navigation on mobile triggers OS Universal Links into the native app (e.g. Instagram)
+            // without being blocked by Safari or Chrome popup blockers.
+            try {
+                window.location.href = url;
+            } catch (e) {
+                console.warn("window.location navigation failed:", e);
+                const a = document.createElement("a");
+                a.href = url;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    try { document.body.removeChild(a); } catch (_) {}
+                }, 100);
+            }
+            return;
+        }
+
+        // On Desktop: Always open in a new tab (_blank), never redirect the current tab
         let openedWin = null;
         try {
             openedWin = window.open(url, "_blank");
             if (openedWin) {
                 try { openedWin.focus(); } catch (_) {}
-                return openedWin;
+                return;
             }
         } catch (e) {
             console.warn("window.open failed:", e);
         }
 
-        // Anchor fallback for mobile browsers where window.open may be restricted
+        // Anchor fallback for new tab
         try {
             const a = document.createElement("a");
             a.href = url;
@@ -322,11 +341,9 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 try { document.body.removeChild(a); } catch (_) {}
             }, 300);
-            return a;
         } catch (err) {
             console.warn("Anchor click fallback failed:", err);
         }
-        return null;
     }
 
     // Backwards-compatibility alias
@@ -1763,7 +1780,6 @@ document.addEventListener("DOMContentLoaded", () => {
             sessionId: sessionId,
             backendOrigin: window.location.origin,
             senderHandle: state.senderHandle || null,
-            skipTabCreate: true,
             source: "arclent"
         }, "*");
 
@@ -2013,14 +2029,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const targetUrl = `https://discord.com/users/${discUserId}`;
-            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}&text=${encodeURIComponent(text || '')}`;
-            const fullRedirectPage = new URL(redirectPage, window.location.origin).href;
+            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
 
             // Synchronously open the dedicated redirect page in a new tab within active user gesture.
             // Supports both desktop and mobile browsers.
             let redirectWin = null;
             try {
-                redirectWin = openPlatformUrl(fullRedirectPage);
+                redirectWin = window.open(redirectPage, "_blank");
             } catch (_) {}
 
             const executeDiscordOpen = async () => {
@@ -2059,7 +2074,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
                         `;
                     } else {
-                        const fallbackTarget = 'target="_blank" rel="noopener noreferrer"';
+                        const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
                         vDmReadyGuideText.innerHTML = `We opened creator's Discord server. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord ↗</a></span>`;
                     }
                 }
@@ -2091,9 +2106,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so countdown delay is guaranteed
+                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so 4s countdown delay is guaranteed
                 if (!redirectWin || redirectWin.closed) {
-                    openPlatformUrl(fullRedirectPage);
+                    openPlatformUrl(redirectPage);
                 }
             };
 
@@ -2108,110 +2123,89 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
-        const cleanIgUsername = isInstagram ? normalizeInstagramHandle(handle || targetHandleOrUrl) : "";
+        const isDesktop = !isMobileDevice();
+        const extensionInstalled = isInstagram && isDesktop && (checkDirectDomPresence() || !!state.extensionInstalled);
+
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
-        const destinationUrl = isInstagram && cleanIgUsername ? `https://www.instagram.com/${encodeURIComponent(cleanIgUsername)}/` : dmUrl;
 
         let redirectWin = null;
-        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(destinationUrl)}&handle=${encodeURIComponent(cleanIgUsername || handle || '')}&text=${encodeURIComponent(text || '')}`;
-        const fullRedirectPage = new URL(redirectPage, window.location.origin).href;
-
-        // Post outreach message to extension via bridge so activeOutreachSession is persisted in chrome.storage.local
-        if (isInstagram && cleanIgUsername) {
-            state.pendingExtensionSession = {
-                username: cleanIgUsername,
-                handle: formatHandle(cleanIgUsername),
-                message: text,
-                sessionId: state.sessionId
-            };
-
-            window.postMessage({
-                type: "ARCLENT_INSTAGRAM_OUTREACH",
-                username: cleanIgUsername,
-                message: text,
-                sessionId: state.sessionId,
-                backendOrigin: window.location.origin,
-                senderHandle: state.senderHandle || null,
-                skipTabCreate: true,
-                source: "arclent"
-            }, "*");
-        }
-
-        // Synchronously open platform or redirect page in a new tab within the user gesture on all devices
-        if (isInstagram) {
+        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}`;
+        if (!extensionInstalled && isInstagram) {
             try {
-                redirectWin = openPlatformUrl(fullRedirectPage);
-            } catch (_) {}
-        } else {
-            try {
-                redirectWin = openPlatformUrl(dmUrl);
+                redirectWin = window.open(redirectPage, "_blank");
             } catch (_) {}
         }
 
         const executeOpen = async () => {
-            // Transition original tab to Confirmation Status
-            state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
-            state.stage = "sent";
-            state.selectedChannel = platformName.toLowerCase();
-            saveSessionState();
-
-            if (vDmReadyTitle) {
-                vDmReadyTitle.textContent = `${meta.name} DM Ready`;
-            }
-            if (vDmReadyActionTitle) {
-                vDmReadyActionTitle.textContent = `Review & Click Send in ${meta.name}`;
-            }
-            if (vDmReadyConfirmPrompt) {
-                vDmReadyConfirmPrompt.textContent = `Did you click Send in ${meta.name}?`;
-            }
-
-            const isMob = isMobileDevice();
-            if (vDmReadySub) {
-                vDmReadySub.textContent = `Your draft message was copied to clipboard. Ready to paste and send in ${meta.name}.`;
-            }
-            if (vDmReadyGuideText) {
-                const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
-                const fallbackTarget = 'target="_blank" rel="noopener noreferrer"';
-                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${destinationUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
-            }
-
-            if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
-            if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
-            if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
-            if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
-            if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
-            if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
-
-            showScreen("deliverySuccess", 4);
-
-            // Notify backend of social outreach dispatch
-            if (state.sessionId) {
-                const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
-                fetch("/api/outreach/record-social-outreach", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        session_id: state.sessionId,
-                        platform: platformName,
-                        handle: handle,
-                        sender_handle: state.senderHandle || null,
-                        sender_identity: senderIdentity,
-                        message: text
-                    })
-                }).catch(() => {});
-            }
-
-            // Start live verification polling
-            startVerificationPolling();
-
-            // Open Instagram or destination platform with countdown delay if not already opened
-            if (isInstagram) {
-                if (!redirectWin || redirectWin.closed) {
-                    openPlatformUrl(fullRedirectPage);
-                }
+            if (extensionInstalled) {
+                await dispatchInstagramWithExtension({
+                    username: handle,
+                    message: text,
+                    sessionId: state.sessionId
+                });
             } else {
-                if (!redirectWin || redirectWin.closed) {
+                // Transition original tab to Confirmation Status
+                state.stageBeforeDelivery = options.returnScreen || (state.stage === "verify_instagram" ? "verify_instagram" : "outreach_hub");
+                state.stage = "sent";
+                state.selectedChannel = platformName.toLowerCase();
+                saveSessionState();
+
+                if (vDmReadyTitle) {
+                    vDmReadyTitle.textContent = `${meta.name} DM Ready`;
+                }
+                if (vDmReadyActionTitle) {
+                    vDmReadyActionTitle.textContent = `Review & Click Send in ${meta.name}`;
+                }
+                if (vDmReadyConfirmPrompt) {
+                    vDmReadyConfirmPrompt.textContent = `Did you click Send in ${meta.name}?`;
+                }
+
+                const isMob = isMobileDevice();
+                if (vDmReadySub) {
+                    vDmReadySub.textContent = `Your draft message was copied to clipboard. Ready to paste and send in ${meta.name}.`;
+                }
+                if (vDmReadyGuideText) {
+                    const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
+                    const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
+                    vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                }
+
+                if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
+                if (btnBackDelivery) btnBackDelivery.classList.remove("hidden");
+                if (verificationDmReadyBox) verificationDmReadyBox.classList.remove("hidden");
+                if (verificationPendingBox) verificationPendingBox.classList.add("hidden");
+                if (verificationSuccessBox) verificationSuccessBox.classList.add("hidden");
+                if (verificationRejectedBox) verificationRejectedBox.classList.add("hidden");
+
+                showScreen("deliverySuccess", 4);
+
+                // Notify backend of social outreach dispatch
+                if (state.sessionId) {
+                    const senderIdentity = state.senderHandle ? `${state.senderHandle.replace(/^@+/, '')} on Arclent` : "Someone on Arclent";
+                    fetch("/api/outreach/record-social-outreach", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            session_id: state.sessionId,
+                            platform: platformName,
+                            handle: handle,
+                            sender_handle: state.senderHandle || null,
+                            sender_identity: senderIdentity,
+                            message: text
+                        })
+                    }).catch(() => {});
+                }
+
+                // Start live verification polling
+                startVerificationPolling();
+
+                // Open Instagram or destination platform with countdown delay
+                if (isInstagram && !extensionInstalled) {
+                    if (!redirectWin || redirectWin.closed) {
+                        openPlatformUrl(redirectPage);
+                    }
+                } else {
                     openPlatformUrl(dmUrl);
                 }
             }
@@ -2707,7 +2701,6 @@ document.addEventListener("DOMContentLoaded", () => {
         else if (pLower.includes("discord")) defaultBase = "https://discord.com/users";
 
         const isDiscord = pLower.includes("discord");
-        const isIg = pLower.includes("instagram") || pLower === "ig";
         const snowflake = isDiscord ? extractDiscordSnowflake(p.discord_user_id || p.username || p.url) : null;
         const isDiscordServer = isDiscord && !snowflake && Boolean(
             p.discord_invite ||
@@ -2811,33 +2804,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
                     let redirectWin = null;
-                    const igHandle = isIg ? cleanHandle : "";
-                    const redirectTargetUrl = isIg ? (igHandle ? `https://www.instagram.com/${encodeURIComponent(igHandle)}/` : getDirectMessageUrl("Instagram", cleanHandle)) : url;
-                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(redirectTargetUrl)}&handle=${encodeURIComponent(igHandle || cleanHandle || '')}&text=${encodeURIComponent(draftText || '')}`;
-                    const fullRedirectPage = new URL(redirectPage, window.location.origin).href;
-
-                    if (isIg && igHandle) {
-                        state.pendingExtensionSession = {
-                            username: igHandle,
-                            handle: formatHandle(igHandle),
-                            message: draftText,
-                            sessionId: state.sessionId
-                        };
-
-                        window.postMessage({
-                            type: "ARCLENT_INSTAGRAM_OUTREACH",
-                            username: igHandle,
-                            message: draftText,
-                            sessionId: state.sessionId,
-                            backendOrigin: window.location.origin,
-                            senderHandle: state.senderHandle || null,
-                            skipTabCreate: true,
-                            source: "arclent"
-                        }, "*");
-                    }
-
+                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
                     try {
-                        redirectWin = openPlatformUrl(fullRedirectPage);
+                        redirectWin = window.open(redirectPage, "_blank");
                     } catch (_) {}
                     await showCopyAndRedirectCountdown({
                         text: draftText,
@@ -2845,22 +2814,16 @@ document.addEventListener("DOMContentLoaded", () => {
                         clickedBtn: igFoundLink,
                         openAction: () => {
                             if (!redirectWin || redirectWin.closed) {
-                                openPlatformUrl(fullRedirectPage);
+                                openPlatformUrl(redirectPage);
                             }
                         }
                     });
                 } else {
-                    let newWin = null;
-                    try {
-                        newWin = openPlatformUrl(url);
-                    } catch (_) {}
                     if (draftText) {
                         await copyTextToClipboard(draftText);
                         showToast(`✓ Copied message for ${meta.name}!`);
                     }
-                    if (!newWin || newWin.closed) {
-                        openPlatformUrl(url);
-                    }
+                    openPlatformUrl(url);
                 }
             };
         }
@@ -3584,10 +3547,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (igServerVisitRow && igServerVisitLink) {
             if (isServer && serverInviteUrl) {
                 igServerVisitLink.href = serverInviteUrl;
-                igServerVisitLink.onclick = (e) => {
-                    e.preventDefault();
-                    openPlatformUrl(serverInviteUrl);
-                };
                 igServerVisitRow.classList.remove("hidden");
             } else {
                 igServerVisitRow.classList.add("hidden");
@@ -3961,15 +3920,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (btnIgOpenSend) {
-        btnIgOpenSend.onclick = (e) => {
-            if (e) e.preventDefault();
-            const active = state.activeSocialProfile || state.instagramProfile || { platform: "Instagram" };
-            dispatchSocialOutreach({
-                platform: active.platform || "Instagram",
-                profile: active,
-                returnScreen: "verify_instagram",
-                button: btnIgOpenSend
-            });
+        btnIgOpenSend.onclick = () => {
+            dispatchSocialOutreach({ returnScreen: "verify_instagram", button: btnIgOpenSend });
         };
     }
 
@@ -4252,16 +4204,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         <span>Send DM ↗</span>
                     </button>
                 `;
-                card.style.cursor = "pointer";
-                card.onclick = (e) => {
-                    if (e.target.closest(".hub-social-send-btn")) return;
-                    openPlatformUrl(s.url || getDirectMessageUrl(s.platform, s.username));
-                };
                 const sendBtn = card.querySelector(".hub-social-send-btn");
                 if (sendBtn) {
                     sendBtn.onclick = (e) => {
                         e.preventDefault();
-                        e.stopPropagation();
                         dispatchSocialOutreach({
                             profile: s,
                             platform: s.platform,
@@ -4373,14 +4319,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (openInstagramBtn) {
-        openInstagramBtn.onclick = (e) => {
-            if (e) e.preventDefault();
-            dispatchSocialOutreach({
-                platform: "Instagram",
-                profile: state.instagramProfile || { platform: "Instagram" },
-                returnScreen: "outreach_hub",
-                button: openInstagramBtn
-            });
+        openInstagramBtn.onclick = () => {
+            dispatchSocialOutreach({ returnScreen: "outreach_hub", button: openInstagramBtn });
         };
     }
 

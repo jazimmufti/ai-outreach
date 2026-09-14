@@ -20,7 +20,6 @@
   ],
   "host_permissions": [
     "https://www.instagram.com/*",
-    "https://ig.me/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://*.arclent.com/*",
@@ -43,8 +42,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.instagram.com/*",
-        "https://ig.me/*"
+        "https://www.instagram.com/*"
       ],
       "js": [
         "content.js"

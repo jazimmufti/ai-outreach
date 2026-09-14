@@ -148,32 +148,21 @@
 
     // 1. Locate the Profile "Message" Button
     function findInstagramMessageButton() {
-        // Strategy A: Direct message links or standard buttons with text "Message"
-        const candidates = Array.from(document.querySelectorAll('button, div[role="button"], a[role="button"], a[href*="/direct/t/"], a[href*="/direct/new/"], a[href*="/direct/"]'));
+        // Strategy A: Standard button/link with text "Message" or "Send message"
+        const candidates = Array.from(document.querySelectorAll('button, div[role="button"], a[role="button"], a[href*="/direct/t/"], a[href*="/direct/new/"]'));
         
         for (const el of candidates) {
-            // Direct link match
-            if (el.matches && el.matches('a[href*="/direct/t/"], a[href*="/direct/new/"], a[href*="/direct/"]')) {
-                const rect = el.getBoundingClientRect();
-                if (rect.width > 0 && rect.height > 0) return el;
-            }
-
             // Check visible text
             const text = (el.textContent || "").trim().toLowerCase();
             const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
             const title = (el.getAttribute("title") || "").toLowerCase();
 
             if (text === "message" || text === "send message" || ariaLabel === "message" || ariaLabel === "send message" || title === "message") {
+                // Check if element is visible
                 const rect = el.getBoundingClientRect();
                 if (rect.width > 0 && rect.height > 0) {
                     return el;
                 }
-            }
-
-            // Check internal svg
-            if (el.querySelector('svg[aria-label="Message"], svg[aria-label="Direct"], svg[aria-label="Send message"]')) {
-                const rect = el.getBoundingClientRect();
-                if (rect.width > 0 && rect.height > 0) return el;
             }
         }
 
@@ -322,17 +311,12 @@
             return;
         }
 
-        if (!sessionData || sessionData.status === "completed") {
-            return;
-        }
-
-        // Only process sessions created in the last 15 minutes
-        if (sessionData.createdAt && (Date.now() - sessionData.createdAt > 900000)) {
+        if (!sessionData || sessionData.status !== "pending") {
             return;
         }
 
         isProcessing = true;
-        // Lock against concurrent runs, but keep session active
+        // Mark as processing immediately to lock against concurrent SPA observers
         sessionData.status = "processing";
         await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
 
@@ -356,10 +340,10 @@
             const targetUser = (sessionData.username || "").toLowerCase().replace(/^@+/, "");
 
             // 2. Are we already in a direct message composer or profile?
-            const isDirectPage = currentPath === "direct" || currentPath.startsWith("direct/") || currentPath.includes("/direct/") || currentPath.startsWith("m/");
-            const isProfilePage = currentPath === targetUser || currentPath.startsWith(`${targetUser}/`) || currentPath === `m/${targetUser}` || currentPath.startsWith(`m/${targetUser}/`);
+            const isDirectPage = currentPath.startsWith("direct/");
+            const isProfilePage = currentPath === targetUser || currentPath.startsWith(`${targetUser}/`);
 
-            // Step A: If on profile page and not already in Direct, locate Message button and click it
+            // Step A: If on profile page, locate Message button and click it
             if (isProfilePage && !isDirectPage) {
                 console.log("[Arclent Extension] On creator profile page. Finding Message button...");
                 const messageBtn = await waitForElement(findInstagramMessageButton, 10000);
@@ -371,7 +355,7 @@
                     await new Promise(r => setTimeout(r, 1200));
                 } else {
                     console.warn("[Arclent Extension] Message button not found on profile. Attempting direct navigation...");
-                    window.location.href = `https://www.instagram.com/direct/new/`;
+                    window.location.href = `https://ig.me/m/${encodeURIComponent(targetUser)}`;
                     sessionData.status = "pending";
                     await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                     isProcessing = false;

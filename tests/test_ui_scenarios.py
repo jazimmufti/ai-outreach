@@ -164,30 +164,6 @@ class TestUIScenariosAndBranding(unittest.TestCase):
         self.assertIn("This is a Discord server invite link. Enter the Creator’s User ID to continue.", js_text)
         self.assertIn("isServerNoUserId", js_text)
 
-    def test_redirect_page_and_instagram_delay_support(self):
-        """Verify redirect.html is served and supports 3s countdown and Instagram."""
-        res = self.client.get("/static/redirect.html")
-        self.assertEqual(res.status_code, 200)
-        html = res.text
-        self.assertIn("Redirecting — Arclent", html)
-        self.assertIn("Redirecting in <span id=\"timer-sec\">3</span> seconds...", html)
-        self.assertIn("Open Profile ↗", html)
-        self.assertIn("Message copied to clipboard, just click paste in DM", html)
-        self.assertIn("instagram", html.lower())
-
-        # Verify app.js uses redirect.html for Instagram as well as Discord
-        js_res = self.client.get("/static/app.js")
-        js_text = js_res.text
-        self.assertIn("/static/redirect.html?platform=", js_text)
-        self.assertIn("openPlatformUrl(fullRedirectPage)", js_text)
-
-    def test_open_in_new_tab_on_every_device(self):
-        """Verify openPlatformUrl opens in a new tab on every device without same-window redirect."""
-        js_res = self.client.get("/static/app.js")
-        js_text = js_res.text
-        self.assertIn('openedWin = window.open(url, "_blank"', js_text)
-        self.assertNotIn('window.location.href = url;', js_text)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -124,10 +124,10 @@
 </head>
 <body>
     <div class="redirect-card">
-        <div class="countdown-circle" id="timer-display">3</div>
+        <div class="countdown-circle" id="timer-display">4</div>
 
         <h1 class="main-countdown">
-            Redirecting in <span id="timer-sec">3</span> seconds...
+            Redirecting in <span id="timer-sec">4</span> seconds...
         </h1>
 
         <div class="clipboard-banner">
@@ -146,10 +146,8 @@
     <script>
         (function() {
             const params = new URLSearchParams(window.location.search);
+            const targetUrl = params.get("url") || "https://discord.com";
             const platform = params.get("platform") || "Discord";
-            const pLower = platform.toLowerCase();
-            const defaultUrl = pLower.includes("instagram") || pLower === "ig" ? "https://www.instagram.com" : "https://discord.com";
-            const targetUrl = params.get("url") || defaultUrl;
 
             const timerDisplay = document.getElementById("timer-display");
             const timerSec = document.getElementById("timer-sec");
@@ -157,52 +155,13 @@
 
             btnOpenNow.href = targetUrl;
 
-            // Apply platform-specific branding
-            if (pLower.includes("instagram") || pLower === "ig") {
-                document.title = "Redirecting to Instagram — Arclent";
-                btnOpenNow.textContent = "Open Profile ↗";
-                btnOpenNow.style.background = "linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)";
-                timerDisplay.style.color = "#E1306C";
-                timerDisplay.style.background = "#FDF2F8";
-            } else if (pLower.includes("discord")) {
-                document.title = "Redirecting to Discord — Arclent";
-                btnOpenNow.textContent = "Open Profile ↗";
-                btnOpenNow.style.background = "#5865F2";
-                timerDisplay.style.color = "#5865F2";
-                timerDisplay.style.background = "#EEF2FF";
-            } else {
-                document.title = `Redirecting to ${platform} — Arclent`;
-                btnOpenNow.textContent = "Open Profile ↗";
-                btnOpenNow.style.background = "#4F46E5";
-                timerDisplay.style.color = "#4F46E5";
-                timerDisplay.style.background = "#EEF2FF";
+            if (platform.toLowerCase() !== "discord") {
+                btnOpenNow.style.background = "#15803D";
+                timerDisplay.style.color = "#15803D";
+                timerDisplay.style.background = "#DCFCE7";
             }
 
-            // Fallback clipboard copying
-            const textParam = params.get("text") || params.get("msg") || localStorage.getItem("arclent_last_copied_draft");
-            try {
-                if (textParam && navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(textParam).catch(() => {});
-                }
-            } catch (_) {}
-
-            // For Instagram, ensure extension receives outreach draft before navigation
-            if (pLower.includes("instagram") || pLower === "ig") {
-                const handleParam = params.get("handle") || "";
-                if (handleParam && textParam) {
-                    try {
-                        window.postMessage({
-                            type: "ARCLENT_INSTAGRAM_OUTREACH",
-                            username: handleParam,
-                            message: textParam,
-                            skipTabCreate: true,
-                            source: "arclent"
-                        }, "*");
-                    } catch (_) {}
-                }
-            }
-
-            let secondsLeft = 3;
+            let secondsLeft = 4;
             const interval = setInterval(() => {
                 secondsLeft--;
                 if (timerDisplay) timerDisplay.textContent = secondsLeft > 0 ? secondsLeft : "🚀";
