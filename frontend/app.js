@@ -1110,6 +1110,35 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function resetOutreachButtons() {
+        try {
+            const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
+            const meta = getSocialMediaMeta(active ? active.platform : "Instagram");
+            if (btnIgOpenSend) {
+                btnIgOpenSend.disabled = false;
+                btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
+            }
+            if (openInstagramBtn) {
+                openInstagramBtn.disabled = false;
+                openInstagramBtn.innerHTML = `<span>Open Instagram & Send ↗</span>`;
+            }
+            if (btnSendDiscordBot) {
+                btnSendDiscordBot.disabled = false;
+                if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
+            }
+            document.querySelectorAll(".other-social-open-dm-btn").forEach(btn => {
+                btn.disabled = false;
+            });
+        } catch (_) {}
+    }
+
+    // Automatically re-enable send buttons when returning from Discord or Instagram tabs
+    window.addEventListener("focus", resetOutreachButtons);
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") resetOutreachButtons();
+    });
+    window.addEventListener("pageshow", resetOutreachButtons);
+
     function showScreen(screenKey, stepNum) {
         Object.keys(screens).forEach((key) => {
             if (screens[key]) {
@@ -1121,6 +1150,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (screens[screenKey]) {
             screens[screenKey].classList.remove("hidden");
             screens[screenKey].classList.add("active");
+        }
+
+        // Always re-enable outreach buttons when entering verification or outreach hub screens
+        if (screenKey === "verifyInstagram" || screenKey === "outreachHub") {
+            resetOutreachButtons();
         }
 
         // On the first page, ensure connect modal and credits banner are strictly hidden
@@ -2053,17 +2087,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (overlay) overlay.classList.remove("active");
 
-        // Execute navigation after countdown finishes
-        if (typeof openAction === "function") {
-            await openAction();
-        }
-
-        setTimeout(() => {
+        // Execute navigation and reliably re-enable the button
+        try {
+            if (typeof openAction === "function") {
+                await openAction();
+            }
+        } finally {
             if (clickedBtn) {
                 clickedBtn.disabled = false;
                 clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${platformName} & Send ↗</span>`;
             }
-        }, 2500);
+            resetOutreachButtons();
+        }
     }
 
     // --------------------------------------------------------------------------
@@ -3005,6 +3040,7 @@ document.addEventListener("DOMContentLoaded", () => {
             igConfirmedIcon.title = meta.name;
         }
         if (btnIgOpenSend) {
+            btnIgOpenSend.disabled = false;
             btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
         }
     }
@@ -3655,22 +3691,29 @@ document.addEventListener("DOMContentLoaded", () => {
             // When server is discovered, directly show enter user id just in the case of where discord is not detected
             showInstagramFallback(false, true);
         } else if (active && active.username) {
-            if (igFoundView) igFoundView.classList.remove("hidden");
-            if (igFallbackView) igFallbackView.classList.add("hidden");
-            if (igConfirmedView) igConfirmedView.classList.add("hidden");
+            if (state.instagramConfirmed) {
+                const confirmedHandle = isDiscord && state.finalDiscordUserId ? `User ID: ${state.finalDiscordUserId}` : (state.finalInstagramHandle || active.username);
+                const confirmedUrl = state.finalDiscordUserId ? `https://discord.com/users/${state.finalDiscordUserId}` : (state.finalInstagramUrl || active.url);
+                showInstagramConfirmed(confirmedHandle, confirmedUrl);
+            } else {
+                if (igFoundView) igFoundView.classList.remove("hidden");
+                if (igFallbackView) igFallbackView.classList.add("hidden");
+                if (igConfirmedView) igConfirmedView.classList.add("hidden");
 
-            const handle = isDiscord && snowflake ? `User ID: ${snowflake}` : formatHandle(active.username);
-            const isIg = (active.platform || "").toLowerCase().includes("instagram") || (active.platform || "").toLowerCase() === "ig";
-            if (isIg) {
-                state.finalInstagramHandle = handle;
-                state.finalInstagramUrl = active.url || `https://instagram.com/${handle.replace("@", "")}`;
+                const handle = isDiscord && snowflake ? `User ID: ${snowflake}` : formatHandle(active.username);
+                const isIg = (active.platform || "").toLowerCase().includes("instagram") || (active.platform || "").toLowerCase() === "ig";
+                if (isIg) {
+                    state.finalInstagramHandle = handle;
+                    state.finalInstagramUrl = active.url || `https://instagram.com/${handle.replace("@", "")}`;
+                }
+
+                updateStep2PlatformUI(active);
             }
-
-            updateStep2PlatformUI(active);
         } else {
             showInstagramFallback(true);
         }
 
+        resetOutreachButtons();
         renderDiscoveredOtherSocials();
     }
 
@@ -3798,6 +3841,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Render other discovered profiles below the action buttons
         renderConfirmedOtherProfiles();
+
+        if (btnIgOpenSend) {
+            btnIgOpenSend.disabled = false;
+            btnIgOpenSend.innerHTML = `<span>Open ${meta.name} & Send ↗</span>`;
+        }
     }
 
     function renderConfirmedOtherProfiles() {
@@ -4152,6 +4200,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Step 2 Back navigation to Step 1 or Previous Sub-view
     if (btnBackIg) {
         btnBackIg.onclick = () => {
+            resetOutreachButtons();
             const active = state.activeSocialProfile || state.instagramProfile;
             const pLower = (active?.platform || "").toLowerCase();
             const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
@@ -4186,6 +4235,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (emailStepPillFromIg) {
         emailStepPillFromIg.onclick = () => {
+            resetOutreachButtons();
             state.stage = "verify_email";
             renderVerifyEmailStep();
             showScreen("verifyEmail", 3);
@@ -4194,6 +4244,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (btnIgFallbackBack) {
         btnIgFallbackBack.onclick = () => {
+            resetOutreachButtons();
             const active = state.activeSocialProfile || state.instagramProfile;
             const pLower = (active?.platform || "").toLowerCase();
             const snowflake = pLower.includes("discord") ? extractDiscordSnowflake(active?.discord_user_id || active?.username || active?.url) : null;
@@ -4458,11 +4509,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 manualXContainer.classList.remove("hidden");
             }
         }
+        resetOutreachButtons();
     }
 
     // Jump back to edit email or IG from Outreach Hub
     if (hubEditEmailBtn) {
         hubEditEmailBtn.onclick = () => {
+            resetOutreachButtons();
             state.stage = "verify_email";
             renderVerifyEmailStep();
             showScreen("verifyEmail", 3);
@@ -4471,6 +4524,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (hubEditIgBtn) {
         hubEditIgBtn.onclick = () => {
+            resetOutreachButtons();
             state.stage = "verify_instagram";
             renderVerifyInstagramStep();
             showScreen("verifyInstagram", 3);
@@ -4480,6 +4534,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Back from Outreach Hub to Step 2 · Instagram
     if (btnBackHub) {
         btnBackHub.onclick = () => {
+            resetOutreachButtons();
             state.stage = "verify_instagram";
             renderVerifyInstagramStep();
             showScreen("verifyInstagram", 3);
@@ -4489,6 +4544,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Back from Delivery screen to Outreach Hub or Step 2
     if (btnBackDelivery) {
         btnBackDelivery.onclick = () => {
+            resetOutreachButtons();
             if (state.stageBeforeDelivery === "verify_instagram") {
                 state.stage = "verify_instagram";
                 renderVerifyInstagramStep();
