@@ -38,14 +38,25 @@
     // --------------------------------------------------------------------------
     // In-Page Notification UI (Non-intrusive Floating Card)
     // --------------------------------------------------------------------------
+    let bannerDismissTimer = null;
+
     function removeFloatingBanner() {
+        if (bannerDismissTimer) {
+            clearTimeout(bannerDismissTimer);
+            bannerDismissTimer = null;
+        }
         if (floatingBanner && floatingBanner.parentNode) {
-            floatingBanner.parentNode.removeChild(floatingBanner);
-            floatingBanner = null;
+            floatingBanner.style.animation = "arclentFadeOut 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards";
+            setTimeout(() => {
+                if (floatingBanner && floatingBanner.parentNode) {
+                    floatingBanner.parentNode.removeChild(floatingBanner);
+                }
+                floatingBanner = null;
+            }, 350);
         }
     }
 
-    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "" }) {
+    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = (type === "success"), durationMs = 5000 }) {
         removeFloatingBanner();
 
         const banner = document.createElement("div");
@@ -66,17 +77,25 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            animation: arclentSlideIn 0.3s ease-out;
+            animation: arclentSlideIn 0.3s ease-out forwards;
+            transition: opacity 0.35s ease, transform 0.35s ease;
         `;
 
-        const styleEl = document.createElement("style");
-        styleEl.textContent = `
-            @keyframes arclentSlideIn {
-                from { transform: translateY(20px); opacity: 0; }
-                to { transform: translateY(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(styleEl);
+        if (!document.getElementById("arclent-banner-keyframes")) {
+            const styleEl = document.createElement("style");
+            styleEl.id = "arclent-banner-keyframes";
+            styleEl.textContent = `
+                @keyframes arclentSlideIn {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+                @keyframes arclentFadeOut {
+                    from { transform: translateY(0); opacity: 1; }
+                    to { transform: translateY(20px); opacity: 0; }
+                }
+            `;
+            document.head.appendChild(styleEl);
+        }
 
         const icon = type === "success" ? "✓" : type === "warning" ? "!" : "✕";
         const iconColor = type === "success" ? "#00D26A" : type === "warning" ? "#F59E0B" : "#EF4444";
@@ -118,6 +137,28 @@
                     } catch (_) { }
                 };
             }
+        }
+
+        // Auto-dismiss after few seconds if enabled
+        if (autoDismiss) {
+            bannerDismissTimer = setTimeout(() => {
+                removeFloatingBanner();
+            }, durationMs);
+
+            banner.addEventListener("mouseenter", () => {
+                if (bannerDismissTimer) {
+                    clearTimeout(bannerDismissTimer);
+                    bannerDismissTimer = null;
+                }
+            });
+
+            banner.addEventListener("mouseleave", () => {
+                if (!bannerDismissTimer) {
+                    bannerDismissTimer = setTimeout(() => {
+                        removeFloatingBanner();
+                    }, 2500);
+                }
+            });
         }
     }
 

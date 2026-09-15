@@ -1925,15 +1925,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // --------------------------------------------------------------------------
-    // Outreach Navigation Handler (Clipboard Copy & Immediate Navigation)
+    // Outreach Navigation Handler (Clipboard Copy & Countdown Delay)
     // --------------------------------------------------------------------------
     async function showCopyAndRedirectCountdown({ text, meta, clickedBtn, openAction }) {
         if (text) {
             await copyTextToClipboard(text);
         }
 
-        const overlay = document.getElementById("copy-redirect-overlay");
-        if (overlay) overlay.classList.remove("active");
+        const originalBtnHtml = clickedBtn ? clickedBtn.innerHTML : "";
+        const isMobile = isMobileDevice();
+        const pasteHint = isMobile ? "Just paste into the chat." : "Just paste (Ctrl+V) into the chat.";
+        const platformName = (meta && meta.name) ? meta.name : "Instagram";
 
         if (btnIgCopyText) {
             btnIgCopyText.textContent = "✓ Copied!";
@@ -1948,22 +1950,52 @@ document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => { if (copyInstaBtnText) copyInstaBtnText.textContent = "📋 Copy Message"; }, 5000);
         }
 
+        const overlay = document.getElementById("copy-redirect-overlay");
+        const titleEl = document.getElementById("copy-redirect-title");
+        const subEl = document.getElementById("copy-redirect-sub");
+        const previewEl = document.getElementById("copy-redirect-preview");
+        const timerEl = document.getElementById("copy-redirect-timer");
+
+        if (titleEl) titleEl.textContent = "Message Copied to Clipboard!";
+        if (timerEl) timerEl.textContent = "4";
+        if (subEl) subEl.innerHTML = `Opening ${platformName} in <strong id="copy-redirect-timer">4</strong>s... ${pasteHint}`;
+        if (previewEl && text) {
+            const previewClean = text.replace(/\s+/g, " ").trim();
+            previewEl.textContent = previewClean.length > 90 ? `"${previewClean.substring(0, 90)}..."` : `"${previewClean}"`;
+        }
+        if (overlay) overlay.classList.add("active");
+
         if (clickedBtn) {
-            const originalBtnHtml = clickedBtn.innerHTML;
             clickedBtn.disabled = true;
-            clickedBtn.innerHTML = `<span>✓ Opening ${meta ? meta.name : ''}...</span>`;
-            setTimeout(() => {
-                if (clickedBtn) {
-                    clickedBtn.disabled = false;
-                    clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${meta ? meta.name : ''} & Send ↗</span>`;
-                }
-            }, 2000);
+            clickedBtn.innerHTML = `<span>📋 Copied! Opening in 4s...</span>`;
         }
 
-        // Execute navigation immediately without showing in-page popup overlay (countdown is shown on redirect page)
+        // 4-second countdown ticks (4s -> 3s -> 2s -> 1s)
+        for (let sec = 4; sec >= 1; sec--) {
+            const currentTimer = document.getElementById("copy-redirect-timer");
+            if (currentTimer) currentTimer.textContent = String(sec);
+            if (subEl) subEl.innerHTML = `Opening ${platformName} in <strong id="copy-redirect-timer">${sec}</strong>s... ${pasteHint}`;
+            if (clickedBtn) clickedBtn.innerHTML = `<span>📋 Copied! Opening in ${sec}s...</span>`;
+            await new Promise(r => setTimeout(r, 1000));
+        }
+
+        if (clickedBtn) {
+            clickedBtn.innerHTML = `<span>🚀 Opening ${platformName}...</span>`;
+        }
+
+        if (overlay) overlay.classList.remove("active");
+
+        // Execute navigation after countdown finishes
         if (typeof openAction === "function") {
             await openAction();
         }
+
+        setTimeout(() => {
+            if (clickedBtn) {
+                clickedBtn.disabled = false;
+                clickedBtn.innerHTML = originalBtnHtml || `<span>Open ${platformName} & Send ↗</span>`;
+            }
+        }, 2500);
     }
 
     // --------------------------------------------------------------------------
