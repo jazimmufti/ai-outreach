@@ -16,8 +16,8 @@
     --shadow-btn: 3px 3px 0px #111827;
     --shadow-btn-hover: 1px 1px 0px #111827;
     
-    --color-primary-green: #00D26A;
-    --color-primary-green-dark: #00B359;
+    --color-primary-green: #155A52;
+    --color-primary-green-dark: #104741;
     --color-green-light: #E8FDF0;
     --color-green-text: #065F46;
 
@@ -309,7 +309,7 @@ body {
     justify-content: center;
     gap: 8px;
     background: var(--color-primary-green);
-    color: #000;
+    color: #FFFFFF !important;
     font-family: var(--font-heading);
     font-size: 14.5px;
     font-weight: 700;
@@ -320,6 +320,11 @@ body {
     cursor: pointer;
     text-decoration: none;
     transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+}
+
+.btn-retro-green *,
+.btn-retro-green span {
+    color: #FFFFFF !important;
 }
 
 .btn-retro-green:hover:not(:disabled) {
@@ -414,7 +419,7 @@ body {
     font-family: var(--font-heading);
     font-size: 22px;
     font-weight: 800;
-    color: #000;
+    color: #FFFFFF;
 }
 
 .avatar-img-round {
@@ -580,12 +585,12 @@ body {
 .badge-high {
     background: var(--color-green-light);
     color: var(--color-green-text);
-    border-color: #00D26A;
+    border-color: var(--color-primary-green);
 }
 
 .badge-success {
     background: var(--color-primary-green);
-    color: #000;
+    color: #FFFFFF;
 }
 
 /* Social Mini Strip */
@@ -759,8 +764,13 @@ body {
 }
 
 .progress-step-item.completed .step-indicator {
-    background: var(--color-primary-green);
-    border-color: var(--border-color);
+    background: var(--color-primary-green) !important;
+    border-color: var(--border-color) !important;
+    color: #FFFFFF !important;
+}
+
+.progress-step-item.completed .step-indicator .step-icon {
+    color: #FFFFFF !important;
 }
 
 .step-content {
@@ -877,7 +887,7 @@ body {
     font-family: var(--font-heading);
     font-size: 16px;
     font-weight: 800;
-    color: #000;
+    color: #FFFFFF !important;
     flex-shrink: 0;
 }
 
@@ -1122,8 +1132,8 @@ body {
    ============================================================================== */
 
 :root {
-    --green: #00D26A;
-    --green-hover: #00B359;
+    --green: #155A52;
+    --green-hover: #104741;
     --cream: #FAF7F0;
     --offwhite: #FFFDF9;
     --black: #111827;
@@ -1241,9 +1251,13 @@ body {
 
 .step-pill.active {
     background: var(--green) !important;
-    color: #000000 !important;
+    color: #FFFFFF !important;
     border-color: var(--black) !important;
     box-shadow: 2px 2px 0px var(--black);
+}
+
+.step-pill.active * {
+    color: #FFFFFF !important;
 }
 
 .step-pill.done {
@@ -1544,7 +1558,7 @@ body {
 
 .btn-primary {
     background: var(--green) !important;
-    color: #000000 !important;
+    color: #FFFFFF !important;
     border: 2px solid var(--black) !important;
     box-shadow: var(--shadow-btn);
     font-family: var(--font-heading);
@@ -1560,6 +1574,11 @@ body {
     gap: 8px;
     text-decoration: none;
     transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+}
+
+.btn-primary *,
+.btn-primary span {
+    color: #FFFFFF !important;
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1981,14 +2000,18 @@ body {
 
 .other-social-select-btn:hover {
     background: var(--green);
-    color: #000;
+    color: #FFFFFF !important;
     border-color: var(--black);
 }
 
 .other-social-select-btn.active-selected {
     background: var(--green) !important;
-    color: #000 !important;
+    color: #FFFFFF !important;
     border-color: var(--black) !important;
+}
+
+.other-social-select-btn.active-selected * {
+    color: #FFFFFF !important;
 }
 
 .other-social-open-link {

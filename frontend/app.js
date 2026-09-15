@@ -1124,7 +1124,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             if (btnSendDiscordBot) {
                 btnSendDiscordBot.disabled = false;
-                if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
+                btnSendDiscordBot.innerHTML = `<span>Open Discord & Send ↗</span>`;
             }
             document.querySelectorAll(".other-social-open-dm-btn").forEach(btn => {
                 btn.disabled = false;
@@ -2187,16 +2187,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             const targetUrl = `https://discord.com/users/${discUserId}`;
-            const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
-
-            // Synchronously open the dedicated redirect page in a new tab within active user gesture AFTER validation passes!
-            // Supports both desktop and mobile browsers.
-            let redirectWin = null;
-            try {
-                redirectWin = window.open(redirectPage, "_blank");
-            } catch (_) {}
 
             const executeDiscordOpen = async () => {
+                const isMob = isMobileDevice();
                 state.stageBeforeDelivery = options.returnScreen || "outreach_hub";
                 state.stage = "sent";
                 state.selectedChannel = "discord";
@@ -2264,10 +2257,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 startVerificationPolling();
 
-                // If popup was blocked or running on mobile in single-tab mode, navigate to redirectPage so 4s countdown delay is guaranteed
-                if (!redirectWin || redirectWin.closed) {
-                    openPlatformUrl(redirectPage);
-                }
+                // Directly open target Discord URL in a new tab without intermediate redirect page
+                openPlatformUrl(targetUrl);
             };
 
             await showCopyAndRedirectCountdown({
@@ -2305,14 +2296,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
-
-        let redirectWin = null;
-        const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(dmUrl)}&handle=${encodeURIComponent(handle || '')}`;
-        if (!extensionInstalled && isInstagram) {
-            try {
-                redirectWin = window.open(redirectPage, "_blank");
-            } catch (_) {}
-        }
 
         const executeOpen = async () => {
             if (extensionInstalled) {
@@ -2377,14 +2360,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Start live verification polling
                 startVerificationPolling();
 
-                // Open Instagram or destination platform with countdown delay
-                if (isInstagram && !extensionInstalled) {
-                    if (!redirectWin || redirectWin.closed) {
-                        openPlatformUrl(redirectPage);
-                    }
-                } else {
-                    openPlatformUrl(dmUrl);
-                }
+                // Open Instagram or destination platform directly without intermediate redirect page
+                openPlatformUrl(dmUrl);
             }
         };
 
@@ -2980,19 +2957,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
-                    let redirectWin = null;
-                    const redirectPage = `/static/redirect.html?platform=${encodeURIComponent(meta.name)}&url=${encodeURIComponent(url)}&handle=${encodeURIComponent(cleanHandle || '')}`;
-                    try {
-                        redirectWin = window.open(redirectPage, "_blank");
-                    } catch (_) {}
                     await showCopyAndRedirectCountdown({
                         text: draftText,
                         meta: meta,
                         clickedBtn: igFoundLink,
                         openAction: () => {
-                            if (!redirectWin || redirectWin.closed) {
-                                openPlatformUrl(redirectPage);
-                            }
+                            openPlatformUrl(url);
                         }
                     });
                 } else {
