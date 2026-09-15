@@ -494,7 +494,7 @@ def send_test_email(
             <div style="margin: 24px 0; padding: 20px; background: #FAF7F0; border: 2px solid #111827; border-radius: 4px; text-align: center;">
                 <p style="margin: 0 0 16px 0; font-family: sans-serif; font-size: 14.5px; font-weight: bold; color: #111827;">Can you confirm this collaboration?</p>
                 <div style="display: block; margin-top: 12px;">
-                    <a href="{confirm_url}" style="display: inline-block; background: #00D26A; color: #000000; text-decoration: none; font-family: sans-serif; font-size: 14px; font-weight: bold; padding: 12px 24px; border: 2px solid #111827; border-radius: 2px; margin: 4px 6px;">
+                    <a href="{confirm_url}" style="display: inline-block; background: #155A52; color: #FFFFFF; text-decoration: none; font-family: sans-serif; font-size: 14px; font-weight: bold; padding: 12px 24px; border: 2px solid #111827; border-radius: 2px; margin: 4px 6px;">
                         ✓ Yes, I confirm this collaboration
                     </a>
                     &nbsp;

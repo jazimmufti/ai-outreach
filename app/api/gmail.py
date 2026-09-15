@@ -113,7 +113,7 @@ async def gmail_oauth_callback(
                 <div style="background: #fff; border: 2px solid #000; border-radius: 12px; padding: 24px; max-width: 400px; margin: 0 auto; box-shadow: 4px 4px 0px #000;">
                     <h2>Invalid Callback Request</h2>
                     <p>Missing authorization code or state parameter.</p>
-                    <a href="/" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: #00D26A; color: #000; text-decoration: none; border: 2px solid #000; font-weight: bold; border-radius: 6px;">Return to App</a>
+                    <a href="/" style="display: inline-block; margin-top: 12px; padding: 8px 16px; background: #155A52; color: #FFFFFF; text-decoration: none; border: 2px solid #000; font-weight: bold; border-radius: 6px;">Return to App</a>
                 </div>
             </body>
             </html>
@@ -214,8 +214,8 @@ async def gmail_oauth_callback(
                         max-width: 420px;
                     }}
                     .badge {{
-                        background: #00D26A;
-                        color: #000;
+                        background: #155A52;
+                        color: #FFFFFF;
                         font-weight: bold;
                         padding: 6px 12px;
                         border-radius: 6px;

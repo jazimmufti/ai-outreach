@@ -110,7 +110,7 @@ async def verify_collaboration_root(
         .card { max-width: 440px; width: 100%; background: #FFFFFF; border: 2px solid #111827; box-shadow: 6px 6px 0px #111827; border-radius: 4px; padding: 36px 28px; text-align: center; }
         h2 { font-family: 'Space Grotesk', sans-serif; font-size: 22px; margin: 0 0 10px; }
         p { font-size: 14.5px; color: #4B5563; line-height: 1.5; margin: 0 0 20px; }
-        a { display: inline-block; background: #00D26A; color: #000; text-decoration: none; font-weight: 700; padding: 10px 18px; border: 2px solid #111827; border-radius: 2px; }
+        a { display: inline-block; background: #155A52; color: #FFFFFF; text-decoration: none; font-weight: 700; padding: 10px 18px; border: 2px solid #111827; border-radius: 2px; }
     </style>
 </head>
 <body>

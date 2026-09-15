@@ -807,15 +807,16 @@ async def handle_creator_verification_response(
             font-weight: 700;
             padding: 4px 10px;
             border: 1.5px solid #111827;
-            background: #00D26A;
-            color: #000;
+            background: #155A52;
+            color: #FFFFFF;
             border-radius: 2px;
         }}
         .icon-circle {{
             width: 54px;
             height: 54px;
             border-radius: 50%;
-            background: #00D26A;
+            background: #155A52;
+            color: #FFFFFF;
             border: 2px solid #111827;
             display: flex;
             align-items: center;
@@ -876,7 +877,7 @@ async def handle_creator_verification_response(
         }}
         .shield-box {{
             background: #E8FDF0;
-            border: 1.5px solid #00D26A;
+            border: 1.5px solid #155A52;
             border-radius: 2px;
             padding: 14px 18px;
             font-size: 13.5px;
@@ -1248,8 +1249,8 @@ async def handle_creator_verification_response(
             align-items: center;
             justify-content: center;
             gap: 8px;
-            background: #00D26A;
-            color: #000000;
+            background: #155A52;
+            color: #FFFFFF;
             text-decoration: none;
             font-family: 'Space Grotesk', sans-serif;
             font-size: 15px;
@@ -1260,8 +1261,12 @@ async def handle_creator_verification_response(
             box-shadow: 3px 3px 0px #111827;
             transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
         }}
+        .btn-confirm *,
+        .btn-confirm span {{
+            color: #FFFFFF;
+        }}
         .btn-confirm:hover {{
-            background: #00B359;
+            background: #104741;
             transform: translate(-1px, -1px);
             box-shadow: 4px 4px 0px #111827;
         }}
