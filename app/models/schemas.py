@@ -361,3 +361,33 @@ class SendEmailResponse(BaseModel):
     message_id: Optional[str] = None
     sender: Optional[str] = None
     timestamp: Optional[str] = None
+
+
+class ValidateDiscordUserRequest(BaseModel):
+    """Request to validate existence of a Discord user ID."""
+    user_id: str = Field(..., description="Discord User ID (17-20 digit numeric snowflake)")
+
+
+class ValidateDiscordUserResponse(BaseModel):
+    """Result of Discord user ID validation."""
+    valid: bool
+    exists: bool
+    user_id: Optional[str] = None
+    username: Optional[str] = None
+    global_name: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class ValidateInstagramHandleRequest(BaseModel):
+    """Request to validate existence of an Instagram handle."""
+    handle: str = Field(..., description="Instagram username or profile URL")
+
+
+class ValidateInstagramHandleResponse(BaseModel):
+    """Result of Instagram handle validation."""
+    valid: bool
+    exists: bool
+    handle: Optional[str] = None
+    username: Optional[str] = None
+    reason: Optional[str] = None
+

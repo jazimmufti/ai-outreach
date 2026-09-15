@@ -29,7 +29,11 @@ from app.models.schemas import (
     DiscordProfile,
     SendDiscordMessageRequest,
     SendDiscordMessageResponse,
-    VerifyLinkedDiscordAccountRequest
+    VerifyLinkedDiscordAccountRequest,
+    ValidateDiscordUserRequest,
+    ValidateDiscordUserResponse,
+    ValidateInstagramHandleRequest,
+    ValidateInstagramHandleResponse
 )
 from datetime import datetime, timezone
 
@@ -46,6 +50,7 @@ from app.services.linked_account import (
     is_matching_discord_account
 )
 from app.services import discord_service
+from app.services.platform_verifier import validate_instagram_handle
 from app.services.auto_verification import (
     verify_contribution_from_description,
     verify_contribution_from_description_async
@@ -317,6 +322,20 @@ async def confirm_instagram_endpoint(payload: ConfirmInstagramRequest):
     session.stage = OutreachStage.OUTREACH_HUB
     save_session(session)
     return session
+
+
+@router.post("/validate-discord-user", response_model=ValidateDiscordUserResponse)
+async def validate_discord_user_endpoint(payload: ValidateDiscordUserRequest):
+    """Validate format and existence of a Discord user ID before sending or redirecting."""
+    res = await discord_service.check_discord_user_exists(payload.user_id)
+    return ValidateDiscordUserResponse(**res)
+
+
+@router.post("/validate-instagram-handle", response_model=ValidateInstagramHandleResponse)
+async def validate_instagram_handle_endpoint(payload: ValidateInstagramHandleRequest):
+    """Validate format and existence of an Instagram handle before saving or redirecting."""
+    res = await validate_instagram_handle(payload.handle)
+    return ValidateInstagramHandleResponse(**res)
 
 
 @router.post("/manual-instagram")

@@ -346,6 +346,50 @@ class TestDiscordIntegration(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("17-20 digit numeric snowflake", response.json()["detail"])
 
+    @patch("app.api.outreach.discord_service.check_discord_user_exists", new_callable=AsyncMock)
+    def test_api_validate_discord_user_success(self, mock_check):
+        """Test POST /api/outreach/validate-discord-user with valid existing user."""
+        mock_check.return_value = {
+            "valid": True,
+            "exists": True,
+            "user_id": "1166052187869294673",
+            "username": "example_user",
+            "global_name": "Example User"
+        }
+        payload = {"user_id": "1166052187869294673"}
+        response = self.client.post("/api/outreach/validate-discord-user", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["valid"])
+        self.assertTrue(data["exists"])
+        self.assertEqual(data["user_id"], "1166052187869294673")
+
+    @patch("app.api.outreach.discord_service.check_discord_user_exists", new_callable=AsyncMock)
+    def test_api_validate_discord_user_not_found(self, mock_check):
+        """Test POST /api/outreach/validate-discord-user with non-existent user."""
+        mock_check.return_value = {
+            "valid": True,
+            "exists": False,
+            "reason": "Discord user not found (HTTP 404). Please verify the User ID and enter the correct ID."
+        }
+        payload = {"user_id": "123456789012345678"}
+        response = self.client.post("/api/outreach/validate-discord-user", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data["valid"])
+        self.assertFalse(data["exists"])
+        self.assertIn("not found", data["reason"])
+
+    def test_api_validate_discord_user_invalid_snowflake(self):
+        """Test POST /api/outreach/validate-discord-user with malformed user ID."""
+        payload = {"user_id": "invalid_id_abc"}
+        response = self.client.post("/api/outreach/validate-discord-user", json=payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertFalse(data["valid"])
+        self.assertFalse(data["exists"])
+        self.assertIn("17-20 digit", data["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

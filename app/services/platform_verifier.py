@@ -11,7 +11,7 @@ Checks whether a username exists on:
 import re
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -255,3 +255,67 @@ async def verify_usernames_across_platforms(
                     "Instagram": False, "X": False, "Facebook": False, "Twitch": False, "Discord": False
                 }
         return output
+
+
+async def validate_instagram_handle(handle: str, client: Optional[httpx.AsyncClient] = None) -> Dict[str, Any]:
+    """Validate Instagram handle format and verify profile existence on Instagram.
+    
+    Returns:
+        Dict with keys: valid (bool), exists (bool), handle (str), username (str), reason (Optional[str])
+    """
+    raw = (handle or "").strip()
+    if not raw:
+        return {
+            "valid": False,
+            "exists": False,
+            "reason": "Instagram handle cannot be empty. Please enter creator's Instagram username."
+        }
+
+    # Strip URL prefixes, @, trailing slashes, query parameters
+    clean = re.sub(r"^https?:\/\/(?:www\.)?(?:instagram\.com|instagr\.am)\/", "", raw, flags=re.IGNORECASE)
+    clean = clean.split("?")[0].split("#")[0].rstrip("/").lstrip("@").strip()
+
+    if not clean:
+        return {
+            "valid": False,
+            "exists": False,
+            "reason": "Please enter a valid Instagram username."
+        }
+
+    # Instagram username requirements: 1-30 characters, letters, numbers, periods, underscores
+    if not re.match(r"^[a-zA-Z0-9._]{1,30}$", clean):
+        return {
+            "valid": False,
+            "exists": False,
+            "handle": f"@{clean}",
+            "reason": "Invalid Instagram handle format. Handles can only contain letters, numbers, periods, and underscores (max 30 characters)."
+        }
+
+    # Reserved Instagram system keywords
+    reserved = {"p", "reel", "reels", "stories", "direct", "explore", "accounts", "login", "emailsignup"}
+    if clean.lower() in reserved:
+        return {
+            "valid": False,
+            "exists": False,
+            "handle": f"@{clean}",
+            "reason": f"'{clean}' is a reserved Instagram path, not a creator profile."
+        }
+
+    # Check existence on Instagram
+    exists = await check_instagram_exists(clean, client=client)
+    if exists:
+        return {
+            "valid": True,
+            "exists": True,
+            "handle": f"@{clean}",
+            "username": clean
+        }
+    else:
+        return {
+            "valid": False,
+            "exists": False,
+            "handle": f"@{clean}",
+            "username": clean,
+            "reason": f"Instagram account '@{clean}' was not found. Please check the spelling and enter a valid, existing Instagram profile."
+        }
+

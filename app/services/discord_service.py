@@ -262,3 +262,79 @@ async def send_dm_message(recipient_id: str, message: str) -> Dict[str, Any]:
     except Exception as e:
         logger.error(f"Unexpected error dispatching message to recipient {clean_id}: {e}", exc_info=True)
         raise DiscordServiceError("Failed to deliver Discord message. The creator's privacy settings may prevent direct messages.")
+
+
+async def check_discord_user_exists(user_id: str) -> Dict[str, Any]:
+    """Validate format and verify existence of a Discord user ID via Discord REST API.
+    
+    API: GET https://discord.com/api/v10/users/{user_id}
+    """
+    clean_id = (user_id or "").strip()
+    if not validate_snowflake(clean_id):
+        return {
+            "valid": False,
+            "exists": False,
+            "user_id": clean_id,
+            "reason": "Invalid Discord User ID format. Must be a 17-20 digit numeric snowflake (e.g. 1166052187869294673)."
+        }
+
+    try:
+        headers = get_discord_headers()
+    except DiscordConfigurationError:
+        # If bot token is not configured, we accept valid snowflake format
+        return {
+            "valid": True,
+            "exists": True,
+            "user_id": clean_id,
+            "username": None
+        }
+
+    url = f"{DISCORD_API_BASE}/users/{clean_id}"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {
+                    "valid": True,
+                    "exists": True,
+                    "user_id": clean_id,
+                    "username": data.get("username"),
+                    "global_name": data.get("global_name")
+                }
+            elif resp.status_code == 404:
+                return {
+                    "valid": False,
+                    "exists": False,
+                    "user_id": clean_id,
+                    "reason": f"Discord user ID '{clean_id}' does not exist on Discord. Please enter a valid, existing Discord User ID."
+                }
+            elif resp.status_code == 400:
+                return {
+                    "valid": False,
+                    "exists": False,
+                    "user_id": clean_id,
+                    "reason": f"Invalid Discord User ID '{clean_id}'."
+                }
+            elif resp.status_code == 429:
+                logger.warning(f"Discord rate limited during user lookup for {clean_id}")
+                return {
+                    "valid": True,
+                    "exists": True,
+                    "user_id": clean_id
+                }
+            else:
+                logger.warning(f"Discord user lookup returned HTTP {resp.status_code}: {resp.text}")
+                return {
+                    "valid": True,
+                    "exists": True,
+                    "user_id": clean_id
+                }
+    except Exception as e:
+        logger.warning(f"Error connecting to Discord during user lookup: {e}")
+        return {
+            "valid": True,
+            "exists": True,
+            "user_id": clean_id
+        }
+

@@ -604,6 +604,51 @@ Twitter: [/ badogblue](https://twitter.com/badogblue)
         self.assertIn('/api/outreach/verify-linked-discord-account', js)
 
 
+class TestValidateInstagramHandleApi(unittest.TestCase):
+    """Tests for POST /api/outreach/validate-instagram-handle."""
+
+    def setUp(self):
+        from fastapi.testclient import TestClient
+        from app.main import app
+        self.client = TestClient(app)
+
+    @patch("app.api.outreach.validate_instagram_handle", new_callable=AsyncMock)
+    def test_api_validate_instagram_handle_success(self, mock_val):
+        mock_val.return_value = {
+            "valid": True,
+            "exists": True,
+            "handle": "@mrbeast"
+        }
+        res = self.client.post("/api/outreach/validate-instagram-handle", json={"handle": "mrbeast"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["valid"])
+        self.assertTrue(data["exists"])
+        self.assertEqual(data["handle"], "@mrbeast")
+
+    @patch("app.api.outreach.validate_instagram_handle", new_callable=AsyncMock)
+    def test_api_validate_instagram_handle_not_found(self, mock_val):
+        mock_val.return_value = {
+            "valid": True,
+            "exists": False,
+            "reason": "Instagram user @non_existent_12345 was not found (404). Please check the username and retry."
+        }
+        res = self.client.post("/api/outreach/validate-instagram-handle", json={"handle": "non_existent_12345"})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["valid"])
+        self.assertFalse(data["exists"])
+        self.assertIn("not found", data["reason"])
+
+    def test_api_validate_instagram_handle_empty(self):
+        res = self.client.post("/api/outreach/validate-instagram-handle", json={"handle": "   "})
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertFalse(data["valid"])
+        self.assertFalse(data["exists"])
+        self.assertIn("empty", data["reason"])
+
+
 if __name__ == "__main__":
     unittest.main()
 

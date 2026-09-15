@@ -1752,11 +1752,79 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // Multi-stage auto-detection on load
-    checkDirectDomPresence();
-    setTimeout(() => { isInstagramExtensionInstalled(400); }, 300);
-    setTimeout(() => { isInstagramExtensionInstalled(500); }, 1200);
-    setTimeout(() => { isInstagramExtensionInstalled(600); }, 2500);
+    // --------------------------------------------------------------------------
+    // Real-Time Social Handle & User ID Validators
+    // --------------------------------------------------------------------------
+    async function validateDiscordUserId(rawId) {
+        const clean = extractDiscordSnowflake(rawId);
+        if (!clean) {
+            return {
+                valid: false,
+                exists: false,
+                reason: "A Discord User ID must be a 17-20 digit numeric snowflake (e.g. 1166052187869294673)."
+            };
+        }
+        try {
+            const resp = await fetch("/api/outreach/validate-discord-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: clean })
+            });
+            if (resp.ok) {
+                return await resp.json();
+            }
+            return {
+                valid: false,
+                exists: false,
+                reason: "Could not verify Discord user ID. Please check the ID and retry."
+            };
+        } catch (e) {
+            return {
+                valid: true,
+                exists: true,
+                user_id: clean
+            };
+        }
+    }
+
+    async function validateInstagramUsername(rawHandle) {
+        if (!rawHandle || typeof rawHandle !== "string") {
+            return {
+                valid: false,
+                exists: false,
+                reason: "Instagram handle cannot be empty."
+            };
+        }
+        const trimmed = rawHandle.trim();
+        if (!trimmed) {
+            return {
+                valid: false,
+                exists: false,
+                reason: "Instagram handle cannot be empty."
+            };
+        }
+        try {
+            const resp = await fetch("/api/outreach/validate-instagram-handle", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ handle: trimmed })
+            });
+            if (resp.ok) {
+                return await resp.json();
+            }
+            return {
+                valid: false,
+                exists: false,
+                reason: "Could not verify Instagram profile. Please check the handle and retry."
+            };
+        } catch (e) {
+            return {
+                valid: true,
+                exists: true,
+                handle: formatHandle(trimmed)
+            };
+        }
+    }
 
     // Handle extension outreach dispatch
     async function dispatchInstagramWithExtension({ username, message, sessionId }) {
@@ -2060,10 +2128,33 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
+            // CRITICAL: Live validate Discord User ID before redirecting or opening popup window!
+            const check = await validateDiscordUserId(discUserId);
+            if (!check.exists) {
+                showToast(`❌ ${check.reason || "Discord user ID not found. Please enter a valid 17-20 digit User ID."}`, "error");
+                state.stage = "outreach_hub";
+                renderOutreachHub();
+                showScreen("outreachHub", 4);
+                if (hubDiscordBlock) {
+                    hubDiscordBlock.classList.remove("hidden");
+                    hubDiscordBlock.scrollIntoView({ behavior: "smooth" });
+                }
+                if (discordIdentificationBanner) discordIdentificationBanner.classList.remove("hidden");
+                if (discordUserIdInput) {
+                    discordUserIdInput.focus();
+                    discordUserIdInput.style.borderColor = "var(--red)";
+                }
+                if (discordErrorAlert && discordErrorMessage) {
+                    discordErrorMessage.textContent = check.reason || "Discord user ID not found. Please check and enter the correct User ID.";
+                    discordErrorAlert.classList.remove("hidden");
+                }
+                return;
+            }
+
             const targetUrl = `https://discord.com/users/${discUserId}`;
             const redirectPage = `/static/redirect.html?platform=Discord&url=${encodeURIComponent(targetUrl)}&handle=${encodeURIComponent(discUserId || '')}`;
 
-            // Synchronously open the dedicated redirect page in a new tab within active user gesture.
+            // Synchronously open the dedicated redirect page in a new tab within active user gesture AFTER validation passes!
             // Supports both desktop and mobile browsers.
             let redirectWin = null;
             try {
@@ -2157,6 +2248,25 @@ document.addEventListener("DOMContentLoaded", () => {
         const isInstagram = platformName.toLowerCase().includes("instagram") || platformName.toLowerCase() === "ig";
         const isDesktop = !isMobileDevice();
         const extensionInstalled = isInstagram && isDesktop && (checkDirectDomPresence() || !!state.extensionInstalled);
+
+        // Validate Instagram profile before redirect or extension dispatch
+        if (isInstagram) {
+            const rawIg = options.handle || active.username || handle;
+            const check = await validateInstagramUsername(rawIg);
+            if (!check.exists) {
+                showToast(`❌ ${check.reason || "Instagram profile not found. Please enter a valid Instagram handle."}`, "error");
+                if (igManualEntryInput) {
+                    igManualEntryInput.focus();
+                    igManualEntryInput.style.borderColor = "var(--red)";
+                }
+                const igErrMsg = document.getElementById("ig-manual-error-msg");
+                if (igErrMsg) {
+                    igErrMsg.textContent = check.reason || "Instagram profile not found. Please enter a valid handle.";
+                    igErrMsg.classList.remove("hidden");
+                }
+                return;
+            }
+        }
 
         const targetHandleOrUrl = options.url || options.handle || active.url || active.username || handle;
         const dmUrl = getDirectMessageUrl(platformName, targetHandleOrUrl, text, subject);
@@ -2937,17 +3047,23 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     return null;
                 },
-                save: (val) => {
+                save: async (val) => {
                     const clean = formatHandle(val);
                     if (!clean || clean.length < 2) {
                         showToast("Please enter a valid Instagram handle.", "error");
                         return false;
                     }
-                    state.finalInstagramHandle = clean;
-                    state.finalInstagramUrl = `https://instagram.com/${clean.replace('@', '')}`;
+                    const check = await validateInstagramUsername(clean);
+                    if (!check.exists) {
+                        showToast(`❌ ${check.reason || "Instagram profile not found. Please enter a valid handle."}`, "error");
+                        return false;
+                    }
+                    const verifiedHandle = check.handle || clean;
+                    state.finalInstagramHandle = verifiedHandle;
+                    state.finalInstagramUrl = `https://instagram.com/${verifiedHandle.replace('@', '')}`;
                     state.instagramProfile = {
                         platform: "Instagram",
-                        username: clean,
+                        username: verifiedHandle,
                         url: state.finalInstagramUrl,
                         source: "Manual entry",
                         user_provided: true
@@ -2957,7 +3073,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (idx >= 0) state.socialProfiles[idx] = state.instagramProfile;
                     else state.socialProfiles.push(state.instagramProfile);
                     updateStep2PlatformUI(state.instagramProfile);
-                    showToast(`✓ Instagram handle ${clean} saved!`);
+                    showToast(`✓ Instagram handle ${verifiedHandle} verified and saved!`);
                     return true;
                 }
             },
@@ -3090,10 +3206,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
                     return null;
                 },
-                save: (val) => {
+                save: async (val) => {
                     const trimmed = extractDiscordSnowflake(val);
                     if (!trimmed) {
                         showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                        return false;
+                    }
+                    const check = await validateDiscordUserId(trimmed);
+                    if (!check.exists) {
+                        showToast(`❌ ${check.reason || "Discord user ID not found. Please enter a valid 17-20 digit User ID."}`, "error");
                         return false;
                     }
                     state.finalDiscordUserId = trimmed;
@@ -3118,7 +3239,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const idx = state.socialProfiles.findIndex(s => (s.platform || "").toLowerCase() === "discord");
                     if (idx >= 0) state.socialProfiles[idx] = discObj;
                     else state.socialProfiles.push(discObj);
-                    showToast(`✓ Discord User ID ${trimmed} saved!`);
+                    showToast(`✓ Discord User ID ${trimmed} verified and saved!`);
                     return true;
                 }
             }
@@ -3241,19 +3362,27 @@ document.addEventListener("DOMContentLoaded", () => {
                         drawer.classList.add("hidden");
                     };
 
-                    const doSave = () => {
+                    const doSave = async () => {
                         const val = inputEl.value.trim();
                         if (!val) {
                             inputEl.focus();
                             inputEl.style.borderColor = "var(--red)";
                             return;
                         }
-                        const ok = cfg.save(val);
-                        if (ok) {
-                            renderDiscoveredOtherSocials();
-                        } else {
-                            inputEl.focus();
-                            inputEl.style.borderColor = "var(--red)";
+                        saveBtn.disabled = true;
+                        const origText = saveBtn.textContent;
+                        saveBtn.textContent = "Verifying...";
+                        try {
+                            const ok = await cfg.save(val);
+                            if (ok) {
+                                renderDiscoveredOtherSocials();
+                            } else {
+                                inputEl.focus();
+                                inputEl.style.borderColor = "var(--red)";
+                            }
+                        } finally {
+                            saveBtn.disabled = false;
+                            saveBtn.textContent = origText;
                         }
                     };
 
@@ -3368,19 +3497,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     drawer.classList.add("hidden");
                 };
 
-                const doSave = () => {
+                const doSave = async () => {
                     const val = inputEl.value.trim();
                     if (!val) {
                         inputEl.focus();
                         inputEl.style.borderColor = "var(--red)";
                         return;
                     }
-                    const ok = cfg.save(val);
-                    if (ok) {
-                        renderDiscoveredOtherSocials();
-                    } else {
-                        inputEl.focus();
-                        inputEl.style.borderColor = "var(--red)";
+                    saveBtn.disabled = true;
+                    const origText = saveBtn.textContent;
+                    saveBtn.textContent = "Verifying...";
+                    try {
+                        const ok = await cfg.save(val);
+                        if (ok) {
+                            renderDiscoveredOtherSocials();
+                        } else {
+                            inputEl.focus();
+                            inputEl.style.borderColor = "var(--red)";
+                        }
+                    } finally {
+                        saveBtn.disabled = false;
+                        saveBtn.textContent = origText;
                     }
                 };
 
@@ -3769,6 +3906,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function validateManualIgInput() {
         if (!igManualEntryInput) return;
         const val = igManualEntryInput.value.trim();
+        const igErrMsg = document.getElementById("ig-manual-error-msg");
+        if (igErrMsg) igErrMsg.classList.add("hidden");
+        igManualEntryInput.style.borderColor = "";
+
         const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
         const pLower = (active.platform || "").toLowerCase();
         if (pLower.includes("discord")) {
@@ -3852,23 +3993,71 @@ document.addEventListener("DOMContentLoaded", () => {
         igManualEntryForm.addEventListener("submit", async (e) => {
             e.preventDefault();
             const handle = igManualEntryInput ? igManualEntryInput.value.trim() : "";
+            const igErrMsg = document.getElementById("ig-manual-error-msg");
+            if (igErrMsg) igErrMsg.classList.add("hidden");
+            if (igManualEntryInput) igManualEntryInput.style.borderColor = "";
+
             if (!handle || handle.length < 2) {
                 showToast("Please enter a handle or profile URL.", "error");
+                if (igErrMsg) {
+                    igErrMsg.textContent = "Please enter a valid handle or profile URL.";
+                    igErrMsg.classList.remove("hidden");
+                }
+                if (igManualEntryInput) igManualEntryInput.style.borderColor = "var(--red)";
                 return;
             }
 
             try {
-                if (btnIgManualSubmit) btnIgManualSubmit.disabled = true;
+                if (btnIgManualSubmit) {
+                    btnIgManualSubmit.disabled = true;
+                    btnIgManualSubmit.textContent = "Verifying...";
+                }
                 const active = state.activeSocialProfile || state.selectedSocialProfile || state.instagramProfile || { platform: "Instagram" };
                 const pLower = (active.platform || "").toLowerCase();
                 const isDiscord = pLower.includes("discord");
                 const meta = getSocialMediaMeta(active.platform);
                 const snowflake = isDiscord ? extractDiscordSnowflake(handle) : null;
 
-                if (isDiscord && !snowflake) {
-                    showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
-                    if (btnIgManualSubmit) btnIgManualSubmit.disabled = false;
-                    return;
+                if (isDiscord) {
+                    if (!snowflake) {
+                        showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
+                        if (igErrMsg) {
+                            igErrMsg.textContent = "Please enter a valid 17-20 digit Discord User ID.";
+                            igErrMsg.classList.remove("hidden");
+                        }
+                        if (igManualEntryInput) igManualEntryInput.style.borderColor = "var(--red)";
+                        return;
+                    }
+
+                    // Live validate Discord User ID existence
+                    const check = await validateDiscordUserId(snowflake);
+                    if (!check.exists) {
+                        showToast(`❌ ${check.reason || "Discord user ID not found. Please enter a valid 17-20 digit User ID."}`, "error");
+                        if (igErrMsg) {
+                            igErrMsg.textContent = check.reason || "Discord user ID not found. Please check and enter the correct ID.";
+                            igErrMsg.classList.remove("hidden");
+                        }
+                        if (igManualEntryInput) {
+                            igManualEntryInput.focus();
+                            igManualEntryInput.style.borderColor = "var(--red)";
+                        }
+                        return;
+                    }
+                } else if (pLower.includes("instagram") || pLower === "ig") {
+                    // Live validate Instagram handle existence
+                    const check = await validateInstagramUsername(handle);
+                    if (!check.exists) {
+                        showToast(`❌ ${check.reason || "Instagram profile not found. Please enter a valid handle."}`, "error");
+                        if (igErrMsg) {
+                            igErrMsg.textContent = check.reason || "Instagram profile not found. Please check and enter the correct handle.";
+                            igErrMsg.classList.remove("hidden");
+                        }
+                        if (igManualEntryInput) {
+                            igManualEntryInput.focus();
+                            igManualEntryInput.style.borderColor = "var(--red)";
+                        }
+                        return;
+                    }
                 }
 
                 let formatted = formatHandle(handle);
@@ -3925,7 +4114,10 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (err) {
                 showToast(err.message, "error");
             } finally {
-                if (btnIgManualSubmit) btnIgManualSubmit.disabled = false;
+                if (btnIgManualSubmit) {
+                    btnIgManualSubmit.disabled = false;
+                    btnIgManualSubmit.textContent = "Confirm & Proceed →";
+                }
             }
         });
     }
@@ -4404,6 +4596,39 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
+        // Live validate Discord User ID before proceeding
+        if (btnSendDiscordBot) btnSendDiscordBot.disabled = true;
+        try {
+            const check = await validateDiscordUserId(userId);
+            if (!check.exists) {
+                showToast(`❌ ${check.reason || "Discord user ID not found. Please enter a valid 17-20 digit User ID."}`, "error");
+                if (discordUserIdInput) {
+                    discordUserIdInput.focus();
+                    discordUserIdInput.style.borderColor = "var(--red)";
+                }
+                if (discordErrorAlert && discordErrorMessage) {
+                    discordErrorMessage.textContent = check.reason || "Discord user ID not found. Please check and enter the correct ID.";
+                    discordErrorAlert.classList.remove("hidden");
+                }
+                return;
+            }
+            state.finalDiscordUserId = userId;
+            if (state.discordProfile) {
+                state.discordProfile.discord_user_id = userId;
+                state.discordProfile.status = "sendable";
+                state.discordProfile.url = `https://discord.com/users/${userId}`;
+            } else {
+                state.discordProfile = {
+                    discord_user_id: userId,
+                    discord_source: "manual",
+                    status: "sendable",
+                    url: `https://discord.com/users/${userId}`
+                };
+            }
+        } finally {
+            if (btnSendDiscordBot) btnSendDiscordBot.disabled = false;
+        }
+
         const c = state.creator || {};
         const creatorName = c.name || c.channel_name || "Creator";
         const videoTitle = c.video_title || "your video";
@@ -4430,64 +4655,89 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (btnDiscordSetId && discordUserIdInput) {
-        btnDiscordSetId.onclick = () => {
+        btnDiscordSetId.onclick = async () => {
             const rawId = discordUserIdInput.value.trim();
             const cleanId = extractDiscordSnowflake(rawId);
             if (!cleanId) {
                 showToast("Please enter a valid 17-20 digit Discord User ID.", "error");
                 discordUserIdInput.style.borderColor = "var(--red)";
+                if (discordErrorAlert && discordErrorMessage) {
+                    discordErrorMessage.textContent = "Please enter a valid 17-20 digit Discord User ID.";
+                    discordErrorAlert.classList.remove("hidden");
+                }
                 return;
             }
-            discordUserIdInput.value = cleanId;
-            discordUserIdInput.style.borderColor = "var(--green)";
-            state.finalDiscordUserId = cleanId;
-            if (state.discordProfile) {
-                state.discordProfile.discord_user_id = cleanId;
-                state.discordProfile.status = "sendable";
-                state.discordProfile.source = "Manual entry";
-                state.discordProfile.user_provided = true;
-                state.discordProfile.url = `https://discord.com/users/${cleanId}`;
-            } else {
-                state.discordProfile = {
-                    discord_user_id: cleanId,
-                    discord_source: "manual",
-                    source: "Manual entry",
-                    user_provided: true,
-                    status: "sendable",
-                    url: `https://discord.com/users/${cleanId}`
-                };
+
+            btnDiscordSetId.disabled = true;
+            const originalText = btnDiscordSetId.textContent;
+            btnDiscordSetId.textContent = "Verifying...";
+            try {
+                const check = await validateDiscordUserId(cleanId);
+                if (!check.exists) {
+                    showToast(`❌ ${check.reason || "Discord user ID not found. Please enter a valid 17-20 digit User ID."}`, "error");
+                    discordUserIdInput.style.borderColor = "var(--red)";
+                    if (discordErrorAlert && discordErrorMessage) {
+                        discordErrorMessage.textContent = check.reason || "Discord user ID not found. Please check and enter the correct ID.";
+                        discordErrorAlert.classList.remove("hidden");
+                    }
+                    return;
+                }
+
+                if (discordErrorAlert) discordErrorAlert.classList.add("hidden");
+                discordUserIdInput.value = cleanId;
+                discordUserIdInput.style.borderColor = "var(--green)";
+                state.finalDiscordUserId = cleanId;
+                if (state.discordProfile) {
+                    state.discordProfile.discord_user_id = cleanId;
+                    state.discordProfile.status = "sendable";
+                    state.discordProfile.source = "Manual entry";
+                    state.discordProfile.user_provided = true;
+                    state.discordProfile.url = `https://discord.com/users/${cleanId}`;
+                } else {
+                    state.discordProfile = {
+                        discord_user_id: cleanId,
+                        discord_source: "manual",
+                        source: "Manual entry",
+                        user_provided: true,
+                        status: "sendable",
+                        url: `https://discord.com/users/${cleanId}`
+                    };
+                }
+                if (discordStatusBadge) {
+                    discordStatusBadge.textContent = "READY · DISCORD DM";
+                    discordStatusBadge.style.background = "#DCFCE7";
+                    discordStatusBadge.style.color = "#166534";
+                    discordStatusBadge.style.borderColor = "#22C55E";
+                }
+                if (hubSummaryDiscordVal) {
+                    hubSummaryDiscordVal.textContent = `User ID: ${cleanId}`;
+                    hubSummaryDiscordVal.style.color = "var(--green)";
+                }
+                if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
+                if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
+                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
+                const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
+                if (btnDirectProfile) {
+                    btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
+                    btnDirectProfile.classList.remove("hidden");
+                    btnDirectProfile.onclick = () => {
+                        const text = discordMessageBody ? discordMessageBody.value.trim() : "";
+                        if (text) copyTextToClipboard(text);
+                    };
+                }
+                if (hubDiscordHeadHandle) {
+                    hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${cleanId}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</a>`;
+                    hubDiscordHeadHandle.onclick = null;
+                }
+                if (btnSendDiscordBot) {
+                    btnSendDiscordBot.disabled = false;
+                    if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
+                }
+                showToast("✓ Discord User ID verified and saved. Ready to open profile & DM!");
+            } finally {
+                btnDiscordSetId.disabled = false;
+                btnDiscordSetId.textContent = originalText;
             }
-            if (discordStatusBadge) {
-                discordStatusBadge.textContent = "READY · DISCORD DM";
-                discordStatusBadge.style.background = "#DCFCE7";
-                discordStatusBadge.style.color = "#166534";
-                discordStatusBadge.style.borderColor = "#22C55E";
-            }
-            if (hubSummaryDiscordVal) {
-                hubSummaryDiscordVal.textContent = `User ID: ${cleanId}`;
-                hubSummaryDiscordVal.style.color = "var(--green)";
-            }
-            if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
-            if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
-            if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
-            const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
-            if (btnDirectProfile) {
-                btnDirectProfile.href = `https://discord.com/users/${cleanId}`;
-                btnDirectProfile.classList.remove("hidden");
-                btnDirectProfile.onclick = () => {
-                    const text = discordMessageBody ? discordMessageBody.value.trim() : "";
-                    if (text) copyTextToClipboard(text);
-                };
-            }
-            if (hubDiscordHeadHandle) {
-                hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${cleanId}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${cleanId} ↗</a>`;
-                hubDiscordHeadHandle.onclick = null;
-            }
-            if (btnSendDiscordBot) {
-                btnSendDiscordBot.disabled = false;
-                if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
-            }
-            showToast("✓ Discord User ID saved. Ready to open profile & DM!");
         };
 
         discordUserIdInput.addEventListener("keydown", (e) => {
@@ -4498,37 +4748,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         discordUserIdInput.addEventListener("input", () => {
+            if (discordErrorAlert) discordErrorAlert.classList.add("hidden");
             const val = discordUserIdInput.value.trim();
             const clean = extractDiscordSnowflake(val);
             const btnDirectProfile = document.getElementById("btn-discord-open-profile-direct");
             if (clean) {
-                discordUserIdInput.style.borderColor = "var(--green)";
-                state.finalDiscordUserId = clean;
-                if (discordServerExplanation) discordServerExplanation.classList.add("hidden");
-                if (btnDiscordVisitServer) btnDiscordVisitServer.classList.add("hidden");
-                if (discordIdBannerTitle) discordIdBannerTitle.textContent = "Creator's Discord User ID (17-20 digits)";
-                if (discordStatusBadge) {
-                    discordStatusBadge.textContent = "READY · DISCORD DM";
-                    discordStatusBadge.style.background = "#DCFCE7";
-                    discordStatusBadge.style.color = "#166534";
-                    discordStatusBadge.style.borderColor = "#22C55E";
-                }
-                if (btnDirectProfile) {
-                    btnDirectProfile.href = `https://discord.com/users/${clean}`;
-                    btnDirectProfile.classList.remove("hidden");
-                    btnDirectProfile.onclick = () => {
-                        const text = discordMessageBody ? discordMessageBody.value.trim() : "";
-                        if (text) copyTextToClipboard(text);
-                    };
-                }
-                if (hubDiscordHeadHandle) {
-                    hubDiscordHeadHandle.innerHTML = `Direct message to <a href="https://discord.com/users/${clean}" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--primary); font-weight: 700;" title="Click to open Discord profile">User ID ${clean} ↗</a>`;
-                    hubDiscordHeadHandle.onclick = null;
-                }
-                if (btnSendDiscordBot) {
-                    btnSendDiscordBot.disabled = false;
-                    if (btnSendDiscordText) btnSendDiscordText.textContent = "Open Discord & Send ↗";
-                }
+                discordUserIdInput.style.borderColor = "";
             } else if (val.length > 0) {
                 discordUserIdInput.style.borderColor = "var(--amber)";
                 if (btnDirectProfile) btnDirectProfile.classList.add("hidden");
