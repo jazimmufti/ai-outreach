@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arclent Instagram Assistant</title>
+    <title>Arclent Outreach Assistant</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
                 <div class="brand-logo">A</div>
                 <div class="brand-info">
                     <h1 class="brand-title">Arclent</h1>
-                    <span class="brand-subtitle">Instagram DM Assistant</span>
+                    <span class="brand-subtitle">Outreach Assistant</span>
                 </div>
             </div>
             <div class="status-indicator active" id="status-pill" title="Extension Ready">
@@ -37,6 +37,10 @@
                     </p>
                     <div class="active-session-details hidden" id="session-details">
                         <div class="detail-row">
+                            <span class="detail-label">Platform:</span>
+                            <span class="detail-val font-mono" id="session-platform" style="font-weight: 700; color: #00D26A;">Instagram</span>
+                        </div>
+                        <div class="detail-row">
                             <span class="detail-label">Creator:</span>
                             <span class="detail-val font-mono" id="session-username">@creator</span>
                         </div>
@@ -48,9 +52,20 @@
                             Message text preview...
                         </div>
                         <button type="button" class="btn-primary" id="btn-re-trigger" style="margin-top: 8px;">
-                            Fill DM in Instagram Tab ↗
+                            Fill DM in Tab ↗
                         </button>
                     </div>
+                </div>
+            </section>
+
+            <!-- Multi-Platform Badge List -->
+            <section style="background: #111827; border: 1px solid #1F2937; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                <span style="font-size: 11px; font-weight: 600; color: #9CA3AF;">Supported Channels:</span>
+                <div style="display: flex; gap: 6px; font-size: 11px; font-weight: 700;">
+                    <span style="color: #E1306C;" title="Instagram">📸 IG</span>
+                    <span style="color: #FFFFFF;" title="X (Twitter)">𝕏 X</span>
+                    <span style="color: #5865F2;" title="Discord">💬 Discord</span>
+                    <span style="color: #1877F2;" title="Facebook">📘 FB</span>
                 </div>
             </section>
 
@@ -60,15 +75,15 @@
                 <div class="steps-list">
                     <div class="step-item">
                         <div class="step-num">1</div>
-                        <div class="step-text">Click <strong>"Open Instagram & Send ↗"</strong> in Arclent.</div>
+                        <div class="step-text">Click <strong>"Open & Send ↗"</strong> in Arclent for Instagram, X, Discord, or Facebook.</div>
                     </div>
                     <div class="step-item">
                         <div class="step-num">2</div>
-                        <div class="step-text">Extension opens Instagram and inserts the verification message into the DM composer.</div>
+                        <div class="step-text">If not signed in, extension guides you to log in and automatically redirects back to the creator's DM.</div>
                     </div>
                     <div class="step-item">
                         <div class="step-num">3</div>
-                        <div class="step-text"><strong>You review the message and click Send in Instagram.</strong></div>
+                        <div class="step-text">Message is inserted into the DM box. <strong>You review and click Send.</strong></div>
                     </div>
                 </div>
             </section>
@@ -77,7 +92,7 @@
         <!-- Footer -->
         <footer class="popup-footer">
             <a href="https://ai-outreach-production-8dcc.up.railway.app/" target="_blank" class="footer-link">Open Arclent Dashboard ↗</a>
-            <span class="version-tag">v1.0.0</span>
+            <span class="version-tag">v1.1.0</span>
         </footer>
     </div>
 

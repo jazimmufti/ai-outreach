@@ -1,11 +1,12 @@
 /**
- * Arclent Instagram Assistant — Popup Controller
+ * Arclent Outreach Assistant — Multi-Platform Popup Controller
  */
 
 document.addEventListener("DOMContentLoaded", async () => {
     const sessionBadge = document.getElementById("session-badge");
     const sessionEmptyText = document.getElementById("session-empty-text");
     const sessionDetails = document.getElementById("session-details");
+    const sessionPlatform = document.getElementById("session-platform");
     const sessionUsername = document.getElementById("session-username");
     const sessionStatusText = document.getElementById("session-status-text");
     const sessionMessagePreview = document.getElementById("session-message-preview");
@@ -16,22 +17,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         const res = await chrome.runtime.sendMessage({ type: "GET_OUTREACH_STATUS" });
         const session = res?.session;
 
-        if (session && session.username) {
+        if (session && (session.username || session.userId)) {
             sessionEmptyText.classList.add("hidden");
             sessionDetails.classList.remove("hidden");
 
-            sessionUsername.textContent = session.username.startsWith("@") ? session.username : `@${session.username}`;
+            const platformName = session.platformName || (session.platform ? session.platform.toUpperCase() : "Instagram");
+            if (sessionPlatform) {
+                sessionPlatform.textContent = platformName;
+            }
+
+            const targetDisplay = session.username ? (session.username.startsWith("@") ? session.username : `@${session.username}`) : `ID ${session.userId}`;
+            sessionUsername.textContent = targetDisplay;
             sessionMessagePreview.textContent = session.message || "";
 
-            if (session.status === "ready") {
+            if (session.status === "ready" || session.status === "completed") {
                 sessionBadge.textContent = "READY";
                 sessionBadge.className = "badge ready";
-                sessionStatusText.textContent = "✓ Message Inserted in Instagram";
+                sessionStatusText.textContent = `✓ Message Inserted in ${platformName}`;
                 sessionStatusText.style.color = "#00D26A";
+            } else if (session.status === "waiting_for_login") {
+                sessionBadge.textContent = "LOGIN";
+                sessionBadge.className = "badge pending";
+                sessionStatusText.textContent = `Waiting for ${platformName} sign-in...`;
+                sessionStatusText.style.color = "#F59E0B";
             } else if (session.status === "pending") {
                 sessionBadge.textContent = "PENDING";
                 sessionBadge.className = "badge pending";
-                sessionStatusText.textContent = "Navigating to Creator DM...";
+                sessionStatusText.textContent = `Navigating to DM in ${platformName}...`;
                 sessionStatusText.style.color = "#F59E0B";
             } else {
                 sessionBadge.textContent = "ACTIVE";
@@ -40,13 +52,21 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
 
             if (btnReTrigger) {
+                btnReTrigger.textContent = `Fill DM in ${platformName} Tab ↗`;
                 btnReTrigger.onclick = async () => {
-                    const tabs = await chrome.tabs.query({ url: "https://www.instagram.com/*" });
+                    const platformPatterns = {
+                        instagram: "*://*.instagram.com/*",
+                        x: ["*://*.x.com/*", "*://*.twitter.com/*"],
+                        discord: "*://*.discord.com/*",
+                        facebook: ["*://*.facebook.com/*", "*://*.messenger.com/*"]
+                    };
+                    const queryUrl = platformPatterns[session.platform] || "*://*.instagram.com/*";
+                    const tabs = await chrome.tabs.query({ url: queryUrl });
                     if (tabs.length > 0) {
                         await chrome.tabs.update(tabs[0].id, { active: true });
                         await chrome.tabs.sendMessage(tabs[0].id, { type: "TRIGGER_DM_AUTOFILL" }).catch(() => {});
-                    } else {
-                        await chrome.tabs.create({ url: `https://www.instagram.com/${session.username.replace('@','')}/`, active: true });
+                    } else if (session.targetUrl) {
+                        await chrome.tabs.create({ url: session.targetUrl, active: true });
                     }
                     window.close();
                 };

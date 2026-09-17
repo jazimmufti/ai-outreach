@@ -563,10 +563,9 @@ async def execute_creator_research_stream(
     extracted_cand_handles = []
     try:
         from app.services.youtube_description_parser import extract_verified_contributor_accounts
-        desc_parts = [state.get("video_description") or "", state.get("description") or "", state.get("channel_description") or ""]
-        combined_desc = "\n".join(p for p in desc_parts if p.strip())
+        video_desc_text = (state.get("video_description") or "").strip()
         verified_contribs = await extract_verified_contributor_accounts(
-            combined_desc,
+            video_desc_text,
             linked_platform="Instagram",
             linked_account=linked_account,
             user_role=user_role

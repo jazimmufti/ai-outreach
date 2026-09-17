@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Arclent Instagram Assistant",
-  "version": "1.0.0",
-  "description": "Automates opening Instagram creator DMs and populating outreach messages for Arclent collaboration verification.",
+  "name": "Arclent Outreach Assistant",
+  "version": "1.1.0",
+  "description": "Automates opening creator DMs and populating outreach messages across Instagram, X (Twitter), Discord, and Facebook for Arclent collaboration verification.",
   "browser_specific_settings": {
     "gecko": {
       "id": "arclent-assistant@arclent.com",
@@ -19,7 +19,18 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://www.instagram.com/*",
+    "https://*.instagram.com/*",
+    "https://instagram.com/*",
+    "https://*.x.com/*",
+    "https://x.com/*",
+    "https://*.twitter.com/*",
+    "https://twitter.com/*",
+    "https://*.discord.com/*",
+    "https://discord.com/*",
+    "https://*.facebook.com/*",
+    "https://facebook.com/*",
+    "https://*.messenger.com/*",
+    "https://messenger.com/*",
     "http://localhost/*",
     "http://127.0.0.1/*",
     "https://*.arclent.com/*",
@@ -32,7 +43,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Arclent Instagram Assistant",
+    "default_title": "Arclent Outreach Assistant",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",
@@ -42,7 +53,18 @@
   "content_scripts": [
     {
       "matches": [
-        "https://www.instagram.com/*"
+        "https://*.instagram.com/*",
+        "https://instagram.com/*",
+        "https://*.x.com/*",
+        "https://x.com/*",
+        "https://*.twitter.com/*",
+        "https://twitter.com/*",
+        "https://*.discord.com/*",
+        "https://discord.com/*",
+        "https://*.facebook.com/*",
+        "https://facebook.com/*",
+        "https://*.messenger.com/*",
+        "https://messenger.com/*"
       ],
       "js": [
         "content.js"

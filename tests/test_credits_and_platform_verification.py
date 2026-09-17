@@ -649,8 +649,125 @@ class TestValidateInstagramHandleApi(unittest.TestCase):
         self.assertIn("empty", data["reason"])
 
 
+class TestExplicitCreditsAndNoLeakage(unittest.IsolatedAsyncioTestCase):
+    """Tests ensuring ONLY explicit credits with IDs trigger auto-verification,
+    and account-holder links or descriptions from other videos never cause false auto-verification.
+    """
+
+    def test_account_holder_socials_only_does_not_extract_credits(self):
+        """Account holder's general socials in description must not be treated as editor credits."""
+        desc = (
+            "Instgram: @arclent_\n"
+            "X/Twitter: @smufaiz1111\n"
+            "Discord: 1166052187869294673\n"
+            "Facebook: @mufaiz.sheikh.1"
+        )
+        candidates = extract_credit_candidates(desc)
+        self.assertEqual(candidates, [], "General account holder socials should not be extracted as credit candidates")
+
+        # Auto-verification check with linked discord account
+        res = verify_contribution_from_description(
+            desc,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertFalse(res.verified)
+        self.assertNotEqual(res.status, "auto_verified")
+
+        # Auto-verification check with linked instagram account
+        res_ig = verify_contribution_from_description(
+            desc,
+            linked_account="arclent_",
+            user_role="Video editor"
+        )
+        self.assertFalse(res_ig.verified)
+        self.assertNotEqual(res_ig.status, "auto_verified")
+
+    def test_multi_line_credits_block_with_ids(self):
+        """Multi-line Credits: section followed by IDs on subsequent lines must be extracted and verified."""
+        desc = (
+            "Amazing gameplay video!\n\n"
+            "Credits:\n"
+            "Discord: 1166052187869294673\n"
+            "Instagram: @arclent_\n\n"
+            "Socials:\n"
+            "Twitter: @channelowner"
+        )
+        candidates = extract_credit_candidates(desc)
+        self.assertTrue(len(candidates) >= 2)
+        usernames = [c["username"] for c in candidates]
+        self.assertIn("1166052187869294673", usernames)
+        self.assertIn("arclent_", usernames)
+
+        # Auto-verification with linked discord account
+        res = verify_contribution_from_description(
+            desc,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertTrue(res.verified)
+        self.assertEqual(res.status, "auto_verified")
+        self.assertEqual(res.platform, "Discord")
+
+    def test_non_credit_mention_of_edit_does_not_extract(self):
+        """Mentions like 'Watch this edit' or 'Check my edit' must not be parsed as an editor credit."""
+        desc = "Watch this edit: https://youtu.be/xyz123 and let me know in the comments!"
+        candidates = extract_credit_candidates(desc)
+        self.assertEqual(candidates, [])
+
+        res = verify_contribution_from_description(
+            desc,
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+        self.assertFalse(res.verified)
+
+    @patch("app.api.outreach.execute_creator_research", new_callable=AsyncMock)
+    async def test_other_videos_descriptions_do_not_leak_into_endpoint_verification(self, mock_research):
+        """Ensure other recent video descriptions stored on the channel do not leak into verification of the current video."""
+        from app.api.outreach import discover_creator_endpoint
+        from app.models.schemas import ResearchRequest, RawCreatorResearchResult
+
+        # Video description only has account holder socials (NO credits)
+        current_video_desc = (
+            "Instgram: @arclent_\n"
+            "Discord: 1166052187869294673\n"
+        )
+        # Aggregated channel description has another video with credits to the user
+        channel_desc_with_other_videos = (
+            "Current Video:\n"
+            f"{current_video_desc}\n"
+            "--- Recent Video Description #1 ---\n"
+            "Edited by jazim.mufti (Discord: 1166052187869294673)\n"
+        )
+
+        mock_research.return_value = RawCreatorResearchResult(
+            video_url="https://youtube.com/shorts/ojENOe-lLI8",
+            video_title="Short without credits",
+            creator_name="Channel Owner",
+            channel_name="Owner Channel",
+            video_description=current_video_desc,
+            description=channel_desc_with_other_videos,
+            channel_description="Channel about gaming"
+        )
+
+        req = ResearchRequest(
+            youtube_url="https://youtube.com/shorts/ojENOe-lLI8",
+            linked_discord_account="1166052187869294673",
+            user_role="Video editor"
+        )
+
+        response = await discover_creator_endpoint(req)
+        # MUST NOT be auto-verified because current video has NO credits!
+        self.assertFalse(
+            response.stage == "auto_verified",
+            "Should not auto-verify when current video description only has account holder socials"
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

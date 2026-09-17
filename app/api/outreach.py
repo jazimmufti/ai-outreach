@@ -95,14 +95,9 @@ async def discover_creator_endpoint(payload: ResearchRequest):
                 session.instagram_profile = s
                 break
 
-        # Step 0: Automatic Contribution Verification via YouTube Video Description
-        # Checks whether creator mentions match the Arclent linked Instagram account
-        desc_parts = [
-            raw_result.video_description or "",
-            raw_result.description or "",
-            raw_result.channel_description or ""
-        ]
-        desc_to_check = "\n".join(p for p in desc_parts if p.strip())
+        # Step 0: Automatic Contribution Verification strictly via YouTube Video Description
+        # Checks whether contributor mentions on this video match the creator's linked account
+        desc_to_check = (raw_result.video_description or "").strip()
         auto_verify_result = await verify_contribution_from_description_async(
             desc_to_check,
             linked_account=payload.linked_instagram_account,
@@ -203,13 +198,8 @@ async def stream_discovery_endpoint(
                             session.instagram_profile = s
                             break
 
-                    # Step 0: Automatic Contribution Verification via YouTube Video Description
-                    desc_parts = [
-                        raw.get("video_description") or "",
-                        raw.get("description") or "",
-                        raw.get("channel_description") or ""
-                    ]
-                    desc_to_check = "\n".join(p for p in desc_parts if p.strip())
+                    # Step 0: Automatic Contribution Verification strictly via YouTube Video Description
+                    desc_to_check = (raw.get("video_description") or "").strip()
                     auto_verify_result = await verify_contribution_from_description_async(
                         desc_to_check,
                         linked_account=linked_account,
