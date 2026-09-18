@@ -1,6 +1,6 @@
-# Arclent Instagram Outreach Assistant — Chrome Extension (Manifest V3)
+# Arclent Outreach Assistant — Multi-Platform Chrome Extension (Manifest V3)
 
-The **Arclent Instagram Assistant** Chrome Extension provides 1-click Instagram DM auto-fill for collaboration verification on desktop Chrome.
+The **Arclent Outreach Assistant** Chrome Extension provides 1-click DM auto-fill for collaboration verification across **Instagram, X (Twitter), Discord, and Facebook (Messenger)** on desktop browsers.
 
 ---
 
@@ -9,23 +9,23 @@ The **Arclent Instagram Assistant** Chrome Extension provides 1-click Instagram 
 ```text
 Arclent Web App
       │
-      │ 1. User clicks "Open Instagram & Send ↗"
+      │ 1. User selects platform (Instagram, X, Discord, Facebook) & clicks Outreach
       ▼
 Chrome Extension (Background & Content Scripts)
       │
-      │ 2. Opens/focuses creator's Instagram tab (e.g. instagram.com/creator123)
-      │ 3. Automatically clicks the "Message" button
-      │ 4. Locates the DM composer (contenteditable / textarea)
-      │ 5. Inserts the prepared verification message with verification link
+      │ 2. Opens/focuses creator's profile or DM tab
+      │ 3. Automatically detects login state (guides login + auto-redirects if needed)
+      │ 4. Clicks "Message" button to open DM composer
+      │ 5. Inserts prepared verification message with single-instance safety
       ▼
-Instagram Web Composer Populated
+Social Platform Web Composer Populated
       │
       │ ⛔ STOP (Extension NEVER clicks Send)
       ▼
-User manually reviews message and clicks "Send" inside Instagram
+User manually reviews message and clicks "Send" inside the social platform
       │
       ▼
-Arclent Dashboard updates to "Instagram DM Ready" → Real-time Verification Polling
+Arclent Dashboard updates to "DM Ready" → Real-time Verification Polling
 ```
 
 ---
@@ -33,9 +33,10 @@ Arclent Dashboard updates to "Instagram DM Ready" → Real-time Verification Pol
 ## 🔒 Safety & Privacy Principles
 
 1. **NEVER Clicks Send**: The extension strictly stops after populating the message into the composer. The final send action always remains 100% under user control.
-2. **Zero Credentials Collected**: The extension never reads, intercepts, or requests Instagram passwords, cookies, or session tokens.
-3. **No Automated Login**: If Instagram requires login, the standard Instagram login screen handles authentication directly.
-4. **Minimum Permissions**: Uses only `storage` and `tabs` permissions, strictly scoped to `https://www.instagram.com/*` and Arclent origins.
+2. **Zero Credentials Collected**: The extension never reads, intercepts, or requests passwords, cookies, or session tokens.
+3. **No Automated Login**: If a platform requires login, the standard login screen handles authentication directly.
+4. **Minimum Permissions**: Uses only `storage` and `tabs` permissions, strictly scoped to the supported social platforms and Arclent origins.
+5. **No Public Comment Infiltration**: Strictly verifies that target elements are genuine DM composers and never posts into public comment feeds.
 
 ---
 
@@ -47,25 +48,25 @@ This extension works across **all modern desktop browsers** (Windows, macOS, Lin
 1. In the URL bar, go to `chrome://extensions` (or `brave://extensions`).
 2. Toggle **Developer mode** on (top-right corner).
 3. Click **Load unpacked** (top-left).
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ### 2. Microsoft Edge
 1. In the URL bar, go to `edge://extensions`.
 2. Toggle **Developer mode** on (bottom-left sidebar or top-right).
 3. Click **Load unpacked**.
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ### 3. Mozilla Firefox
 1. In the URL bar, go to `about:debugging#/runtime/this-firefox`.
 2. Click **Load Temporary Add-on...**.
-3. Select the `manifest.json` file inside the `ai-outreach/instagram-extension` folder.
+3. Select the `manifest.json` file inside the `ai-outreach/platform-extension` folder.
 4. The extension is now active in Firefox!
 
 ### 4. Opera & Opera GX
 1. In the URL bar, go to `opera://extensions`.
 2. Turn on **Developer mode** (top-right).
 3. Click **Load unpacked extension**.
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ---
 
@@ -76,26 +77,25 @@ This extension works across **all modern desktop browsers** (Windows, macOS, Lin
    https://ai-outreach-production-8dcc.up.railway.app/
    ```
    (or locally at `http://localhost:8000`) in Google Chrome with the extension loaded.
-2. Enter a YouTube URL (e.g., `https://www.youtube.com/watch?v=0e3GPea1Tyg`) and click **"Find the creator"**.
-3. In **Step 2 (Instagram)**, confirm the creator's Instagram handle.
-4. Click **"Open Instagram & Send ↗"**.
-5. **Expected Result**:
-   - Instagram opens directly to the creator's profile.
-   - The Message button is clicked automatically.
+2. Enter a YouTube URL and find creator contacts.
+3. Select any social platform (Instagram, X, Discord, Facebook) and click outreach.
+4. **Expected Result**:
+   - Platform opens directly to the creator's profile / DM.
+   - The Message button is clicked automatically if needed.
    - The DM composer opens and the Arclent outreach message appears pre-filled.
-   - A green floating banner appears: *"✓ Message Ready — Review your message and click Send in Instagram"*.
+   - A floating banner appears: *"✓ Message Ready — Please review the message and click Send"*.
    - The extension stops and waits for you to click Send.
-   - Arclent displays **"Instagram DM Ready"** with the **"I've Sent the Message"** button.
+   - Arclent displays **"DM Ready"** with the **"I've Sent the Message"** button.
 
 ---
 
 ## 📁 File Structure
 
 ```text
-instagram-extension/
+platform-extension/
 ├── manifest.json      # Manifest V3 configuration & permission boundaries
 ├── background.js     # Service worker managing tabs, storage, and message routing
-├── content.js        # Injected on instagram.com to locate Message button & fill composer
+├── content.js        # Injected on social platforms to locate Message button & fill composer
 ├── bridge.js         # Injected on Arclent origins for handshake & event relays
 ├── popup.html        # Extension popup UI matching Arclent dark-emerald theme
 ├── popup.js          # Popup controller & active session status display

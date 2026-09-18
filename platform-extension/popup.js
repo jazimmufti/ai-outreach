@@ -55,12 +55,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                 btnReTrigger.textContent = `Fill DM in ${platformName} Tab ↗`;
                 btnReTrigger.onclick = async () => {
                     const platformPatterns = {
-                        instagram: "*://*.instagram.com/*",
-                        x: ["*://*.x.com/*", "*://*.twitter.com/*"],
-                        discord: "*://*.discord.com/*",
-                        facebook: ["*://*.facebook.com/*", "*://*.messenger.com/*"]
+                        instagram: ["https://*.instagram.com/*", "https://instagram.com/*"],
+                        x: ["https://*.x.com/*", "https://x.com/*", "https://*.twitter.com/*", "https://twitter.com/*"],
+                        discord: ["https://*.discord.com/*", "https://discord.com/*"],
+                        facebook: ["https://*.facebook.com/*", "https://facebook.com/*", "https://*.messenger.com/*", "https://messenger.com/*"]
                     };
-                    const queryUrl = platformPatterns[session.platform] || "*://*.instagram.com/*";
+                    const queryUrl = platformPatterns[session.platform] || ["https://*.instagram.com/*", "https://instagram.com/*"];
                     const tabs = await chrome.tabs.query({ url: queryUrl });
                     if (tabs.length > 0) {
                         await chrome.tabs.update(tabs[0].id, { active: true });

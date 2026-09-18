@@ -50,8 +50,42 @@
         }
     }
 
-    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = false, durationMs = 6000 }) {
+    async function copyTextToClipboard(text) {
+        if (!text) return false;
+        let success = false;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+                success = true;
+            }
+        } catch (_) {}
+
+        if (!success) {
+            try {
+                const ta = document.createElement("textarea");
+                ta.value = text;
+                ta.style.position = "fixed";
+                ta.style.left = "-9999px";
+                ta.style.top = "-9999px";
+                ta.style.opacity = "0";
+                ta.setAttribute("readonly", "");
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                success = document.execCommand("copy");
+                document.body.removeChild(ta);
+            } catch (_) {}
+        }
+        return success;
+    }
+
+    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = false, durationMs = 6000, buttonLabel = null }) {
         removeFloatingBanner();
+
+        const borderColor = type === "warning" ? "#F59E0B" : type === "info" ? "#38BDF8" : type === "error" ? "#EF4444" : "#00D26A";
+        const iconColor = type === "success" ? "#00D26A" : type === "warning" ? "#F59E0B" : type === "info" ? "#38BDF8" : "#EF4444";
+        const icon = type === "success" ? "✓" : type === "warning" ? "⚠️" : type === "info" ? "ℹ" : "✕";
+        const initialBtnText = buttonLabel || "📋 Copy Message to Clipboard";
 
         const banner = document.createElement("div");
         banner.id = "arclent-floating-banner";
@@ -62,15 +96,15 @@
             z-index: 2147483647;
             background: #0B2518;
             color: #FFFFFF;
-            border: 2px solid #00D26A;
+            border: 2px solid ${borderColor};
             border-radius: 12px;
             padding: 16px 20px;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            max-width: 390px;
+            max-width: 400px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
             animation: arclentSlideIn 0.3s ease-out forwards;
             transition: opacity 0.35s ease, transform 0.35s ease;
         `;
@@ -91,9 +125,6 @@
             document.head.appendChild(styleEl);
         }
 
-        const icon = type === "success" ? "✓" : type === "warning" ? "🔒" : type === "info" ? "ℹ" : "✕";
-        const iconColor = type === "success" ? "#00D26A" : type === "warning" ? "#F59E0B" : type === "info" ? "#3B82F6" : "#EF4444";
-
         banner.innerHTML = `
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
@@ -102,13 +133,13 @@
                 </div>
                 <button id="arclent-banner-close" style="background: transparent; border: none; color: #9CA3AF; cursor: pointer; font-size: 16px; padding: 0 4px; line-height: 1;">✕</button>
             </div>
-            <p style="margin: 0; font-size: 13px; line-height: 1.45; color: #D1D5DB;">
+            <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #D1D5DB;">
                 ${message}
             </p>
             ${showCopyBtn ? `
-                <div style="margin-top: 6px; display: flex; gap: 8px;">
-                    <button id="arclent-banner-copy-btn" style="background: #00D26A; color: #000; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">
-                        📋 Copy Message to Clipboard
+                <div style="margin-top: 4px; display: flex; gap: 8px;">
+                    <button id="arclent-banner-copy-btn" style="background: #00D26A; color: #000; border: none; border-radius: 6px; padding: 7px 14px; font-size: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: background 0.2s ease;">
+                        ${initialBtnText}
                     </button>
                 </div>
             ` : ""}
@@ -124,11 +155,11 @@
             const copyBtn = banner.querySelector("#arclent-banner-copy-btn");
             if (copyBtn) {
                 copyBtn.onclick = async () => {
-                    try {
-                        await navigator.clipboard.writeText(copyText);
-                        copyBtn.textContent = "✓ Copied to Clipboard!";
-                        setTimeout(() => { if (copyBtn) copyBtn.textContent = "📋 Copy Message to Clipboard"; }, 2500);
-                    } catch (_) { }
+                    await copyTextToClipboard(copyText);
+                    copyBtn.textContent = "✓ Copied to Clipboard!";
+                    setTimeout(() => {
+                        if (copyBtn) copyBtn.textContent = initialBtnText;
+                    }, 2500);
                 };
             }
         }
@@ -185,17 +216,71 @@
     }
 
     // --------------------------------------------------------------------------
+    // Public Comment & Post Filter (Strict Non-DM Detector)
+    // --------------------------------------------------------------------------
+    function isCommentOrPostBox(el) {
+        if (!el) return false;
+
+        const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
+        const placeholder = (el.getAttribute("placeholder") || el.getAttribute("aria-placeholder") || el.getAttribute("data-placeholder") || "").toLowerCase();
+        const dataTestId = (el.getAttribute("data-testid") || "").toLowerCase();
+        const title = (el.getAttribute("title") || "").toLowerCase();
+        const name = (el.getAttribute("name") || "").toLowerCase();
+
+        // Specific comment and post triggers
+        const nonDmPhrases = [
+            "comment", "write a comment", "write a public comment", "add a comment",
+            "leave a comment", "post a comment", "comment as", "write an answer",
+            "reply to", "post your reply", "tweet your reply",
+            "what's on your mind", "whats on your mind", "create a post", "create post",
+            "share a thought", "search facebook", "search messages", "search",
+            "add a response", "post a response"
+        ];
+
+        for (const phrase of nonDmPhrases) {
+            if (ariaLabel.includes(phrase) || placeholder.includes(phrase) || title.includes(phrase) || dataTestId.includes(phrase) || name.includes(phrase)) {
+                return true;
+            }
+        }
+
+        // Parent container selectors indicating comments, feeds, timelines, or search bars
+        if (el.closest) {
+            const forbiddenContainer = el.closest(
+                'form[class*="comment" i], ' +
+                'div[data-pagelet*="Comment" i], ' +
+                'div[data-pagelet*="Feed" i], ' +
+                'div[data-testid*="comment" i], ' +
+                'div[data-testid*="UFI" i], ' +
+                'div[data-testid="tweetTextarea_0"], ' +
+                'div[data-testid*="reply" i], ' +
+                'form[role="search"], ' +
+                '[data-testid="SearchBox_Search_Input"], ' +
+                'div[aria-label*="Create a post" i], ' +
+                'div[aria-label*="What\'s on your mind" i], ' +
+                'div[aria-label*="Comments" i]'
+            );
+            if (forbiddenContainer) return true;
+        }
+
+        return false;
+    }
+
+    // --------------------------------------------------------------------------
     // Universal Safe Composer Text Inserter
     // (Compatible with standard textarea, contenteditable, Lexical, and Slate.js)
     // --------------------------------------------------------------------------
     function insertMessageIntoComposer(composer, text) {
         if (!composer || !text) return false;
 
+        // Strict guard: refuse to insert if element is a comment box or public post
+        if (isCommentOrPostBox(composer)) {
+            console.warn("[Arclent Extension] Rejected candidate: Element is a public comment or post box, not a DM composer.");
+            return false;
+        }
+
         // Immediately ensure the text is on the system clipboard as a reliable backup
         try {
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(text).catch(() => {});
-            }
+            copyTextToClipboard(text);
         } catch (_) {}
 
         // If composer is a container wrapper, resolve the actual editable child
@@ -204,9 +289,14 @@
             composer.tagName.toLowerCase() !== "textarea" && 
             composer.tagName.toLowerCase() !== "input") {
             const innerEditable = composer.querySelector('[contenteditable="true"], textarea, input');
-            if (innerEditable) {
+            if (innerEditable && !isCommentOrPostBox(innerEditable)) {
                 composer = innerEditable;
             }
+        }
+
+        if (isCommentOrPostBox(composer)) {
+            console.warn("[Arclent Extension] Rejected candidate: Resolved inner element is a public comment or post box.");
+            return false;
         }
 
         // Prevent duplicate insertion into the same composer instance
@@ -215,10 +305,11 @@
             return true;
         }
 
-        const val = normalizeText(composer.innerText || composer.textContent || composer.value || "");
-        const sample = normalizeText(text).substring(0, Math.min(25, text.length));
-        if (sample.length > 0 && val.includes(sample)) {
-            console.log("[Arclent Extension] Message already populated in composer. Skipping re-insertion.");
+        // Check if composer already contains the exact message cleanly (e.g. user re-focused)
+        const currentVal = normalizeText(composer.innerText || composer.textContent || composer.value || "");
+        const sample = normalizeText(text).substring(0, Math.min(30, text.length));
+        if (sample.length > 0 && currentVal.includes(sample) && currentVal.indexOf(sample) === currentVal.lastIndexOf(sample)) {
+            console.log("[Arclent Extension] Message already populated cleanly in composer. Skipping re-insertion.");
             composer.dataset.arclentInserted = "true";
             return true;
         }
@@ -238,45 +329,96 @@
         }
 
         // 2. Contenteditable (Facebook Lexical, Discord Slate, X Draft.js, Instagram)
-        // Select all existing content so the paste REPLACES anything currently in the box
+        // Ensure any previous contents (or old duplicates) are fully selected so insertion cleanly replaces them
+        try {
+            document.execCommand("selectAll", false, null);
+        } catch (_) {}
         try {
             const selection = window.getSelection();
             const range = document.createRange();
             range.selectNodeContents(composer);
-            // Keeping the whole node selected ensures the new text replaces any leftover text
             selection.removeAllRanges();
             selection.addRange(range);
         } catch (_) {}
 
-        // Single primary insertion method: Synthetic Paste Event with DataTransfer
-        // This is the universal standard for modern web editors (Lexical, Slate, Draft.js):
-        // It preserves all line breaks (\n\n) and updates the editor's React state machine in ONE clean action.
-        let pasteSuccess = false;
-        try {
-            const dt = new DataTransfer();
-            dt.setData("text/plain", text);
-            const pasteEvt = new ClipboardEvent("paste", {
-                clipboardData: dt,
-                bubbles: true,
-                cancelable: true
-            });
-            composer.dispatchEvent(pasteEvt);
-            pasteSuccess = true;
-        } catch (e) {
-            console.warn("[Arclent Extension] Synthetic paste failed:", e);
-        }
-
-        // Only if synthetic paste threw an exception, fallback to execCommand
-        if (!pasteSuccess) {
+        // ----------------------------------------------------------------------
+        // 2a. FACEBOOK MESSENGER (Meta Lexical Editor)
+        // ----------------------------------------------------------------------
+        // Meta's Lexical editor listens to beforeinput / execCommand("insertText") natively.
+        // DO NOT dispatch a synthetic ClipboardEvent("paste") on Facebook, because Lexical's
+        // paste listener and its beforeinput listener BOTH execute, inserting the message TWICE!
+        if (currentPlatform === "facebook") {
+            let fbSuccess = false;
             try {
-                document.execCommand("insertText", false, text);
+                fbSuccess = document.execCommand("insertText", false, text);
             } catch (err) {
-                console.warn("[Arclent Extension] execCommand failed:", err);
+                console.warn("[Arclent Extension] Facebook execCommand failed:", err);
+            }
+
+            if (!fbSuccess) {
                 try {
                     composer.innerText = text;
                 } catch (_) {}
             }
+
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
+            composer.dispatchEvent(new Event("change", { bubbles: true }));
+            composer.dataset.arclentInserted = "true";
+            console.log("[Arclent Extension] Facebook message inserted via execCommand (paste dispatch prevented).");
+            return true;
         }
+
+        // ----------------------------------------------------------------------
+        // 2b. OTHER PLATFORMS (Instagram, Discord, X)
+        // ----------------------------------------------------------------------
+        // Strategy A: Synthetic ClipboardEvent
+        let pasteHandled = false;
+        try {
+            const dt = new DataTransfer();
+            dt.setData("text/plain", text);
+            const pasteEvt = new ClipboardEvent("paste", {
+                bubbles: true,
+                cancelable: true,
+                clipboardData: dt
+            });
+            const dispatchResult = composer.dispatchEvent(pasteEvt);
+            // If defaultPrevented or dispatchResult is false, an editor listener handled the paste
+            if (pasteEvt.defaultPrevented || dispatchResult === false) {
+                pasteHandled = true;
+            }
+        } catch (e) {
+            console.warn("[Arclent Extension] ClipboardEvent paste dispatch failed:", e);
+        }
+
+        // If the paste event was consumed/handled by the editor framework, do NOT run execCommand
+        if (pasteHandled) {
+            console.log("[Arclent Extension] Message inserted via handled paste event.");
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
+            composer.dispatchEvent(new Event("change", { bubbles: true }));
+            composer.dataset.arclentInserted = "true";
+            return true;
+        }
+
+        // Strategy B: execCommand insertText fallback (ONLY if Strategy A was not handled)
+        try {
+            document.execCommand("insertText", false, text);
+        } catch (err) {
+            console.warn("[Arclent Extension] execCommand failed:", err);
+        }
+
+        const valAfterB = normalizeText(composer.innerText || composer.textContent || composer.value || "");
+        if (sample.length > 0 && valAfterB.includes(sample)) {
+            console.log("[Arclent Extension] Message successfully inserted via execCommand.");
+            composer.dispatchEvent(new Event("input", { bubbles: true }));
+            composer.dispatchEvent(new Event("change", { bubbles: true }));
+            composer.dataset.arclentInserted = "true";
+            return true;
+        }
+
+        // Strategy C: Direct innerText fallback (last resort)
+        try {
+            composer.innerText = text;
+        } catch (_) {}
 
         composer.dispatchEvent(new Event("input", { bubbles: true }));
         composer.dispatchEvent(new Event("change", { bubbles: true }));
@@ -286,6 +428,7 @@
 
     function verifyMessageContent(composer, expectedText) {
         if (!composer || !expectedText) return false;
+        if (isCommentOrPostBox(composer)) return false;
         const currentText = composer.innerText || composer.textContent || composer.value || "";
         const sample = normalizeText(expectedText).substring(0, Math.min(30, expectedText.length));
         return normalizeText(currentText).includes(sample);
@@ -337,18 +480,21 @@
             findComposer() {
                 const editables = Array.from(document.querySelectorAll('div[contenteditable="true"], p[contenteditable="true"], span[contenteditable="true"]'));
                 for (const el of editables) {
+                    if (isCommentOrPostBox(el)) continue;
                     const role = el.getAttribute("role");
                     const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
                     const placeholder = (el.getAttribute("aria-placeholder") || el.getAttribute("data-placeholder") || "").toLowerCase();
-                    if (role === "textbox" || ariaLabel.includes("message") || placeholder.includes("message") || el.hasAttribute("data-lexical-editor")) {
+                    if ((role === "textbox" || el.hasAttribute("data-lexical-editor")) && 
+                        (ariaLabel.includes("message") || placeholder.includes("message") || window.location.pathname.includes("/direct/"))) {
                         const rect = el.getBoundingClientRect();
                         if (rect.width > 0 && rect.height > 0) return el;
                     }
                 }
                 const textareas = Array.from(document.querySelectorAll('textarea'));
                 for (const ta of textareas) {
+                    if (isCommentOrPostBox(ta)) continue;
                     const placeholder = (ta.getAttribute("placeholder") || "").toLowerCase();
-                    if (placeholder.includes("message") || placeholder.includes("reply") || ta.closest('section, main, form')) {
+                    if (placeholder.includes("message") || (window.location.pathname.includes("/direct/") && !ta.closest('form[role="search"]'))) {
                         return ta;
                     }
                 }
@@ -397,6 +543,7 @@
 
                 const btns = Array.from(document.querySelectorAll('button[aria-label*="Direct message" i], div[role="button"][aria-label*="Direct message" i], button[aria-label*="Message" i]'));
                 for (const b of btns) {
+                    if (isCommentOrPostBox(b)) continue;
                     const rect = b.getBoundingClientRect();
                     if (rect.width > 0 && rect.height > 0) return b;
                 }
@@ -414,16 +561,19 @@
                 ];
                 for (const sel of specificSelectors) {
                     const el = document.querySelector(sel);
-                    if (el) {
+                    if (el && !isCommentOrPostBox(el)) {
                         const target = el.getAttribute("contenteditable") === "true" ? el : (el.querySelector('[contenteditable="true"]') || el);
-                        const rect = target.getBoundingClientRect();
-                        if (rect.width > 0 && rect.height > 0) return target;
+                        if (!isCommentOrPostBox(target)) {
+                            const rect = target.getBoundingClientRect();
+                            if (rect.width > 0 && rect.height > 0) return target;
+                        }
                     }
                 }
 
                 // Strategy 2: Look for elements referencing "Unencrypted message", "Start a message", "Direct message"
                 const candidateNodes = Array.from(document.querySelectorAll('div, span, p, label, textarea'));
                 for (const el of candidateNodes) {
+                    if (isCommentOrPostBox(el)) continue;
                     const text = (el.textContent || "").trim().toLowerCase();
                     const aria = (el.getAttribute("aria-label") || "").toLowerCase();
                     const placeholder = (el.getAttribute("placeholder") || el.getAttribute("data-placeholder") || "").toLowerCase();
@@ -446,33 +596,39 @@
                         const container = el.closest('div[role="textbox"], form, section, aside, div[data-testid*="composer" i]') || el.parentElement?.parentElement;
                         if (container) {
                             const editable = container.querySelector('[contenteditable="true"], textarea');
-                            if (editable) {
+                            if (editable && !isCommentOrPostBox(editable)) {
                                 const rect = editable.getBoundingClientRect();
                                 if (rect.width > 0 && rect.height > 0) return editable;
                             }
                         }
                         const nearby = el.parentElement?.querySelector('[contenteditable="true"], textarea');
-                        if (nearby) return nearby;
+                        if (nearby && !isCommentOrPostBox(nearby)) return nearby;
                     }
                 }
 
-                // Strategy 3: Scan all contenteditable elements on the page (excluding Tweet composer and Search)
+                // Strategy 3: Scan contenteditable elements within messages
                 const editables = Array.from(document.querySelectorAll('div[contenteditable="true"], span[contenteditable="true"], [role="textbox"][contenteditable="true"], [contenteditable="true"]'));
                 for (const el of editables) {
+                    if (isCommentOrPostBox(el)) continue;
                     if (el.closest('[data-testid="tweetTextarea_0"]') || el.getAttribute("data-testid") === "tweetTextarea_0") continue;
                     if (el.closest('[data-testid="SearchBox_Search_Input"], form[role="search"]')) continue;
-                    const rect = el.getBoundingClientRect();
-                    if (rect.width > 50 && rect.height > 15) {
-                        return el;
+                    if (window.location.pathname.includes("/messages") || el.closest('[data-testid*="dm" i], [data-testid*="message" i]')) {
+                        const rect = el.getBoundingClientRect();
+                        if (rect.width > 50 && rect.height > 15) {
+                            return el;
+                        }
                     }
                 }
 
-                // Strategy 4: Any non-search textarea
-                const textareas = Array.from(document.querySelectorAll('textarea'));
-                for (const ta of textareas) {
-                    if (ta.closest('form[role="search"]') || ta.getAttribute("data-testid") === "SearchBox_Search_Input") continue;
-                    const rect = ta.getBoundingClientRect();
-                    if (rect.width > 50 && rect.height > 15) return ta;
+                // Strategy 4: Any non-search textarea within messages
+                if (window.location.pathname.includes("/messages")) {
+                    const textareas = Array.from(document.querySelectorAll('textarea'));
+                    for (const ta of textareas) {
+                        if (isCommentOrPostBox(ta)) continue;
+                        if (ta.closest('form[role="search"]') || ta.getAttribute("data-testid") === "SearchBox_Search_Input") continue;
+                        const rect = ta.getBoundingClientRect();
+                        if (rect.width > 50 && rect.height > 15) return ta;
+                    }
                 }
 
                 return null;
@@ -586,15 +742,18 @@
                 ];
                 for (const sel of specificSelectors) {
                     const el = document.querySelector(sel);
-                    if (el) {
+                    if (el && !isCommentOrPostBox(el)) {
                         const target = el.getAttribute("contenteditable") === "true" ? el : (el.querySelector('[contenteditable="true"]') || el);
-                        const rect = target.getBoundingClientRect();
-                        if (rect.width > 0 && rect.height > 0) return target;
+                        if (!isCommentOrPostBox(target)) {
+                            const rect = target.getBoundingClientRect();
+                            if (rect.width > 0 && rect.height > 0) return target;
+                        }
                     }
                 }
 
                 const editables = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"]'));
                 for (const el of editables) {
+                    if (isCommentOrPostBox(el)) continue;
                     if (el.closest('[role="search"], [aria-label*="Search" i]')) continue;
                     const rect = el.getBoundingClientRect();
                     if (rect.width > 50 && rect.height > 15) return el;
@@ -634,11 +793,19 @@
                 return u ? `https://www.facebook.com/${u}` : "https://www.facebook.com/messages";
             },
             findMessageButton() {
-                const candidates = Array.from(document.querySelectorAll('div[aria-label="Message"], div[aria-label="Send message"], div[role="button"]'));
+                const candidates = Array.from(document.querySelectorAll(
+                    'div[aria-label="Message" i], ' +
+                    'div[aria-label="Send message" i], ' +
+                    'div[aria-label="Send Message" i], ' +
+                    'a[aria-label*="Message" i], ' +
+                    'a[href*="/messages/t/"], ' +
+                    'div[role="button"]'
+                ));
                 for (const el of candidates) {
+                    if (isCommentOrPostBox(el)) continue;
                     const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
                     const text = (el.textContent || "").toLowerCase().trim();
-                    if (ariaLabel === "message" || ariaLabel === "send message" || text === "message") {
+                    if (ariaLabel === "message" || ariaLabel === "send message" || text === "message" || text === "send message") {
                         const rect = el.getBoundingClientRect();
                         if (rect.width > 0 && rect.height > 0) return el;
                     }
@@ -647,16 +814,49 @@
             },
             findComposer() {
                 // Messenger / Facebook Chat composer textbox
-                const editables = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
-                for (const el of editables) {
+                // 1. Messenger popup chat tab at bottom right (data-pagelet="ChatTab", etc.) or messenger view
+                const chatTabs = Array.from(document.querySelectorAll(
+                    'div[data-pagelet="ChatTab"], ' +
+                    'div[aria-label*="Chat with" i], ' +
+                    'div[aria-label*="Conversation" i], ' +
+                    'div[role="region"][aria-label*="Chat" i], ' +
+                    'div[class*="fbDockChatTabFlyout"], ' +
+                    'div[aria-label*="Messages" i], ' +
+                    'div[role="main"]'
+                ));
+
+                for (const container of chatTabs) {
+                    const editables = Array.from(container.querySelectorAll('div[role="textbox"][contenteditable="true"], div[contenteditable="true"]'));
+                    for (const el of editables) {
+                        if (isCommentOrPostBox(el)) continue;
+                        const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
+                        const placeholder = (el.getAttribute("aria-placeholder") || "").toLowerCase();
+                        if (ariaLabel.includes("message") || placeholder.includes("message") || 
+                            ariaLabel === "aa" || placeholder === "aa" || 
+                            ariaLabel.includes("type a message") || ariaLabel.includes("send a message") || 
+                            el.hasAttribute("data-lexical-editor")) {
+                            const rect = el.getBoundingClientRect();
+                            if (rect.width > 0 && rect.height > 0) return el;
+                        }
+                    }
+                }
+
+                // 2. Scan for explicit Messenger / DM textboxes with strict aria-labels
+                const allEditables = Array.from(document.querySelectorAll('div[role="textbox"][contenteditable="true"]'));
+                for (const el of allEditables) {
+                    if (isCommentOrPostBox(el)) continue;
                     const ariaLabel = (el.getAttribute("aria-label") || "").toLowerCase();
                     const placeholder = (el.getAttribute("aria-placeholder") || "").toLowerCase();
-                    if (ariaLabel.includes("message") || placeholder.includes("message") || ariaLabel.includes("send") || el.closest('[data-testid*="messenger"]')) {
+                    if (ariaLabel.includes("message") || placeholder.includes("message") || 
+                        ariaLabel === "aa" || placeholder === "aa" || 
+                        ariaLabel.includes("type a message") || ariaLabel.includes("send a message")) {
                         const rect = el.getBoundingClientRect();
                         if (rect.width > 0 && rect.height > 0) return el;
                     }
                 }
-                return editables[0] || null;
+
+                // STRICT: Never fall back to comment boxes or arbitrary editables! Return null if no genuine DM composer exists.
+                return null;
             },
             detectLoggedInUser() {
                 try {
@@ -817,16 +1017,22 @@
             // Step 3: Locate Composer & Prefill Message Draft
             // ==================================================================
             console.log(`[Arclent Extension] Locating ${platformDisplayName} message composer...`);
-            const composer = await waitForElement(driver.findComposer, 14000);
+            const composer = await waitForElement(driver.findComposer, 8000);
 
             if (!composer) {
-                console.warn(`[Arclent Extension] Could not automatically locate ${platformDisplayName} composer.`);
+                console.warn(`[Arclent Extension] Could not automatically locate ${platformDisplayName} DM composer.`);
+
+                // Auto-copy message to clipboard immediately as requested
+                const copied = await copyTextToClipboard(sessionData.message);
+                console.log(`[Arclent Extension] Auto-copied outreach message to clipboard: ${copied}`);
+
                 showFloatingBanner({
-                    title: "Composer Not Detected",
-                    message: `We opened ${targetName}'s page, but couldn't detect the message composer. Click the chat box to paste your message.`,
+                    title: "Couldn't Insert Message in DM",
+                    message: `We couldn't insert the message directly into the DM (direct messaging may be closed, restricted, or not available on ${targetName}'s page).<br><br><strong>We have copied the message for you</strong> so you can paste it manually if needed.`,
                     type: "warning",
                     showCopyBtn: true,
-                    copyText: sessionData.message
+                    copyText: sessionData.message,
+                    buttonLabel: copied ? "✓ Message Copied (Click to re-copy)" : "📋 Copy Message to Clipboard"
                 });
 
                 await chrome.runtime.sendMessage({
@@ -834,8 +1040,17 @@
                     platform: currentPlatform,
                     username: sessionData.username,
                     sessionId: sessionData.sessionId,
-                    reason: "Message composer element not found."
+                    reason: `Couldn't insert message in DM for ${targetName}. Message has been copied to your clipboard.`
                 }).catch(() => {});
+
+                if (currentPlatform === "instagram") {
+                    await chrome.runtime.sendMessage({
+                        type: "ARCLENT_INSTAGRAM_DM_FAILED",
+                        username: sessionData.username,
+                        sessionId: sessionData.sessionId,
+                        reason: `Couldn't insert message in DM for ${targetName}. Message has been copied to your clipboard.`
+                    }).catch(() => {});
+                }
 
                 sessionData.status = "failed";
                 await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
@@ -881,7 +1096,8 @@
                     message: `Your outreach message has been inserted for <strong>${targetName}</strong> on ${platformDisplayName}.<br><br><strong>Please review the message and click Send.</strong>`,
                     type: "success",
                     showCopyBtn: true,
-                    copyText: sessionData.message
+                    copyText: sessionData.message,
+                    buttonLabel: "📋 Copy Message"
                 });
 
                 // Notify background service worker & Arclent web app
@@ -894,14 +1110,27 @@
                     success: true
                 }).catch(() => {});
 
+                if (currentPlatform === "instagram") {
+                    await chrome.runtime.sendMessage({
+                        type: "ARCLENT_INSTAGRAM_DM_READY",
+                        username: sessionData.username,
+                        sessionId: sessionData.sessionId,
+                        senderHandle: loggedInUser,
+                        success: true
+                    }).catch(() => {});
+                }
+
             } else {
                 console.warn(`[Arclent Extension] Verification failed after insertion into ${platformDisplayName} composer.`);
+                const copied = await copyTextToClipboard(sessionData.message);
+
                 showFloatingBanner({
-                    title: "Message Copied",
-                    message: `We couldn't automatically write into the box. Your message has been copied to clipboard — please paste and send.`,
+                    title: "Couldn't Insert Message in DM",
+                    message: `We couldn't automatically insert the message into the DM composer.<br><br><strong>We have copied the message for you</strong> so you can paste (Ctrl+V) directly.`,
                     type: "warning",
                     showCopyBtn: true,
-                    copyText: sessionData.message
+                    copyText: sessionData.message,
+                    buttonLabel: copied ? "✓ Message Copied (Click to re-copy)" : "📋 Copy Message to Clipboard"
                 });
 
                 await chrome.runtime.sendMessage({
@@ -909,8 +1138,17 @@
                     platform: currentPlatform,
                     username: sessionData.username,
                     sessionId: sessionData.sessionId,
-                    reason: "Verification failed after DOM insertion."
+                    reason: `Couldn't insert message into DM for ${targetName}. Message has been copied to your clipboard.`
                 }).catch(() => {});
+
+                if (currentPlatform === "instagram") {
+                    await chrome.runtime.sendMessage({
+                        type: "ARCLENT_INSTAGRAM_DM_FAILED",
+                        username: sessionData.username,
+                        sessionId: sessionData.sessionId,
+                        reason: `Couldn't insert message into DM for ${targetName}. Message has been copied to your clipboard.`
+                    }).catch(() => {});
+                }
             }
 
         } catch (err) {

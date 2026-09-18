@@ -12,14 +12,14 @@
             document.documentElement.dataset.arclentExtension = "installed";
             document.documentElement.dataset.arclentInstagramExtension = "installed";
             document.documentElement.dataset.arclentPlatforms = "instagram,x,discord,facebook";
-            document.documentElement.dataset.arclentExtensionVersion = "1.1.0";
+            document.documentElement.dataset.arclentExtensionVersion = "1.2.1";
         }
 
         // Post announcement to main window
         window.postMessage({
             type: "ARCLENT_EXTENSION_PONG",
             installed: true,
-            version: "1.1.0",
+            version: "1.2.1",
             name: "Arclent Outreach Assistant",
             platforms: ["instagram", "x", "discord", "facebook"]
         }, "*");
@@ -28,7 +28,7 @@
         window.dispatchEvent(new CustomEvent("ARCLENT_EXTENSION_READY", {
             detail: {
                 installed: true,
-                version: "1.1.0",
+                version: "1.2.1",
                 name: "Arclent Outreach Assistant",
                 platforms: ["instagram", "x", "discord", "facebook"]
             }
@@ -38,7 +38,7 @@
         window.dispatchEvent(new CustomEvent("ARCLENT_INSTAGRAM_EXTENSION_READY", {
             detail: {
                 installed: true,
-                version: "1.1.0",
+                version: "1.2.1",
                 name: "Arclent Outreach Assistant",
                 platforms: ["instagram", "x", "discord", "facebook"]
             }

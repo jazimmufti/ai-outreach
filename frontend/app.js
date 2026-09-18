@@ -2035,18 +2035,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!event.data || typeof event.data !== "object") return;
         const { type, success, username, reason, senderHandle } = event.data;
 
-        if (type === "ARCLENT_INSTAGRAM_DM_READY") {
+        if (type === "ARCLENT_INSTAGRAM_DM_READY" || type === "ARCLENT_SOCIAL_DM_READY") {
             if (senderHandle) {
                 setSenderHandle(senderHandle, true);
             }
-            showToast(`✓ Instagram DM ready for @${username || 'creator'}! Review and click Send in Instagram.`);
+            const platformName = event.data.platform ? (event.data.platform.charAt(0).toUpperCase() + event.data.platform.slice(1)) : 'Instagram';
+            showToast(`✓ ${platformName} DM ready for @${username || 'creator'}! Review and click Send in ${platformName}.`);
             if (verificationDmReadyBox && !verificationDmReadyBox.classList.contains("hidden")) {
                 if (vDmReadySub) {
-                    vDmReadySub.textContent = `Your message has been verified and added to @${username || 'creator'}'s Instagram composer.`;
+                    vDmReadySub.textContent = `Your message has been verified and added to @${username || 'creator'}'s ${platformName} composer.`;
                 }
             }
-        } else if (type === "ARCLENT_INSTAGRAM_DM_FAILED") {
-            showToast(`Note: ${reason || 'We copied your message to the clipboard. Please paste into the box.'}`, "warning");
+        } else if (type === "ARCLENT_INSTAGRAM_DM_FAILED" || type === "ARCLENT_SOCIAL_DM_FAILED") {
+            showToast(`Note: ${reason || "We couldn't insert the message into the DM, but we've copied it to your clipboard for you!"}`, "warning");
         } else if (type === "ARCLENT_EXTENSION_PONG" || type === "ARCLENT_INSTAGRAM_EXTENSION_READY") {
             updateExtensionStatusUI(true);
         }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Arclent Outreach Assistant",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "description": "Automates opening creator DMs and populating outreach messages across Instagram, X (Twitter), Discord, and Facebook for Arclent collaboration verification.",
   "browser_specific_settings": {
     "gecko": {
