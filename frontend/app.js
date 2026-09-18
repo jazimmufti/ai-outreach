@@ -1307,6 +1307,36 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Safe Clipboard Copy Helper
+    async function copyToClipboard(text) {
+        if (!text) return false;
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (err) {
+            console.warn("navigator.clipboard failed, using fallback:", err);
+        }
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-9999px";
+            textArea.style.top = "0";
+            textArea.setAttribute("readonly", "");
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            const successful = document.execCommand("copy");
+            document.body.removeChild(textArea);
+            return successful;
+        } catch (err) {
+            console.warn("Fallback copy failed:", err);
+            return false;
+        }
+    }
+
     // Manual Verification Redirect: Directly redirects to collaboration link & copies to clipboard
     async function handleManualVerificationRedirect(e) {
         if (e) e.preventDefault();
@@ -1314,7 +1344,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // 1. If we already have an active session, open the collaboration verification link immediately
         if (state.sessionId) {
             const link = getVerificationLink();
-            copyToClipboard(link);
+            await copyToClipboard(link);
             showToast("✓ Collaboration link copied! Opening verification page...", "success");
             openPlatformUrl(link);
             return;
@@ -1359,7 +1389,7 @@ document.addEventListener("DOMContentLoaded", () => {
             handleDiscoveryCompleted(data);
 
             const link = getVerificationLink();
-            copyToClipboard(link);
+            await copyToClipboard(link);
             showToast("✓ Direct collaboration link copied! Opening verification page...", "success");
             openPlatformUrl(link);
         } catch (err) {
@@ -1375,16 +1405,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnVerifyManuallyHome = document.getElementById("btn-verify-manually-home");
     if (btnVerifyManuallyHome) {
         btnVerifyManuallyHome.addEventListener("click", handleManualVerificationRedirect);
-    }
-
-    const btnVerifyManuallyProfile = document.getElementById("btn-verify-manually-profile");
-    if (btnVerifyManuallyProfile) {
-        btnVerifyManuallyProfile.addEventListener("click", handleManualVerificationRedirect);
-    }
-
-    const btnVerifyManuallyFallback = document.getElementById("btn-verify-manually-fallback");
-    if (btnVerifyManuallyFallback) {
-        btnVerifyManuallyFallback.addEventListener("click", handleManualVerificationRedirect);
     }
 
     sampleChips.forEach((chip) => {
