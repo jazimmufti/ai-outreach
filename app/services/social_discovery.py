@@ -97,19 +97,19 @@ URL_PATTERNS = [
 TEXT_HANDLE_PATTERNS = [
     {
         "platform": "Instagram",
-        "pattern": re.compile(r"\b(?:instagram|insta|ig)\b(?!\.com|\.am|\.org)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,30})\b", re.I),
+        "pattern": re.compile(r"\b(?:instagram|insta|ig)\b(?!\.com|\.am|\.org)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,30})\b", re.I),
         "format_url": lambda u: f"https://instagram.com/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "X",
-        "pattern": re.compile(r"\b(?:twitter|x(?:\s*\(twitter\))?)\b(?!\.com|\.org|\.ai)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{2,20})\b", re.I),
+        "pattern": re.compile(r"(?:\b(?:twitter\/x|x\/twitter|twitter|x(?:\s*\((?:formerly\s*)?twitter\))?)\b|x\s*\((?:formerly\s*)?twitter\))(?!\.com|\.org|\.ai)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{2,20})\b", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "Twitch",
-        "pattern": re.compile(r"\btwitch\b(?!\.tv|\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{3,25})\b", re.I),
+        "pattern": re.compile(r"\btwitch\b(?!\.tv|\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{3,25})\b", re.I),
         "format_url": lambda u: f"https://twitch.tv/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
@@ -122,26 +122,26 @@ TEXT_HANDLE_PATTERNS = [
     },
     {
         "platform": "Discord",
-        "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", re.I),
+        "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", re.I),
         "format_url": lambda u: f"https://discord.com",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip(),
         "is_handle": True
     },
     {
         "platform": "Reddit",
-        "pattern": re.compile(r"\breddit\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)(?:u\/|r\/)?([a-zA-Z0-9_\-]{2,32})\b", re.I),
+        "pattern": re.compile(r"\breddit\b(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)(?:u\/|r\/)?([a-zA-Z0-9_\-]{2,32})\b", re.I),
         "format_url": lambda u: f"https://reddit.com/r/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "Facebook",
-        "pattern": re.compile(r"\b(?:facebook|fb)\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,50})\b", re.I),
+        "pattern": re.compile(r"(?:\b(?:facebook\/fb|fb\/facebook|facebook|fb)\b)(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,50})\b", re.I),
         "format_url": lambda u: f"https://facebook.com/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },
     {
         "platform": "LinkedIn",
-        "pattern": re.compile(r"\blinkedin\b(?!\.com)\s*(?::|—|-|\||\/)\s*(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.-]{2,50})\b", re.I),
+        "pattern": re.compile(r"\blinkedin\b(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.-]{2,50})\b", re.I),
         "format_url": lambda u: f"https://linkedin.com/in/{u.rstrip('/')}",
         "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
     },

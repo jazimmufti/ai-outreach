@@ -145,13 +145,25 @@ async def scrape_channel_links_and_about(
     }
 
     target_urls = []
-    if channel_url and "youtube.com" in channel_url:
-        target_urls.append(channel_url)
     if channel_handle:
         h = channel_handle if channel_handle.startswith("@") else f"@{channel_handle}"
+        target_urls.append(f"https://www.youtube.com/{h}/about")
         target_urls.append(f"https://www.youtube.com/{h}")
+    if channel_url and "youtube.com" in channel_url:
+        clean_u = channel_url.rstrip("/")
+        if not clean_u.endswith("/about"):
+            target_urls.append(f"{clean_u}/about")
+        target_urls.append(clean_u)
     if channel_id:
+        target_urls.append(f"https://www.youtube.com/channel/{channel_id}/about")
         target_urls.append(f"https://www.youtube.com/channel/{channel_id}")
+
+    # Deduplicate while preserving order
+    dedup_targets = []
+    for u in target_urls:
+        if u not in dedup_targets:
+            dedup_targets.append(u)
+    target_urls = dedup_targets
 
     discovered_links: List[str] = []
     discovered_description = ""
@@ -187,6 +199,15 @@ async def scrape_channel_links_and_about(
                         def collect_strings(obj):
                             if isinstance(obj, dict):
                                 for k, v in obj.items():
+                                    # Check channelExternalLinkViewModel directly
+                                    if k == "channelExternalLinkViewModel" and isinstance(v, dict):
+                                        link_obj = v.get("link", {})
+                                        link_content = link_obj.get("content", "")
+                                        if link_content:
+                                            target_item = link_content if link_content.startswith("http") else f"https://{link_content}"
+                                            if target_item.lower() not in seen_links:
+                                                seen_links.add(target_item.lower())
+                                                discovered_links.append(target_item)
                                     yield from collect_strings(v)
                             elif isinstance(obj, list):
                                 for item in obj:
@@ -218,7 +239,21 @@ async def scrape_channel_links_and_about(
                     except Exception as e:
                         logger.debug(f"ytInitialData parse note for {t_url}: {e}")
 
-                # 2. Resilient fallback: extract redirect URLs and direct social URLs from raw HTML resp.text
+                # 2. Parse sameAs schema array (contains all linked socials in YouTube modern layout)
+                same_as_matches = re.findall(r'"sameAs"\s*:\s*(\[[^\]]+\])', resp.text)
+                for sam in same_as_matches:
+                    try:
+                        cleaned_sam = sam.replace(r'\/', '/')
+                        raw_urls = re.findall(r'https?:\/\/[^"\'\s\\,\]]+', cleaned_sam)
+                        for u in raw_urls:
+                            u_clean = u.rstrip('\\"\'.,;)>')
+                            if u_clean.lower() not in seen_links:
+                                seen_links.add(u_clean.lower())
+                                discovered_links.append(u_clean)
+                    except Exception:
+                        pass
+
+                # 3. Extract redirect URLs and direct social URLs from raw HTML resp.text
                 raw_redirects = re.findall(r"https?:\/\/(?:www\.)?youtube\.com\/redirect\?[^\s<>\"']+", resp.text)
                 for r_url in raw_redirects:
                     clean_r_url = r_url.replace("&amp;", "&")
@@ -234,18 +269,17 @@ async def scrape_channel_links_and_about(
                         pass
 
                 direct_socials = re.findall(
-                    r"https?:\/\/(?:www\.)?(?:instagram\.com|x\.com|twitter\.com|facebook\.com|fb\.com|twitch\.tv|discord\.gg|(?:discord\.com|discordapp\.com)\/(?:invite|users|servers)|discord\.io|discord\.me|linkedin\.com|reddit\.com)\/[a-zA-Z0-9_\.\-]{1,50}",
+                    r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|x\.com|twitter\.com|facebook\.com|fb\.com|twitch\.tv|discord\.gg|(?:discord\.com|discordapp\.com)\/(?:invite|users|servers)|discord\.io|discord\.me|linkedin\.com|reddit\.com)\/[a-zA-Z0-9_\.\-]{1,50}",
                     resp.text,
                     re.IGNORECASE
                 )
                 for d_url in direct_socials:
                     d_url = d_url.rstrip(".,;)>\"'")
+                    if not d_url.startswith("http"):
+                        d_url = f"https://{d_url}"
                     if d_url.lower() not in seen_links:
                         seen_links.add(d_url.lower())
                         discovered_links.append(d_url)
-
-                if discovered_links:
-                    break
 
             except Exception as e:
                 logger.debug(f"Channel link scrape note for {t_url}: {e}")

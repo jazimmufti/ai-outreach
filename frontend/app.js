@@ -294,34 +294,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return isMobileUA || isTouchMac || isNarrowTouch;
     }
 
-    // Helper: Safely open URL. On mobile, direct navigation triggers OS Universal Links into the native app,
-    // avoids mobile browser popup blockers, and preserves session. On desktop, opens in a new tab.
+    // Helper: Safely open external platform URL in a new tab across mobile and desktop.
+    // Preserves the current Arclent session tab without navigating away on mobile.
     function openPlatformUrl(url) {
         if (!url) return;
-        const isMobile = isMobileDevice();
 
-        if (isMobile) {
-            // Direct navigation on mobile triggers OS Universal Links into the native app (e.g. Instagram)
-            // without being blocked by Safari or Chrome popup blockers.
-            try {
-                window.location.href = url;
-            } catch (e) {
-                console.warn("window.location navigation failed:", e);
-                const a = document.createElement("a");
-                a.href = url;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    try { document.body.removeChild(a); } catch (_) {}
-                }, 100);
-            }
-            return;
-        }
-
-        // On Desktop: Always open in a new tab (_blank), never redirect the current tab
+        // 1. Try window.open in a new tab
         let openedWin = null;
         try {
-            openedWin = window.open(url, "_blank");
+            openedWin = window.open(url, "_blank", "noopener,noreferrer");
             if (openedWin) {
                 try { openedWin.focus(); } catch (_) {}
                 return;
@@ -330,7 +311,7 @@ document.addEventListener("DOMContentLoaded", () => {
             console.warn("window.open failed:", e);
         }
 
-        // Anchor fallback for new tab
+        // 2. Reliable new-tab anchor fallback across mobile browsers (iOS Safari, Android Chrome) and desktop
         try {
             const a = document.createElement("a");
             a.href = url;
