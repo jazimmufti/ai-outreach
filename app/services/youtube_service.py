@@ -431,10 +431,10 @@ async def fetch_via_youtube_api(target: Dict[str, Any]) -> Optional[Dict[str, An
             logger.debug(f"Channel link scrape note: {e}")
 
         # ----------------------------------------------------------------------
-        # If target was Channel directly, fetch latest video for context
+        # If target was Channel directly (no specific video_id), fetch latest video for context
         # ----------------------------------------------------------------------
         recent_video_descriptions = []
-        if channel_id:
+        if not video_id and channel_id:
             try:
                 search_resp = youtube.search().list(
                     part="snippet",

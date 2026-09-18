@@ -14,7 +14,8 @@ from app.services.linked_account import (
     normalize_instagram_username,
     get_linked_discord_account,
     normalize_discord_account,
-    is_matching_discord_account
+    is_matching_discord_account,
+    is_known_discord_account
 )
 from app.services.youtube_description_parser import (
     extract_credit_candidates,
@@ -104,8 +105,8 @@ def verify_contribution_from_description(
         if c.get("specified_platform") == "Discord" 
         or re.match(r"^[0-9]{17,20}$", str(c.get("username", "")).strip())
         or ("Discord" in c.get("platforms", []))
-        or str(c.get("username", "")).lower() in ["jazim.mufti", "jazimmufti", "1166052187869294673"]
         or is_matching_discord_account(c.get("username"), active_linked_discord)
+        or is_known_discord_account(c.get("username"))
     ]
 
     if discord_candidates:

@@ -83,6 +83,17 @@ def is_matching_discord_account(candidate: Optional[str], linked_account: Option
     return bool(set(linked_aliases).intersection(set(cand_aliases)))
 
 
+def is_known_discord_account(account: Optional[str]) -> bool:
+    """Check if an account name/ID is known to be a Discord user in Arclent."""
+    import re
+    norm = normalize_discord_account(account)
+    if not norm:
+        return False
+    if re.match(r"^[0-9]{17,20}$", norm):
+        return True
+    return norm in DISCORD_USER_ALIASES or norm.replace(".", "") in [k.replace(".", "") for k in DISCORD_USER_ALIASES]
+
+
 def get_linked_instagram_account() -> Optional[str]:
     """Retrieve the currently linked Instagram account for the Arclent creator.
     

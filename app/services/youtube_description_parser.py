@@ -414,7 +414,7 @@ def extract_credit_candidates(
                     end_idx = len(raw_text)
                 line_context = raw_text[start_idx:end_idx]
                 specified_platform = detect_specified_platform(line_context)
-                if not specified_platform and (re.match(r"^[0-9]{17,20}$", handle) or handle in ["jazim.mufti", "1166052187869294673"]):
+                if not specified_platform and re.match(r"^[0-9]{17,20}$", handle):
                     specified_platform = "Discord"
 
                 results.append({
@@ -456,7 +456,6 @@ def extract_credit_candidates(
             specified_platform == "Discord"
             or "discord" in line_context.lower()
             or bool(re.search(r"\b([0-9]{17,20})\b", rest))
-            or "jazim.mufti" in line_context.lower()
         )
         if line_has_discord and not specified_platform:
             specified_platform = "Discord"
@@ -471,7 +470,7 @@ def extract_credit_candidates(
                         "username": h,
                         "display_name": h,
                         "role": role_label,
-                        "specified_platform": "Discord" if (line_has_discord or h in ["jazim.mufti", "1166052187869294673"]) else specified_platform,
+                        "specified_platform": "Discord" if line_has_discord else specified_platform,
                         "is_name": False
                     })
 
@@ -525,7 +524,7 @@ def extract_credit_candidates(
                 key = get_norm_key(cand_h)
                 if key and key not in seen_keys:
                     seen_keys.add(key)
-                    cand_platform = "Discord" if (line_has_discord or cand_h in ["jazim.mufti", "1166052187869294673"]) else specified_platform
+                    cand_platform = "Discord" if line_has_discord else specified_platform
                     results.append({
                         "username": cand_h,
                         "display_name": cand_h,
@@ -772,15 +771,15 @@ async def extract_verified_contributor_accounts(
                 })
                 continue
 
-            # Discord credits (snowflake user ID, explicit Discord mention, or connected Arclent user): preserve directly for connection & auto-verification
-            if specified == "Discord" or re.match(r"^[0-9]{17,20}$", username) or username in ["jazim.mufti", "1166052187869294673"]:
+            # Discord credits (snowflake user ID or explicit Discord mention): preserve directly for connection & auto-verification
+            if specified == "Discord" or re.match(r"^[0-9]{17,20}$", username):
                 verified_list.append({
                     "username": username,
                     "display_name": display_name,
                     "role": role,
                     "is_name": False,
                     "platforms": ["Discord"],
-                    "urls": {"Discord": f"https://discord.com/users/{username}" if re.match(r"^[0-9]{17,20}$", username) else f"https://discord.com/users/1166052187869294673"}
+                    "urls": {"Discord": f"https://discord.com/users/{username}" if re.match(r"^[0-9]{17,20}$", username) else "https://discord.com"}
                 })
                 continue
 
