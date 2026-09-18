@@ -295,23 +295,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Helper: Safely open external platform URL in a new tab across mobile and desktop.
-    // Preserves the current Arclent session tab without navigating away on mobile.
+    // Preserves the current Arclent session tab without navigating away or opening duplicate tabs.
     function openPlatformUrl(url) {
         if (!url) return;
-
-        // 1. Try window.open in a new tab
-        let openedWin = null;
-        try {
-            openedWin = window.open(url, "_blank", "noopener,noreferrer");
-            if (openedWin) {
-                try { openedWin.focus(); } catch (_) {}
-                return;
-            }
-        } catch (e) {
-            console.warn("window.open failed:", e);
-        }
-
-        // 2. Reliable new-tab anchor fallback across mobile browsers (iOS Safari, Android Chrome) and desktop
         try {
             const a = document.createElement("a");
             a.href = url;
@@ -319,11 +305,13 @@ document.addEventListener("DOMContentLoaded", () => {
             a.rel = "noopener noreferrer";
             document.body.appendChild(a);
             a.click();
-            setTimeout(() => {
-                try { document.body.removeChild(a); } catch (_) {}
-            }, 300);
-        } catch (err) {
-            console.warn("Anchor click fallback failed:", err);
+            document.body.removeChild(a);
+        } catch (e) {
+            try {
+                window.open(url, "_blank");
+            } catch (_) {
+                window.location.href = url;
+            }
         }
     }
 
