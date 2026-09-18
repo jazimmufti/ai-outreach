@@ -161,7 +161,7 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("Response Recorded", res.text)
 
     def test_verify_root_interactive_page(self):
-        """Test visiting root /verify with session_id renders interactive approval and rejection page."""
+        """Test visiting root /verify with session_id renders direct collaboration link component."""
         session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session.creator = CreatorProfile(
             name="MrBeast",
@@ -173,12 +173,9 @@ class TestVerificationFlow(unittest.TestCase):
         # Test visiting interactive /verify landing page (no action specified)
         res = self.client.get(f"/verify?session_id={session.session_id}")
         self.assertEqual(res.status_code, 200)
-        self.assertIn("Can you confirm this collaboration?", res.text)
-        self.assertIn("Yes, I confirm this collaboration", res.text)
-        self.assertIn("No, I do not confirm", res.text)
-        self.assertIn("MrBeast", res.text)
-        self.assertIn("Lead Video Editor", res.text)
-        self.assertIn("Squid Game In Real Life", res.text)
+        self.assertIn("DIRECT COLLABORATION LINK", res.text)
+        self.assertIn("Copy Link", res.text)
+        self.assertIn("direct-collab-url", res.text)
 
     def test_verify_root_confirm_action(self):
         """Test confirming collaboration from root /verify endpoint."""
@@ -385,7 +382,7 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("Someone on Arclent", res2.text)
 
     def test_dynamic_sender_identity_on_verify(self):
-        """Test that /verify dynamically renders '{username} on Arclent' for Instagram and 'Someone on Arclent' for email."""
+        """Test that /verify dynamically renders '{username} on Arclent' for Instagram and 'Someone on Arclent' for email on confirmation."""
         # Case A: Instagram sender handle -> shows 'artistic_editor on Arclent'
         session_ig = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session_ig.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Antarctica")
@@ -393,7 +390,7 @@ class TestVerificationFlow(unittest.TestCase):
         session_ig.sender_handle = "@artistic_editor"
         session_ig.selected_channel = "instagram"
 
-        res_ig = self.client.get(f"/verify?session_id={session_ig.session_id}")
+        res_ig = self.client.get(f"/verify?session_id={session_ig.session_id}&action=confirm")
         self.assertEqual(res_ig.status_code, 200)
         self.assertNotIn("Someone on Arclent", res_ig.text)
         self.assertIn("artistic_editor on Arclent", res_ig.text)
@@ -404,13 +401,13 @@ class TestVerificationFlow(unittest.TestCase):
         session_gmail.user_role = "VFX Artist"
         session_gmail.selected_channel = "email"
 
-        res_gmail = self.client.get(f"/verify?session_id={session_gmail.session_id}")
+        res_gmail = self.client.get(f"/verify?session_id={session_gmail.session_id}&action=confirm")
         self.assertEqual(res_gmail.status_code, 200)
         self.assertIn("Someone on Arclent", res_gmail.text)
         self.assertNotIn("ubja56@gmail.com", res_gmail.text)
 
     def test_record_social_outreach_preserves_and_updates_sender_handle(self):
-        """Test recording social outreach dynamically updates sender_handle and formats correctly on /verify."""
+        """Test recording social outreach dynamically updates sender_handle and formats correctly on /verify confirmation."""
         session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session.creator = CreatorProfile(name="MrBeast", channel_name="MrBeast", video_title="Squid Game In Real Life")
         session.user_role = "Video editor"
@@ -428,8 +425,8 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertEqual(data["sender_handle"], "creative_cutter")
         self.assertEqual(data["sender_identity"], "creative_cutter on Arclent")
 
-        # 2. Check /verify renders 'creative_cutter on Arclent'
-        v_res = self.client.get(f"/verify?session_id={session.session_id}")
+        # 2. Check /verify renders 'creative_cutter on Arclent' on confirmation
+        v_res = self.client.get(f"/verify?session_id={session.session_id}&action=confirm")
         self.assertEqual(v_res.status_code, 200)
         self.assertIn("creative_cutter on Arclent", v_res.text)
 

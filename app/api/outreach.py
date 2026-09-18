@@ -1107,18 +1107,15 @@ async def handle_creator_verification_response(
 </html>""")
 
     # --------------------------------------------------------------------------
-    # CASE 3: First-time Interactive Review & Confirmation Page (Yes / No)
     # --------------------------------------------------------------------------
-    token_param = f"&token={token}" if token else ""
-    confirm_href = f"/verify?session_id={session.session_id}&action=confirm{token_param}"
-    reject_href = f"/verify?session_id={session.session_id}&action=reject{token_param}"
-
+    # CASE 3: Direct Collaboration Link Page
+    # --------------------------------------------------------------------------
     return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaboration Confirmation — Arclent</title>
+    <title>Collaboration Link — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
@@ -1141,8 +1138,8 @@ async def handle_creator_verification_response(
             border: 2px solid #111827;
             box-shadow: 6px 6px 0px #111827;
             border-radius: 4px;
-            padding: 36px 30px;
-            text-align: center;
+            padding: 32px 28px;
+            text-align: left;
         }}
         .brand-header {{
             display: flex;
@@ -1176,121 +1173,78 @@ async def handle_creator_verification_response(
             border-radius: 50%;
             background: #F59E0B;
         }}
-        .main-heading {{
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 24px;
-            font-weight: 800;
-            line-height: 1.3;
-            letter-spacing: -0.02em;
-            margin-bottom: 10px;
-        }}
-        .body-desc {{
-            font-size: 15px;
-            color: #4B5563;
-            line-height: 1.55;
-            margin-bottom: 22px;
-        }}
-        .collab-meta-box {{
+        .direct-link-box {{
             background: #FAF8F2;
             border: 1.5px solid #111827;
-            border-radius: 3px;
-            padding: 16px 20px;
-            margin-bottom: 24px;
+            border-radius: 4px;
+            padding: 16px 18px;
+            margin-bottom: 22px;
             text-align: left;
         }}
-        .meta-row {{
+        .direct-link-header {{
             display: flex;
-            align-items: flex-start;
             justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px dashed #D1D5DB;
-            font-size: 13.5px;
+            align-items: center;
+            margin-bottom: 8px;
         }}
-        .meta-row:last-child {{
-            border-bottom: none;
-            padding-bottom: 0;
-        }}
-        .meta-row:first-child {{
-            padding-top: 0;
-        }}
-        .meta-label {{
+        .direct-link-title {{
             font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #4B5563;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }}
+        .copy-status-text {{
             font-size: 11.5px;
+            color: #155A52;
             font-weight: 700;
-            color: #6B7280;
-            flex-shrink: 0;
-            margin-right: 12px;
+            display: none;
         }}
-        .meta-value {{
-            font-weight: 700;
-            color: #111827;
-            text-align: right;
-            word-break: break-word;
-        }}
-        .btn-stack {{
+        .input-row {{
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
-            margin-bottom: 22px;
-        }}
-        .btn-confirm {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
             gap: 8px;
-            background: #155A52;
-            color: #FFFFFF;
-            text-decoration: none;
-            font-family: 'Space Grotesk', sans-serif;
-            font-size: 15px;
-            font-weight: 700;
-            padding: 14px 24px;
-            border: 2px solid #111827;
+        }}
+        .url-input {{
+            flex: 1;
+            min-width: 0;
+            padding: 10px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12.5px;
+            border: 1.5px solid #111827;
             border-radius: 2px;
-            box-shadow: 3px 3px 0px #111827;
-            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
-        }}
-        .btn-confirm *,
-        .btn-confirm span {{
-            color: #FFFFFF;
-        }}
-        .btn-confirm:hover {{
-            background: #104741;
-            transform: translate(-1px, -1px);
-            box-shadow: 4px 4px 0px #111827;
-        }}
-        .btn-confirm:active {{
-            transform: translate(2px, 2px);
-            box-shadow: 1px 1px 0px #111827;
-        }}
-        .btn-reject {{
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
             background: #FFFFFF;
             color: #111827;
-            text-decoration: none;
+            outline: none;
+        }}
+        .btn-copy {{
+            background: #111827;
+            color: #FFFFFF;
+            border: 1.5px solid #111827;
+            padding: 10px 18px;
             font-family: 'Space Grotesk', sans-serif;
-            font-size: 14.5px;
+            font-size: 13px;
             font-weight: 700;
-            padding: 12px 20px;
-            border: 2px solid #111827;
             border-radius: 2px;
-            box-shadow: 3px 3px 0px #111827;
+            cursor: pointer;
+            white-space: nowrap;
+            box-shadow: 2px 2px 0px #111827;
             transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
         }}
-        .btn-reject:hover {{
-            background: #FEF2F2;
-            color: #DC2626;
-            border-color: #DC2626;
+        .btn-copy:hover {{
+            background: #1F2937;
             transform: translate(-1px, -1px);
-            box-shadow: 4px 4px 0px #DC2626;
+            box-shadow: 3px 3px 0px #111827;
         }}
-        .btn-reject:active {{
-            transform: translate(2px, 2px);
+        .btn-copy:active {{
+            transform: translate(1px, 1px);
             box-shadow: 1px 1px 0px #111827;
+        }}
+        .direct-link-desc {{
+            font-size: 12px;
+            color: #6B7280;
+            margin-top: 8px;
+            line-height: 1.45;
         }}
         .footer-note {{
             font-size: 12px;
@@ -1298,6 +1252,7 @@ async def handle_creator_verification_response(
             color: #6B7280;
             border-top: 1px solid #E5E7EB;
             padding-top: 14px;
+            text-align: center;
         }}
     </style>
 </head>
@@ -1311,53 +1266,20 @@ async def handle_creator_verification_response(
             </div>
         </div>
 
-        <h1 class="main-heading">Can you confirm this collaboration?</h1>
-        <p class="body-desc">
-            <strong>{sender_display}</strong> claims they worked as <strong>{role}</strong> on <em>"{video_title}"</em>.
-        </p>
-
-        <div class="collab-meta-box">
-            <div class="meta-row">
-                <span class="meta-label">CREATOR / CHANNEL</span>
-                <span class="meta-value">{creator_name}</span>
+        <div class="direct-link-box">
+            <div class="direct-link-header">
+                <span class="direct-link-title">DIRECT COLLABORATION LINK</span>
+                <span id="copy-status-text" class="copy-status-text">✓ Link copied!</span>
             </div>
-            <div class="meta-row">
-                <span class="meta-label">CLAIMED ROLE</span>
-                <span class="meta-value">{role}</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">PROJECT CONTENT</span>
-                <span class="meta-value">"{video_title}"</span>
-            </div>
-            <div class="meta-row">
-                <span class="meta-label">REQUESTED BY</span>
-                <span class="meta-value">{sender_display}</span>
-            </div>
-        </div>
-
-        <div style="margin: 18px 0 22px; background: #FAF8F2; border: 1.5px solid #111827; border-radius: 4px; padding: 14px 16px; text-align: left;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #4B5563; text-transform: uppercase;">Direct Collaboration Link</span>
-                <span id="copy-status-text" style="font-size: 11.5px; color: #155A52; font-weight: 700; display: none;">✓ Link copied!</span>
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="direct-collab-url" readonly style="flex: 1; min-width: 0; padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1.5px solid #D1D5DB; border-radius: 2px; background: #FFFFFF; outline: none;" value="">
-                <button type="button" onclick="copyDirectCollabLink()" style="background: #111827; color: #FFFFFF; border: none; padding: 8px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; border-radius: 2px; cursor: pointer; white-space: nowrap;">
+            <div class="input-row">
+                <input type="text" id="direct-collab-url" readonly class="url-input" value="">
+                <button type="button" onclick="copyDirectCollabLink()" class="btn-copy">
                     📋 Copy Link
                 </button>
             </div>
-            <div style="font-size: 11.5px; color: #6B7280; margin-top: 6px; line-height: 1.4;">
-                Copy this direct link to share with the creator or confirm the collaboration yourself above.
+            <div class="direct-link-desc">
+                Copy this direct link to share with the creator or do the verification yourself.
             </div>
-        </div>
-
-        <div class="btn-stack">
-            <a href="{confirm_href}" class="btn-confirm">
-                <span>✓ Yes, I confirm this collaboration</span>
-            </a>
-            <a href="{reject_href}" class="btn-reject">
-                <span>✕ No, I do not confirm</span>
-            </a>
         </div>
 
         <div class="footer-note">
@@ -1375,11 +1297,7 @@ async def handle_creator_verification_response(
             inputEl.select();
             if (navigator.clipboard && navigator.clipboard.writeText) {{
                 navigator.clipboard.writeText(fullUrl).then(() => {{
-                    const status = document.getElementById("copy-status-text");
-                    if (status) {{
-                        status.style.display = "inline";
-                        setTimeout(() => {{ status.style.display = "none"; }}, 3000);
-                    }}
+                    showCopySuccess();
                 }}).catch(() => {{
                     fallbackCopy();
                 }});
@@ -1391,6 +1309,10 @@ async def handle_creator_verification_response(
         function fallbackCopy() {{
             inputEl.select();
             document.execCommand("copy");
+            showCopySuccess();
+        }}
+
+        function showCopySuccess() {{
             const status = document.getElementById("copy-status-text");
             if (status) {{
                 status.style.display = "inline";
