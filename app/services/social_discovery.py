@@ -45,51 +45,51 @@ URL_PATTERNS = [
         "platform": "Instagram",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:instagram\.com|instagr\.am)\/([a-zA-Z0-9_\.]{1,30})", re.I),
         "format_url": lambda u: f"https://instagram.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
     {
         "platform": "X",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]{1,20})", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
     {
         "platform": "Twitch",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([a-zA-Z0-9_]{3,25})", re.I),
         "format_url": lambda u: f"https://twitch.tv/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-").lstrip("@")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
     {
         "platform": "Discord",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.com|discordapp\.com)\/users\/([0-9]{17,20})", re.I),
         "format_url": lambda u: f"https://discord.com/users/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…"),
         "is_user_id": True
     },
     {
         "platform": "Discord",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/|(?:discord\.com|discordapp\.com)\/invite\/|discord\.io\/|discord\.me\/|discord\.com\/servers\/)([a-zA-Z0-9_\-]{2,40})", re.I),
         "format_url": lambda u: f"https://discord.gg/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-"),
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…"),
         "is_invite": True
     },
     {
         "platform": "Reddit",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?reddit\.com\/(?:r|user|u)\/([a-zA-Z0-9_\-]{2,32})", re.I),
         "format_url": lambda u: f"https://reddit.com/r/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
     {
         "platform": "Facebook",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?(?:facebook\.com|fb\.com)\/([a-zA-Z0-9_\.]{1,50})", re.I),
         "format_url": lambda u: f"https://facebook.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
     {
         "platform": "LinkedIn",
         "pattern": re.compile(r"(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in|company)\/([a-zA-Z0-9_\-\.]{1,50})", re.I),
         "format_url": lambda u: f"https://linkedin.com/in/{u.rstrip('/')}",
-        "clean_user": lambda u: u.replace("/", "").replace("?", "").split("&")[0].rstrip("./_…-")
+        "clean_user": lambda u: u.split("?")[0].split("&")[0].split("/")[0].rstrip("./…").lstrip("@")
     },
 ]
 
@@ -99,19 +99,19 @@ TEXT_HANDLE_PATTERNS = [
         "platform": "Instagram",
         "pattern": re.compile(r"\b(?:instagram|insta|ig)\b(?!\.com|\.am|\.org)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,30})\b", re.I),
         "format_url": lambda u: f"https://instagram.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
     {
         "platform": "X",
         "pattern": re.compile(r"(?:\b(?:twitter\/x|x\/twitter|twitter|x(?:\s*\((?:formerly\s*)?twitter\))?)\b|x\s*\((?:formerly\s*)?twitter\))(?!\.com|\.org|\.ai)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{2,20})\b", re.I),
         "format_url": lambda u: f"https://x.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
     {
         "platform": "Twitch",
         "pattern": re.compile(r"\btwitch\b(?!\.tv|\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_]{3,25})\b", re.I),
         "format_url": lambda u: f"https://twitch.tv/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
     {
         "platform": "Discord",
@@ -124,26 +124,26 @@ TEXT_HANDLE_PATTERNS = [
         "platform": "Discord",
         "pattern": re.compile(r"\bdiscord\b(?!\.com|\.gg)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,32}(?:#[0-9]{4})?)\b", re.I),
         "format_url": lambda u: f"https://discord.com",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip(),
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip(),
         "is_handle": True
     },
     {
         "platform": "Reddit",
         "pattern": re.compile(r"\breddit\b(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)(?:u\/|r\/)?([a-zA-Z0-9_\-]{2,32})\b", re.I),
         "format_url": lambda u: f"https://reddit.com/r/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
     {
         "platform": "Facebook",
         "pattern": re.compile(r"(?:\b(?:facebook\/fb|fb\/facebook|facebook|fb)\b)(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.]{2,50})\b", re.I),
         "format_url": lambda u: f"https://facebook.com/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
     {
         "platform": "LinkedIn",
         "pattern": re.compile(r"\blinkedin\b(?!\.com)\s*(?::|—|-|\||\/|\bat\b)?\s*(?:\/)?(?!https?:\/\/|www\.)@?([a-zA-Z0-9_.-]{2,50})\b", re.I),
         "format_url": lambda u: f"https://linkedin.com/in/{u.rstrip('/')}",
-        "clean_user": lambda u: u.rstrip("./_…-").lstrip("@").strip()
+        "clean_user": lambda u: u.rstrip("./…").lstrip("@").strip()
     },
 ]
 
@@ -176,7 +176,7 @@ def is_valid_username(user: str) -> bool:
     """Validate that extracted handle is a legitimate username and not metadata, sponsor, or truncated artifact."""
     if not user:
         return False
-    user_clean = user.strip().lstrip("@").rstrip("./_…-")
+    user_clean = user.strip().lstrip("@").rstrip("./…")
     user_lower = user_clean.lower()
 
     # Reject truncated strings from YouTube text (e.g. siliconvall... or siliconvall… or text ending with dots)
@@ -237,7 +237,7 @@ def extract_discord_information(text: str, source_label: str = "youtube_descript
         re.IGNORECASE
     )
     if invite_match:
-        raw_code = invite_match.group(1).rstrip("./_…-")
+        raw_code = invite_match.group(1).rstrip("./…")
         if len(raw_code) >= 2 and raw_code.lower() not in {"invite", "channels", "users"} and not (".." in raw_code or "…" in raw_code):
             discovered_invite = f"https://discord.gg/{raw_code}"
 
@@ -252,7 +252,7 @@ def extract_discord_information(text: str, source_label: str = "youtube_descript
             re.IGNORECASE
         )
         if handle_match:
-            cand = handle_match.group(1).rstrip("./_…-").lstrip("@").strip()
+            cand = handle_match.group(1).rstrip("./…").lstrip("@").strip()
             if re.match(r"^[0-9]{17,20}$", cand) and not discovered_user_id:
                 discovered_user_id = cand
             elif is_valid_username(cand.split("#")[0]) and not discovered_username:
@@ -294,7 +294,7 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
         for match in item["pattern"].finditer(cleaned_text):
             raw_user = match.group(1)
             # Check raw_user BEFORE cleaning to immediately reject truncated links ending in dots/ellipsis
-            if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…", "-", "_")):
+            if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…")):
                 continue
 
             cleaned_user = item["clean_user"](raw_user)
@@ -344,7 +344,7 @@ def extract_social_profiles(text: str, source_label: str = "YouTube description"
             for match in item["pattern"].finditer(line):
                 raw_user = match.group(1)
                 # Check raw_user BEFORE cleaning
-                if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…", "-", "_")):
+                if ".." in raw_user or "..." in raw_user or "…" in raw_user or raw_user.endswith((".", "…")):
                     continue
 
                 cleaned_user = item["clean_user"](raw_user)

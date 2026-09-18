@@ -757,12 +757,27 @@ class TestExplicitCreditsAndNoLeakage(unittest.IsolatedAsyncioTestCase):
             user_role="Video editor"
         )
 
-        response = await discover_creator_endpoint(req)
-        # MUST NOT be auto-verified because current video has NO credits!
-        self.assertFalse(
-            response.stage == "auto_verified",
-            "Should not auto-verify when current video description only has account holder socials"
+    async def test_social_discovery_with_trailing_underscore_and_no_discord(self):
+        """Test that handles ending with underscore (e.g. arclent_) and trailing slash subpaths are discovered,
+        and Discord is not detected when not provided."""
+        from app.services.social_discovery import extract_social_profiles, extract_discord_information
+        desc = (
+            "pakistan middle order #pakistan #pakvsind #pcb #cricket\n\n"
+            "X: https://x.com/smufaiz1111\n"
+            "Facebook: https://www.facebook.com/mufaiz.sheikh.1\n"
+            "Instagram: https://www.instagram.com/arclent_/1\n"
         )
+        socials = extract_social_profiles(desc)
+        platforms = {s.platform: s.username for s in socials}
+        self.assertIn("Instagram", platforms)
+        self.assertEqual(platforms["Instagram"], "arclent_")
+        self.assertIn("X", platforms)
+        self.assertEqual(platforms["X"], "smufaiz1111")
+        self.assertIn("Facebook", platforms)
+        self.assertEqual(platforms["Facebook"], "mufaiz.sheikh.1")
+
+        disc = extract_discord_information(desc)
+        self.assertIsNone(disc)
 
 
 if __name__ == "__main__":

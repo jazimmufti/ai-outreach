@@ -195,13 +195,15 @@ async def classify_and_verify_with_mistral(
 
         classified_list = []
         for item in parsed.get("classified_emails", []):
+            if not isinstance(item, dict):
+                continue
             classified_list.append(
                 EmailEvidenceClassification(
-                    email=item.get("email", ""),
-                    source_type=item.get("source_type", "publicly_published"),
-                    confidence=item.get("confidence", "medium"),
-                    is_valid_contact=item.get("is_valid_contact", True),
-                    reasoning=item.get("reasoning", "")
+                    email=item.get("email") or "",
+                    source_type=item.get("source_type") or "publicly_published",
+                    confidence=item.get("confidence") or "medium",
+                    is_valid_contact=item.get("is_valid_contact", True) if item.get("is_valid_contact") is not None else True,
+                    reasoning=item.get("reasoning") or ""
                 )
             )
 

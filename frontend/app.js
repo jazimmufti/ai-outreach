@@ -3803,10 +3803,9 @@ document.addEventListener("DOMContentLoaded", () => {
             state.activeSocialProfile = state.instagramProfile;
         }
         if (!state.activeSocialProfile && state.socialProfiles && state.socialProfiles.length > 0) {
-            const firstDiscord = state.socialProfiles.find(s => (s.platform || "").toLowerCase() === "discord");
-            if (firstDiscord) {
-                state.activeSocialProfile = firstDiscord;
-            }
+            const firstIg = state.socialProfiles.find(s => (s.platform || "").toLowerCase().includes("instagram"));
+            const firstNonDiscord = state.socialProfiles.find(s => !(s.platform || "").toLowerCase().includes("discord"));
+            state.activeSocialProfile = firstIg || firstNonDiscord || state.socialProfiles[0];
         }
 
         // If returning from delivery for a specific channel, preserve that active channel profile

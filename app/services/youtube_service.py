@@ -39,19 +39,19 @@ def parse_youtube_target(url: str) -> Dict[str, Any]:
 
     # Check youtu.be shortlinks
     if "youtu.be/" in url:
-        match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{11})", url)
+        match = re.search(r"youtu\.be/([a-zA-Z0-9_-]{8,24})", url)
         if match:
             return {"type": "video", "video_id": match.group(1), "raw": url}
 
     # Check shorts
     if "/shorts/" in url:
-        match = re.search(r"/shorts/([a-zA-Z0-9_-]{11})", url)
+        match = re.search(r"/shorts/([a-zA-Z0-9_-]{8,24})", url)
         if match:
             return {"type": "video", "video_id": match.group(1), "raw": url}
 
     # Check embed
     if "/embed/" in url:
-        match = re.search(r"/embed/([a-zA-Z0-9_-]{11})", url)
+        match = re.search(r"/embed/([a-zA-Z0-9_-]{8,24})", url)
         if match:
             return {"type": "video", "video_id": match.group(1), "raw": url}
 
@@ -99,8 +99,8 @@ def parse_youtube_target(url: str) -> Dict[str, Any]:
                 "raw": url
             }
 
-    # Generic fallback 11-char regex for YouTube ID
-    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11})", url)
+    # Generic fallback regex for YouTube ID
+    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{8,24})", url)
     if match and ("watch" in url or "youtu.be" in url or len(url) <= 15):
         return {"type": "video", "video_id": match.group(1), "raw": url}
 
