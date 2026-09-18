@@ -1,0 +1,283 @@
+/* Arclent Extension Popup Styling */
+:root {
+    --bg-dark: #0A261B;
+    --card-bg: #123829;
+    --card-border: #1E4D3B;
+    --primary-green: #00D26A;
+    --primary-hover: #00B75C;
+    --text-white: #FFFFFF;
+    --text-light: #E5E7EB;
+    --text-muted: #9CA3AF;
+    --cream: #FBF9F4;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 340px;
+    background-color: var(--bg-dark);
+    color: var(--text-white);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    margin: 0;
+    padding: 0;
+}
+
+.popup-container {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.font-mono {
+    font-family: "JetBrains Mono", Consolas, Monaco, monospace;
+}
+
+/* Header */
+.popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.brand-logo {
+    width: 28px;
+    height: 28px;
+    background: var(--primary-green);
+    color: #000000;
+    font-weight: 900;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+
+.brand-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-white);
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+}
+
+.brand-subtitle {
+    font-size: 11px;
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 210, 106, 0.12);
+    border: 1px solid var(--primary-green);
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--primary-green);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--primary-green);
+}
+
+.status-text {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--primary-green);
+    text-transform: uppercase;
+}
+
+/* Cards */
+.session-card, .guide-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 14px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.card-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: var(--primary-green);
+    font-family: "JetBrains Mono", Consolas, monospace;
+}
+
+.badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-light);
+}
+
+.badge.ready {
+    background: var(--primary-green);
+    color: #000;
+}
+
+.badge.pending {
+    background: #F59E0B;
+    color: #000;
+}
+
+.empty-state-text {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.active-session-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+}
+
+.detail-label {
+    color: var(--text-muted);
+}
+
+.detail-val {
+    font-weight: 600;
+    color: var(--text-white);
+}
+
+.message-preview-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 11px;
+    color: #D1D5DB;
+    max-height: 60px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Guide */
+.guide-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-white);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.step-item {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.step-num {
+    width: 18px;
+    height: 18px;
+    background: rgba(0, 210, 106, 0.2);
+    color: var(--primary-green);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.step-text {
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--text-light);
+}
+
+.step-text strong {
+    color: var(--text-white);
+}
+
+/* Buttons */
+.btn-primary {
+    width: 100%;
+    background: var(--primary-green);
+    color: #000000;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
+
+/* Footer */
+.popup-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--card-border);
+    font-size: 11px;
+}
+
+.footer-link {
+    color: var(--primary-green);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.footer-link:hover {
+    text-decoration: underline;
+}
+
+.version-tag {
+    color: var(--text-muted);
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
