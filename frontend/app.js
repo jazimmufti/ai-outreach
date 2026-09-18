@@ -3318,19 +3318,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 enterButtonLabel: "Enter User ID",
                 placeholder: "Enter 17-20 digit Discord User ID (e.g. 1029384756...)",
                 getProfile: () => {
+                    // ONLY show Discord if it was actually discovered from the creator's description/links.
+                    // Do NOT fall back to the user's own linked Discord account.
+                    const creatorDiscordSocial = cleanSocials.find(s => (s.platform || "").toLowerCase() === "discord");
+                    
                     const discUserId = state.finalDiscordUserId || (state.discordProfile && state.discordProfile.discord_user_id);
-                    if (discUserId) {
+                    const discSource = (state.discordProfile && (state.discordProfile.discord_source || state.discordProfile.source)) || "";
+                    const isCreatorDiscordProfile = state.discordProfile && (
+                        discSource.toLowerCase().includes("youtube") ||
+                        discSource.toLowerCase().includes("description") ||
+                        discSource.toLowerCase().includes("link")
+                    );
+                    
+                    if (discUserId && isCreatorDiscordProfile) {
                         return {
                             platform: "Discord",
                             username: discUserId,
                             discord_user_id: discUserId,
                             url: `https://discord.com/users/${discUserId}`,
                             status: "sendable",
-                            source: (state.discordProfile && state.discordProfile.source) || "Manual entry",
-                            user_provided: true
+                            source: discSource || "YouTube description",
+                            user_provided: false
                         };
                     }
-                    if (state.discordProfile && (state.discordProfile.discord_invite || state.discordProfile.discord_username || state.discordProfile.url)) {
+                    if (state.discordProfile && isCreatorDiscordProfile && (state.discordProfile.discord_invite || state.discordProfile.discord_username || state.discordProfile.url)) {
                         const dp = state.discordProfile;
                         return {
                             platform: "Discord",
@@ -3340,20 +3351,19 @@ document.addEventListener("DOMContentLoaded", () => {
                             discord_user_id: dp.discord_user_id || null,
                             url: dp.url || dp.discord_invite || "https://discord.com",
                             status: dp.status || "discovered",
-                            source: dp.source || dp.discord_source || null,
-                            user_provided: dp.user_provided || dp.source === "Manual entry" || false
+                            source: discSource || null,
+                            user_provided: false
                         };
                     }
-                    const found = cleanSocials.find(s => (s.platform || "").toLowerCase() === "discord");
-                    if (found) {
+                    if (creatorDiscordSocial) {
                         return {
                             platform: "Discord",
-                            username: found.username || found.discord_username || found.discord_invite || found.url || "Discord",
-                            discord_invite: found.discord_invite || (found.url && (found.url.includes("discord") || found.url.includes("discord.gg")) ? found.url : null),
-                            discord_username: found.discord_username || found.username || null,
-                            discord_user_id: found.discord_user_id || null,
-                            url: found.url || found.discord_invite || "https://discord.com",
-                            status: found.status || "discovered"
+                            username: creatorDiscordSocial.username || creatorDiscordSocial.discord_username || creatorDiscordSocial.discord_invite || creatorDiscordSocial.url || "Discord",
+                            discord_invite: creatorDiscordSocial.discord_invite || (creatorDiscordSocial.url && (creatorDiscordSocial.url.includes("discord") || creatorDiscordSocial.url.includes("discord.gg")) ? creatorDiscordSocial.url : null),
+                            discord_username: creatorDiscordSocial.discord_username || creatorDiscordSocial.username || null,
+                            discord_user_id: creatorDiscordSocial.discord_user_id || null,
+                            url: creatorDiscordSocial.url || creatorDiscordSocial.discord_invite || "https://discord.com",
+                            status: creatorDiscordSocial.status || "discovered"
                         };
                     }
                     return null;
