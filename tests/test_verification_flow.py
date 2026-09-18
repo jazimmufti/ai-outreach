@@ -161,7 +161,7 @@ class TestVerificationFlow(unittest.TestCase):
         self.assertIn("Response Recorded", res.text)
 
     def test_verify_root_interactive_page(self):
-        """Test visiting root /verify with session_id renders direct collaboration link component."""
+        """Test visiting root /verify with session_id renders interactive approval and rejection page for the creator."""
         session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
         session.creator = CreatorProfile(
             name="MrBeast",
@@ -173,9 +173,34 @@ class TestVerificationFlow(unittest.TestCase):
         # Test visiting interactive /verify landing page (no action specified)
         res = self.client.get(f"/verify?session_id={session.session_id}")
         self.assertEqual(res.status_code, 200)
+        self.assertIn("Can you confirm this collaboration?", res.text)
+        self.assertIn("Yes, I confirm this collaboration", res.text)
+        self.assertIn("No, I do not confirm", res.text)
+        self.assertIn("MrBeast", res.text)
+        self.assertIn("Lead Video Editor", res.text)
+        self.assertIn("Squid Game In Real Life", res.text)
+
+    def test_verify_root_manual_copy_page(self):
+        """Test visiting root /verify with manual=true renders direct collaboration link copy component."""
+        session = create_session("https://www.youtube.com/watch?v=0e3GPea1Tyg")
+        session.creator = CreatorProfile(
+            name="MrBeast",
+            channel_name="MrBeast",
+            video_title="Squid Game In Real Life"
+        )
+        session.user_role = "Lead Video Editor"
+
+        res = self.client.get(f"/verify?session_id={session.session_id}&manual=true")
+        self.assertEqual(res.status_code, 200)
         self.assertIn("DIRECT COLLABORATION LINK", res.text)
         self.assertIn("Copy Link", res.text)
         self.assertIn("direct-collab-url", res.text)
+
+        # Also test /verify/manual endpoint
+        res2 = self.client.get(f"/verify/manual?session_id={session.session_id}")
+        self.assertEqual(res2.status_code, 200)
+        self.assertIn("DIRECT COLLABORATION LINK", res2.text)
+        self.assertIn("Copy Link", res2.text)
 
     def test_verify_root_confirm_action(self):
         """Test confirming collaboration from root /verify endpoint."""

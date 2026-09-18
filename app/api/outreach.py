@@ -689,7 +689,8 @@ async def send_discord_message_endpoint(payload: SendDiscordMessageRequest, requ
 async def handle_creator_verification_response(
     session_id: str,
     action: Optional[str] = None,
-    token: Optional[str] = None
+    token: Optional[str] = None,
+    manual: Optional[str] = None
 ):
     """Public recipient endpoint: Handles Yes/No response or interactive review page."""
     session = get_session(session_id)
@@ -1107,15 +1108,16 @@ async def handle_creator_verification_response(
 </html>""")
 
     # --------------------------------------------------------------------------
+    # CASE 3: Manual Verification View (Display direct link to copy)
     # --------------------------------------------------------------------------
-    # CASE 3: Direct Collaboration Link Page
-    # --------------------------------------------------------------------------
-    return HTMLResponse(content=f"""<!DOCTYPE html>
+    is_manual = str(manual or "").strip().lower() in ["true", "1", "yes"]
+    if is_manual:
+        return HTMLResponse(content=f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaboration Link — Arclent</title>
+    <title>Manual Verification — Arclent</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
@@ -1262,7 +1264,7 @@ async def handle_creator_verification_response(
             <span class="brand-title">Arclent</span>
             <div class="status-badge">
                 <span class="status-dot"></span>
-                <span>COLLABORATION VERIFICATION</span>
+                <span>MANUAL VERIFICATION</span>
             </div>
         </div>
 
@@ -1288,15 +1290,15 @@ async def handle_creator_verification_response(
     </div>
 
     <script>
-        const fullUrl = window.location.href.split('&action=')[0];
+        const collabUrl = window.location.origin + '/verify?session_id=' + encodeURIComponent('{session.session_id}');
         const inputEl = document.getElementById("direct-collab-url");
-        if (inputEl) inputEl.value = fullUrl;
+        if (inputEl) inputEl.value = collabUrl;
 
         function copyDirectCollabLink() {{
             if (!inputEl) return;
             inputEl.select();
             if (navigator.clipboard && navigator.clipboard.writeText) {{
-                navigator.clipboard.writeText(fullUrl).then(() => {{
+                navigator.clipboard.writeText(collabUrl).then(() => {{
                     showCopySuccess();
                 }}).catch(() => {{
                     fallbackCopy();
@@ -1319,9 +1321,273 @@ async def handle_creator_verification_response(
                 setTimeout(() => {{ status.style.display = "none"; }}, 3000);
             }}
         }}
+
+        window.addEventListener("DOMContentLoaded", () => {{
+            if (navigator.clipboard && navigator.clipboard.writeText) {{
+                navigator.clipboard.writeText(collabUrl).then(() => {{
+                    showCopySuccess();
+                }}).catch(() => {{}});
+            }}
+        }});
     </script>
 </body>
 </html>""")
+
+    # --------------------------------------------------------------------------
+    # CASE 4: Creator Collaboration Confirmation Page (Accept / Reject)
+    # --------------------------------------------------------------------------
+    confirm_href = f"/verify?session_id={session.session_id}&action=confirm"
+    reject_href = f"/verify?session_id={session.session_id}&action=reject"
+    if token:
+        confirm_href += f"&token={token}"
+        reject_href += f"&token={token}"
+
+    return HTMLResponse(content=f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Collaboration — Arclent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body {{
+            background-color: #FAF7F0;
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            color: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px 16px;
+        }}
+        .card {{
+            max-width: 520px;
+            width: 100%;
+            background: #FFFFFF;
+            border: 2px solid #111827;
+            box-shadow: 6px 6px 0px #111827;
+            border-radius: 4px;
+            padding: 36px 30px;
+            text-align: left;
+        }}
+        .brand-header {{
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            margin-bottom: 22px;
+            border-bottom: 1.5px solid #E5E7EB;
+        }}
+        .brand-title {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }}
+        .status-badge {{
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10.5px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border: 1.5px solid #111827;
+            background: #FBF0D9;
+            border-radius: 2px;
+        }}
+        .status-dot {{
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #F59E0B;
+        }}
+        .main-heading {{
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1.25;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }}
+        .body-desc {{
+            font-size: 15px;
+            color: #4B5563;
+            line-height: 1.55;
+            margin-bottom: 22px;
+        }}
+        .collab-meta-box {{
+            background: #FAF8F2;
+            border: 1.5px solid #111827;
+            border-radius: 3px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+        }}
+        .meta-row {{
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dashed #D1D5DB;
+            font-size: 13px;
+        }}
+        .meta-row:last-child {{
+            border-bottom: none;
+            padding-bottom: 0;
+        }}
+        .meta-row:first-child {{
+            padding-top: 0;
+        }}
+        .meta-label {{
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            color: #6B7280;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }}
+        .meta-value {{
+            font-weight: 700;
+            color: #111827;
+            text-align: right;
+            word-break: break-word;
+        }}
+        .btn-stack {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+            margin-bottom: 22px;
+        }}
+        .btn-confirm {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #155A52;
+            color: #FFFFFF;
+            text-decoration: none;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            padding: 14px 24px;
+            border: 2px solid #111827;
+            border-radius: 2px;
+            box-shadow: 3px 3px 0px #111827;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+        }}
+        .btn-confirm *,
+        .btn-confirm span {{
+            color: #FFFFFF;
+        }}
+        .btn-confirm:hover {{
+            background: #104741;
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px #111827;
+        }}
+        .btn-confirm:active {{
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #111827;
+        }}
+        .btn-reject {{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #FFFFFF;
+            color: #111827;
+            text-decoration: none;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14.5px;
+            font-weight: 700;
+            padding: 12px 20px;
+            border: 2px solid #111827;
+            border-radius: 2px;
+            box-shadow: 3px 3px 0px #111827;
+            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
+        }}
+        .btn-reject:hover {{
+            background: #FEF2F2;
+            color: #DC2626;
+            border-color: #DC2626;
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px #DC2626;
+        }}
+        .btn-reject:active {{
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0px #111827;
+        }}
+        .footer-note {{
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #6B7280;
+            border-top: 1px solid #E5E7EB;
+            padding-top: 14px;
+            text-align: center;
+        }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="brand-header">
+            <span class="brand-title">Arclent</span>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span>COLLABORATION VERIFICATION</span>
+            </div>
+        </div>
+
+        <h1 class="main-heading">Can you confirm this collaboration?</h1>
+        <p class="body-desc">
+            <strong>{sender_display}</strong> claims they worked as <strong>{role}</strong> on <em>"{video_title}"</em>.
+        </p>
+
+        <div class="collab-meta-box">
+            <div class="meta-row">
+                <span class="meta-label">CREATOR / CHANNEL</span>
+                <span class="meta-value">{creator_name}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">CLAIMED ROLE</span>
+                <span class="meta-value">{role}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">PROJECT CONTENT</span>
+                <span class="meta-value">"{video_title}"</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">REQUESTED BY</span>
+                <span class="meta-value">{sender_display}</span>
+            </div>
+        </div>
+
+        <div class="btn-stack">
+            <a href="{confirm_href}" class="btn-confirm">
+                <span>✓ Yes, I confirm this collaboration</span>
+            </a>
+            <a href="{reject_href}" class="btn-reject">
+                <span>✕ No, I do not confirm</span>
+            </a>
+        </div>
+
+        <div class="footer-note">
+            Sent securely via Arclent • Creator Collaboration & Credentials Verification
+        </div>
+    </div>
+</body>
+</html>""")
+
+
+@router.get("/verify/manual", response_class=HTMLResponse)
+async def handle_creator_manual_verification_endpoint(
+    session_id: str,
+    token: Optional[str] = None
+):
+    """Direct manual verification link display endpoint."""
+    return await handle_creator_verification_response(session_id=session_id, token=token, manual="true")
 
 
 

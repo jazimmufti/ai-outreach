@@ -1325,16 +1325,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Manual Verification Redirect: Directly redirects to collaboration link & copies to clipboard
+    // Manual Verification Redirect: Directly copies collaboration link & opens manual verification display page
     async function handleManualVerificationRedirect(e) {
         if (e) e.preventDefault();
 
-        // 1. If we already have an active session, open the collaboration verification link immediately
+        // 1. If we already have an active session, open the manual verification display page immediately
         if (state.sessionId) {
-            const link = getVerificationLink();
-            await copyToClipboard(link);
+            const collabLink = getVerificationLink();
+            const manualLink = getManualVerificationLink();
+            await copyToClipboard(collabLink);
             showToast("✓ Collaboration link copied! Opening verification page...", "success");
-            openPlatformUrl(link);
+            openPlatformUrl(manualLink);
             return;
         }
 
@@ -1376,10 +1377,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
             handleDiscoveryCompleted(data);
 
-            const link = getVerificationLink();
-            await copyToClipboard(link);
+            const collabLink = getVerificationLink();
+            const manualLink = getManualVerificationLink();
+            await copyToClipboard(collabLink);
             showToast("✓ Direct collaboration link copied! Opening verification page...", "success");
-            openPlatformUrl(link);
+            openPlatformUrl(manualLink);
         } catch (err) {
             showToast(err.message || "Failed to generate link.", "error");
         } finally {
@@ -1681,6 +1683,14 @@ document.addEventListener("DOMContentLoaded", () => {
             return `${origin}/verify?session_id=${encodeURIComponent(state.sessionId)}`;
         }
         return `${origin}/verify`;
+    }
+
+    function getManualVerificationLink() {
+        const origin = window.location.origin && window.location.origin !== "null" ? window.location.origin : "http://127.0.0.1:8000";
+        if (state.sessionId) {
+            return `${origin}/verify?session_id=${encodeURIComponent(state.sessionId)}&manual=true`;
+        }
+        return `${origin}/verify?manual=true`;
     }
 
     function generateConfirmationDraft(creatorName, videoTitle, role) {

@@ -88,7 +88,8 @@ if FRONTEND_DIR.exists():
 async def verify_collaboration_root(
     session_id: Optional[str] = None,
     action: Optional[str] = None,
-    token: Optional[str] = None
+    token: Optional[str] = None,
+    manual: Optional[str] = None
 ):
     """Top-level public verification endpoint for collaboration confirmation & rejection."""
     if not session_id:
@@ -123,7 +124,25 @@ async def verify_collaboration_root(
 </html>""",
             status_code=400
         )
-    return await outreach.handle_creator_verification_response(session_id=session_id, action=action, token=token)
+    return await outreach.handle_creator_verification_response(
+        session_id=session_id,
+        action=action,
+        token=token,
+        manual=manual
+    )
+
+
+@app.get("/verify/manual", response_class=HTMLResponse)
+async def verify_collaboration_manual_root(
+    session_id: Optional[str] = None,
+    token: Optional[str] = None
+):
+    """Top-level public manual verification link endpoint."""
+    return await verify_collaboration_root(
+        session_id=session_id,
+        token=token,
+        manual="true"
+    )
 
 
 
