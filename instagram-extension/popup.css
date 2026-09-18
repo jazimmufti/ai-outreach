@@ -147,6 +147,11 @@ body {
     color: #000;
 }
 
+.badge.failed {
+    background: #EF4444;
+    color: #FFF;
+}
+
 .empty-state-text {
     font-size: 12px;
     color: var(--text-muted);

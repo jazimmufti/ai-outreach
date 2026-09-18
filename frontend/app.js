@@ -1714,7 +1714,9 @@ document.addEventListener("DOMContentLoaded", () => {
     // Immediate and event-driven extension presence check
     function checkDirectDomPresence() {
         if (document.documentElement && (
+            document.documentElement.getAttribute("data-arclent-extension") === "installed" ||
             document.documentElement.getAttribute("data-arclent-instagram-extension") === "installed" ||
+            document.documentElement.dataset.arclentExtension === "installed" ||
             document.documentElement.dataset.arclentInstagramExtension === "installed" ||
             document.documentElement.dataset.arclentExtensionVersion
         )) {
@@ -1732,30 +1734,36 @@ document.addEventListener("DOMContentLoaded", () => {
         return new Promise((resolve) => {
             let resolved = false;
 
+            function cleanup() {
+                if (resolved) return;
+                resolved = true;
+                window.removeEventListener("message", onMessage);
+                window.removeEventListener("ARCLENT_EXTENSION_READY", onCustomEvent);
+                window.removeEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
+            }
+
             function onMessage(e) {
-                if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
-                    resolved = true;
-                    window.removeEventListener("message", onMessage);
+                if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_EXTENSION_READY" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
+                    cleanup();
                     updateExtensionStatusUI(true);
                     resolve(true);
                 }
             }
 
             function onCustomEvent() {
-                resolved = true;
-                window.removeEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
+                cleanup();
                 updateExtensionStatusUI(true);
                 resolve(true);
             }
 
             window.addEventListener("message", onMessage);
+            window.addEventListener("ARCLENT_EXTENSION_READY", onCustomEvent);
             window.addEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
             window.postMessage({ type: "ARCLENT_CHECK_EXTENSION" }, "*");
 
             setTimeout(() => {
                 if (!resolved) {
-                    window.removeEventListener("message", onMessage);
-                    window.removeEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", onCustomEvent);
+                    cleanup();
                     const isInstalled = checkDirectDomPresence();
                     updateExtensionStatusUI(isInstalled);
                     resolve(isInstalled);
@@ -1765,9 +1773,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Global persistent listeners for extension announcements
+    window.addEventListener("ARCLENT_EXTENSION_READY", () => updateExtensionStatusUI(true));
     window.addEventListener("ARCLENT_INSTAGRAM_EXTENSION_READY", () => updateExtensionStatusUI(true));
     window.addEventListener("message", (e) => {
-        if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
+        if (e.data && (e.data.type === "ARCLENT_EXTENSION_PONG" || e.data.type === "ARCLENT_EXTENSION_READY" || e.data.type === "ARCLENT_INSTAGRAM_EXTENSION_READY")) {
             updateExtensionStatusUI(true);
         }
     });
@@ -2048,7 +2057,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } else if (type === "ARCLENT_INSTAGRAM_DM_FAILED" || type === "ARCLENT_SOCIAL_DM_FAILED") {
             showToast(`Note: ${reason || "We couldn't insert the message into the DM, but we've copied it to your clipboard for you!"}`, "warning");
-        } else if (type === "ARCLENT_EXTENSION_PONG" || type === "ARCLENT_INSTAGRAM_EXTENSION_READY") {
+        } else if (type === "ARCLENT_EXTENSION_PONG" || type === "ARCLENT_EXTENSION_READY" || type === "ARCLENT_INSTAGRAM_EXTENSION_READY") {
             updateExtensionStatusUI(true);
         }
     });

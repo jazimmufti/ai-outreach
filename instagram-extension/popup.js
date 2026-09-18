@@ -45,6 +45,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                 sessionBadge.className = "badge pending";
                 sessionStatusText.textContent = `Navigating to DM in ${platformName}...`;
                 sessionStatusText.style.color = "#F59E0B";
+            } else if (session.status === "failed") {
+                sessionBadge.textContent = "FAILED";
+                sessionBadge.className = "badge failed";
+                sessionStatusText.textContent = session.errorReason || `Could not prepare ${platformName} DM`;
+                sessionStatusText.style.color = "#EF4444";
             } else {
                 sessionBadge.textContent = "ACTIVE";
                 sessionBadge.className = "badge";
@@ -60,10 +65,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                         discord: ["https://*.discord.com/*", "https://discord.com/*"],
                         facebook: ["https://*.facebook.com/*", "https://facebook.com/*", "https://*.messenger.com/*", "https://messenger.com/*"]
                     };
-                    const queryUrl = platformPatterns[session.platform] || ["https://*.instagram.com/*", "https://instagram.com/*"];
+                    const normPlatform = (session.platform || "instagram").toLowerCase();
+                    const platformKey = normPlatform.includes("x") || normPlatform.includes("twitter") ? "x" :
+                                        (normPlatform.includes("discord") ? "discord" :
+                                        (normPlatform.includes("facebook") || normPlatform.includes("messenger") ? "facebook" : "instagram"));
+                    const queryUrl = platformPatterns[platformKey] || ["https://*.instagram.com/*", "https://instagram.com/*"];
                     const tabs = await chrome.tabs.query({ url: queryUrl });
                     if (tabs.length > 0) {
                         await chrome.tabs.update(tabs[0].id, { active: true });
+                        if (tabs[0].windowId) {
+                            await chrome.windows.update(tabs[0].windowId, { focused: true }).catch(() => {});
+                        }
                         await chrome.tabs.sendMessage(tabs[0].id, { type: "TRIGGER_DM_AUTOFILL" }).catch(() => {});
                     } else if (session.targetUrl) {
                         await chrome.tabs.create({ url: session.targetUrl, active: true });

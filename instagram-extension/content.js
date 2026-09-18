@@ -875,8 +875,8 @@
     // --------------------------------------------------------------------------
     // Main Orchestration & Login Auto-Redirect Engine
     // --------------------------------------------------------------------------
-    async function processOutreach() {
-        if (isProcessing) return;
+    async function processOutreach(force = false) {
+        if (isProcessing && !force) return;
 
         const driver = PlatformDrivers[currentPlatform];
         if (!driver) {
@@ -896,8 +896,8 @@
             return;
         }
 
-        // Only process if status is pending or waiting_for_login
-        if (sessionData.status !== "pending" && sessionData.status !== "waiting_for_login") {
+        // Do not re-process if already completed unless manually forced
+        if (!force && sessionData.status === "completed") {
             return;
         }
 
@@ -1043,15 +1043,6 @@
                     reason: `Couldn't insert message in DM for ${targetName}. Message has been copied to your clipboard.`
                 }).catch(() => {});
 
-                if (currentPlatform === "instagram") {
-                    await chrome.runtime.sendMessage({
-                        type: "ARCLENT_INSTAGRAM_DM_FAILED",
-                        username: sessionData.username,
-                        sessionId: sessionData.sessionId,
-                        reason: `Couldn't insert message in DM for ${targetName}. Message has been copied to your clipboard.`
-                    }).catch(() => {});
-                }
-
                 sessionData.status = "failed";
                 await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
                 isProcessing = false;
@@ -1110,16 +1101,6 @@
                     success: true
                 }).catch(() => {});
 
-                if (currentPlatform === "instagram") {
-                    await chrome.runtime.sendMessage({
-                        type: "ARCLENT_INSTAGRAM_DM_READY",
-                        username: sessionData.username,
-                        sessionId: sessionData.sessionId,
-                        senderHandle: loggedInUser,
-                        success: true
-                    }).catch(() => {});
-                }
-
             } else {
                 console.warn(`[Arclent Extension] Verification failed after insertion into ${platformDisplayName} composer.`);
                 const copied = await copyTextToClipboard(sessionData.message);
@@ -1140,15 +1121,6 @@
                     sessionId: sessionData.sessionId,
                     reason: `Couldn't insert message into DM for ${targetName}. Message has been copied to your clipboard.`
                 }).catch(() => {});
-
-                if (currentPlatform === "instagram") {
-                    await chrome.runtime.sendMessage({
-                        type: "ARCLENT_INSTAGRAM_DM_FAILED",
-                        username: sessionData.username,
-                        sessionId: sessionData.sessionId,
-                        reason: `Couldn't insert message into DM for ${targetName}. Message has been copied to your clipboard.`
-                    }).catch(() => {});
-                }
             }
 
         } catch (err) {
@@ -1166,19 +1138,19 @@
         if (window.location.href !== lastUrl) {
             lastUrl = window.location.href;
             console.log("[Arclent Extension] Detected SPA URL navigation to:", lastUrl);
-            setTimeout(processOutreach, 800);
+            setTimeout(() => processOutreach(false), 800);
         }
     });
 
     observer.observe(document, { subtree: true, childList: true });
 
     // Initial check on load
-    setTimeout(processOutreach, 1000);
+    setTimeout(() => processOutreach(false), 1000);
 
     // Listen for manual trigger from popup or background
     chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (msg && msg.type === "TRIGGER_DM_AUTOFILL") {
-            processOutreach();
+            processOutreach(true);
             sendResponse({ status: "processing" });
         }
         return true;
