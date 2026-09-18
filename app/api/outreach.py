@@ -1335,6 +1335,22 @@ async def handle_creator_verification_response(
             </div>
         </div>
 
+        <div style="margin: 18px 0 22px; background: #FAF8F2; border: 1.5px solid #111827; border-radius: 4px; padding: 14px 16px; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; color: #4B5563; text-transform: uppercase;">Direct Collaboration Link</span>
+                <span id="copy-status-text" style="font-size: 11.5px; color: #155A52; font-weight: 700; display: none;">✓ Link copied!</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" id="direct-collab-url" readonly style="flex: 1; min-width: 0; padding: 8px 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border: 1.5px solid #D1D5DB; border-radius: 2px; background: #FFFFFF; outline: none;" value="">
+                <button type="button" onclick="copyDirectCollabLink()" style="background: #111827; color: #FFFFFF; border: none; padding: 8px 14px; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; border-radius: 2px; cursor: pointer; white-space: nowrap;">
+                    📋 Copy Link
+                </button>
+            </div>
+            <div style="font-size: 11.5px; color: #6B7280; margin-top: 6px; line-height: 1.4;">
+                Copy this direct link to share with the creator or confirm the collaboration yourself above.
+            </div>
+        </div>
+
         <div class="btn-stack">
             <a href="{confirm_href}" class="btn-confirm">
                 <span>✓ Yes, I confirm this collaboration</span>
@@ -1348,6 +1364,40 @@ async def handle_creator_verification_response(
             Sent securely via Arclent • Creator Collaboration & Credentials Verification
         </div>
     </div>
+
+    <script>
+        const fullUrl = window.location.href.split('&action=')[0];
+        const inputEl = document.getElementById("direct-collab-url");
+        if (inputEl) inputEl.value = fullUrl;
+
+        function copyDirectCollabLink() {{
+            if (!inputEl) return;
+            inputEl.select();
+            if (navigator.clipboard && navigator.clipboard.writeText) {{
+                navigator.clipboard.writeText(fullUrl).then(() => {{
+                    const status = document.getElementById("copy-status-text");
+                    if (status) {{
+                        status.style.display = "inline";
+                        setTimeout(() => {{ status.style.display = "none"; }}, 3000);
+                    }}
+                }}).catch(() => {{
+                    fallbackCopy();
+                }});
+            }} else {{
+                fallbackCopy();
+            }}
+        }}
+
+        function fallbackCopy() {{
+            inputEl.select();
+            document.execCommand("copy");
+            const status = document.getElementById("copy-status-text");
+            if (status) {{
+                status.style.display = "inline";
+                setTimeout(() => {{ status.style.display = "none"; }}, 3000);
+            }}
+        }}
+    </script>
 </body>
 </html>""")
 

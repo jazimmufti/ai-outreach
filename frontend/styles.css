@@ -302,6 +302,13 @@ body {
     transform: translateY(-1px);
 }
 
+.action-submit-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
 /* Buttons */
 .btn-retro-green {
     display: inline-flex;

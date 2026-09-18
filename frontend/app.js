@@ -1307,6 +1307,86 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    // Manual Verification Redirect: Directly redirects to collaboration link & copies to clipboard
+    async function handleManualVerificationRedirect(e) {
+        if (e) e.preventDefault();
+
+        // 1. If we already have an active session, open the collaboration verification link immediately
+        if (state.sessionId) {
+            const link = getVerificationLink();
+            copyToClipboard(link);
+            showToast("✓ Collaboration link copied! Opening verification page...", "success");
+            openPlatformUrl(link);
+            return;
+        }
+
+        // 2. Check work link from input
+        const url = youtubeUrlInput ? youtubeUrlInput.value.trim() : "";
+        const role = userRoleInput ? (userRoleInput.value.trim() || "Video editor") : "Video editor";
+        state.userRole = role;
+
+        if (!url || !isValidYouTubeUrl(url)) {
+            showToast("Please enter a valid YouTube video or channel URL first.", "error");
+            if (youtubeUrlInput) youtubeUrlInput.focus();
+            return;
+        }
+
+        const btn = document.getElementById("btn-verify-manually-home");
+        const originalHtml = btn ? btn.innerHTML : "";
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<span>Creating link...</span>`;
+        }
+
+        try {
+            const res = await fetch("/api/outreach/discover", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    youtube_url: url,
+                    user_role: role,
+                    linked_instagram_account: state.linkedInstagramAccount || "",
+                    linked_discord_account: state.linkedDiscordAccount || ""
+                })
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || "Could not generate verification link");
+            }
+
+            const data = await res.json();
+            handleDiscoveryCompleted(data);
+
+            const link = getVerificationLink();
+            copyToClipboard(link);
+            showToast("✓ Direct collaboration link copied! Opening verification page...", "success");
+            openPlatformUrl(link);
+        } catch (err) {
+            showToast(err.message || "Failed to generate link.", "error");
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+    }
+
+    const btnVerifyManuallyHome = document.getElementById("btn-verify-manually-home");
+    if (btnVerifyManuallyHome) {
+        btnVerifyManuallyHome.addEventListener("click", handleManualVerificationRedirect);
+    }
+
+    const btnVerifyManuallyProfile = document.getElementById("btn-verify-manually-profile");
+    if (btnVerifyManuallyProfile) {
+        btnVerifyManuallyProfile.addEventListener("click", handleManualVerificationRedirect);
+    }
+
+    const btnVerifyManuallyFallback = document.getElementById("btn-verify-manually-fallback");
+    if (btnVerifyManuallyFallback) {
+        btnVerifyManuallyFallback.addEventListener("click", handleManualVerificationRedirect);
+    }
+
     sampleChips.forEach((chip) => {
         chip.addEventListener("click", () => {
             const sampleUrl = chip.getAttribute("data-url");
