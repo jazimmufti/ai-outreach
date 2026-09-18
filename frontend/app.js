@@ -2442,21 +2442,11 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         };
 
-        // Only add delay and countdown popup for Instagram
-        if (isInstagram) {
-            await showCopyAndRedirectCountdown({
-                text: text,
-                meta: meta,
-                clickedBtn: clickedBtn,
-                openAction: executeOpen
-            });
-        } else {
-            if (text) {
-                await copyTextToClipboard(text);
-                showToast(`✓ Copied message for ${meta.name}!`);
-            }
-            await executeOpen();
+        if (text) {
+            await copyTextToClipboard(text);
+            showToast(`✓ Copied message for ${meta.name}!`);
         }
+        await executeOpen();
     }
 
     // --------------------------------------------------------------------------
@@ -3042,7 +3032,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                   (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
                                   generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
                 
-                const isCountedPlatform = isIg || (pLower.includes("discord") && snowflake);
+                const isCountedPlatform = Boolean(pLower.includes("discord") && snowflake);
                 if (isCountedPlatform) {
                     await showCopyAndRedirectCountdown({
                         text: draftText,
