@@ -335,7 +335,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const state = {
         sessionId: null,
         stage: "input",
-        userRole: "Video editor",
+        userRole: "",
         creator: null,
         discoveredEmail: null,
         emailCandidates: [],
