@@ -47,25 +47,25 @@ This extension works across **all modern desktop browsers** (Windows, macOS, Lin
 1. In the URL bar, go to `chrome://extensions` (or `brave://extensions`).
 2. Toggle **Developer mode** on (top-right corner).
 3. Click **Load unpacked** (top-left).
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ### 2. Microsoft Edge
 1. In the URL bar, go to `edge://extensions`.
 2. Toggle **Developer mode** on (bottom-left sidebar or top-right).
 3. Click **Load unpacked**.
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ### 3. Mozilla Firefox
 1. In the URL bar, go to `about:debugging#/runtime/this-firefox`.
 2. Click **Load Temporary Add-on...**.
-3. Select the `manifest.json` file inside the `ai-outreach/instagram-extension` folder.
+3. Select the `manifest.json` file inside the `ai-outreach/platform-extension` folder.
 4. The extension is now active in Firefox!
 
 ### 4. Opera & Opera GX
 1. In the URL bar, go to `opera://extensions`.
 2. Turn on **Developer mode** (top-right).
 3. Click **Load unpacked extension**.
-4. Select the `ai-outreach/instagram-extension` folder.
+4. Select the `ai-outreach/platform-extension` folder.
 
 ---
 
@@ -92,7 +92,7 @@ This extension works across **all modern desktop browsers** (Windows, macOS, Lin
 ## 📁 File Structure
 
 ```text
-instagram-extension/
+platform-extension/
 ├── manifest.json      # Manifest V3 configuration & permission boundaries
 ├── background.js     # Service worker managing tabs, storage, and message routing
 ├── content.js        # Injected on instagram.com to locate Message button & fill composer
