@@ -549,6 +549,23 @@
                 }
                 return null;
             },
+            hasDmRestriction() {
+                try {
+                    const dialogs = Array.from(document.querySelectorAll('div[role="dialog"], div[role="alert"], [data-testid="toast"], [data-testid="sheetDialog"], [aria-live="polite"], [aria-live="assertive"]'));
+                    const restrictionPhrases = [
+                        "can't message", "cannot message", "can't send a direct message", "cannot send direct messages",
+                        "only verified", "verified accounts", "subscribe to message", "not accepting direct messages",
+                        "this user can't be messaged", "you can't direct message", "unable to message", "close dms"
+                    ];
+                    for (const d of dialogs) {
+                        const t = (d.textContent || "").toLowerCase();
+                        for (const phrase of restrictionPhrases) {
+                            if (t.includes(phrase)) return true;
+                        }
+                    }
+                } catch (_) {}
+                return false;
+            },
             findComposer() {
                 // Strategy 1: Known X DM testids and composer attributes
                 const specificSelectors = [
@@ -984,6 +1001,57 @@
                 ? Boolean(currentPath.match(/channels\/@me\/\d+/))
                 : (currentPath.includes("direct/") || currentPath.includes("messages") || currentPath.includes("channels/@me") || currentPath.includes("i/chat"));
 
+            // If previous attempt marked DM as unavailable on X, and we are now on target creator's profile:
+            if (currentPlatform === "x" && (sessionData.status === "dm_unavailable" || sessionData.dmFailed)) {
+                if (onTargetProfile) {
+                    showFloatingBanner({
+                        title: "Direct Message Unavailable on X",
+                        message: `Direct messages can't be opened for <strong>@${targetUser}</strong> (messaging is closed or restricted on X).<br><br><strong>We opened their profile for you</strong> and copied your outreach message to clipboard so you can reply to their posts or mention them.`,
+                        type: "warning",
+                        showCopyBtn: true,
+                        copyText: sessionData.message,
+                        buttonLabel: "✓ Message Copied (Click to re-copy)"
+                    });
+                    isProcessing = false;
+                    return;
+                }
+            }
+
+            // Helper to handle DM unavailability on X: copy message, notify web app, and ensure profile is opened
+            const handleXDmUnavailable = async (customReason) => {
+                const copied = await copyTextToClipboard(sessionData.message);
+                sessionData.status = "dm_unavailable";
+                sessionData.dmFailed = true;
+                await chrome.storage.local.set({ activeOutreachSession: sessionData }).catch(() => {});
+
+                const xProfileUrl = targetUser ? `https://x.com/${targetUser}` : "https://x.com";
+                const reasonMsg = customReason || `Direct messages cannot be opened for @${targetUser} on X. Creator profile opened instead.`;
+
+                await chrome.runtime.sendMessage({
+                    type: "ARCLENT_SOCIAL_DM_FAILED",
+                    platform: "x",
+                    username: sessionData.username,
+                    sessionId: sessionData.sessionId,
+                    profileUrl: xProfileUrl,
+                    reason: reasonMsg
+                }).catch(() => {});
+
+                if (!onTargetProfile && targetUser) {
+                    console.log(`[Arclent Extension] DM cannot be opened on X. Opening profile: ${xProfileUrl}`);
+                    window.location.href = xProfileUrl;
+                    return;
+                }
+
+                showFloatingBanner({
+                    title: "Direct Message Unavailable on X",
+                    message: `Direct messages can't be opened for <strong>@${targetUser}</strong> (messaging is closed or restricted on X).<br><br><strong>You are on their profile</strong> and your outreach message has been copied to clipboard so you can reply to their posts or mention them.`,
+                    type: "warning",
+                    showCopyBtn: true,
+                    copyText: sessionData.message,
+                    buttonLabel: copied ? "✓ Message Copied (Click to re-copy)" : "📋 Copy Message"
+                });
+            };
+
             // If we are neither on the target profile nor in messages, navigate to the target profile first
             if (!onTargetProfile && !inMessages && destination) {
                 console.log(`[Arclent Extension] Current URL (${window.location.href}) is not target creator (${destination}). Redirecting...`);
@@ -1005,11 +1073,24 @@
             // ==================================================================
             // Only click the profile Message button if we are on the target creator's profile
             if (onTargetProfile && !inMessages) {
-                const messageBtn = await waitForElement(() => driver.findMessageButton(sessionData), 5000);
+                const messageBtn = await waitForElement(() => driver.findMessageButton(sessionData), 4000);
                 if (messageBtn) {
                     console.log(`[Arclent Extension] Found ${platformDisplayName} Message button on target profile. Clicking to open composer...`);
                     safeClick(messageBtn);
-                    await new Promise(r => setTimeout(r, 2000));
+                    await new Promise(r => setTimeout(r, 1500));
+
+                    // Check for immediate restriction modal/alert on X
+                    if (currentPlatform === "x" && driver.hasDmRestriction && driver.hasDmRestriction()) {
+                        console.warn(`[Arclent Extension] DM restriction detected on X for ${targetUser}.`);
+                        await handleXDmUnavailable(`Direct messages are restricted for @${targetUser} on X.`);
+                        isProcessing = false;
+                        return;
+                    }
+                } else if (currentPlatform === "x" && targetUser) {
+                    console.warn(`[Arclent Extension] No Message button found on X profile for ${targetUser}. DMs are closed or restricted.`);
+                    await handleXDmUnavailable(`Direct messages are closed for @${targetUser} on X (no Message button on profile).`);
+                    isProcessing = false;
+                    return;
                 }
             }
 
@@ -1021,6 +1102,13 @@
 
             if (!composer) {
                 console.warn(`[Arclent Extension] Could not automatically locate ${platformDisplayName} DM composer.`);
+
+                if (currentPlatform === "x" && targetUser) {
+                    console.log(`[Arclent Extension] DM cannot be opened on X. Opening profile for @${targetUser}...`);
+                    await handleXDmUnavailable(`Could not open DM on X for @${targetUser}. Opening creator profile instead.`);
+                    isProcessing = false;
+                    return;
+                }
 
                 // Auto-copy message to clipboard immediately as requested
                 const copied = await copyTextToClipboard(sessionData.message);
@@ -1103,6 +1191,10 @@
 
             } else {
                 console.warn(`[Arclent Extension] Verification failed after insertion into ${platformDisplayName} composer.`);
+                if (currentPlatform === "x" && targetUser && !onTargetProfile) {
+                    await handleXDmUnavailable(`Couldn't insert message into DM for @${targetUser}. Opening creator profile.`);
+                    return;
+                }
                 const copied = await copyTextToClipboard(sessionData.message);
 
                 showFloatingBanner({

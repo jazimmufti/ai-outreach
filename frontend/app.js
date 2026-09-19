@@ -186,8 +186,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const encodedText = encodeURIComponent(text || "");
         const encodedSubject = encodeURIComponent(subject || "Collaboration Confirmation");
 
-        // 2. X / Twitter: Direct message compose overlay with text prefilled
+        // 2. X / Twitter: Direct to creator's profile on X so user can DM or view profile if DMs can't be opened
         if (p.includes("twitter") || p === "x" || p.includes("x/")) {
+            const cleanX = String(rawHandleOrUrl || "")
+                .split("?")[0]
+                .replace(/^https?:\/\/(www\.)?(x\.com|twitter\.com)\//i, "")
+                .replace(/^@+/, "")
+                .replace(/\/+$/, "")
+                .trim();
+            if (cleanX) {
+                return `https://x.com/${encodeURIComponent(cleanX)}`;
+            }
             return `https://x.com/messages/compose?text=${encodedText}`;
         }
 
@@ -2011,7 +2020,13 @@ document.addEventListener("DOMContentLoaded", () => {
             vDmReadySub.textContent = `Your message has been prepared for ${handle} in ${meta.name}.`;
         }
         if (vDmReadyGuideText) {
-            vDmReadyGuideText.textContent = `We opened ${creatorName}'s DM in ${meta.name} and populated your draft. Review the message and click Send in ${meta.name}.`;
+            if (p.includes("x") || p.includes("twitter")) {
+                const cleanX = (handle || "").replace(/^@+/, "");
+                const profUrl = cleanX ? `https://x.com/${cleanX}` : "https://x.com";
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s account on X (@${escapeHtml(cleanX)}). Review their profile and click Message (or mention/reply if DMs can't be opened).<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Need their profile? <a href="${profUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Open @${escapeHtml(cleanX)} on X ↗</a></span>`;
+            } else {
+                vDmReadyGuideText.textContent = `We opened ${creatorName}'s DM in ${meta.name} and populated your draft. Review the message and click Send in ${meta.name}.`;
+            }
         }
 
         if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");
@@ -2135,7 +2150,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             }
         } else if (type === "ARCLENT_INSTAGRAM_DM_FAILED" || type === "ARCLENT_SOCIAL_DM_FAILED") {
-            showToast(`Note: ${reason || "We couldn't insert the message into the DM, but we've copied it to your clipboard for you!"}`, "warning");
+            const p = (event.data.platform || "").toLowerCase();
+            if (p.includes("x") || p.includes("twitter")) {
+                const cleanU = (event.data.username || username || "").replace(/^@+/, "");
+                const profUrl = event.data.profileUrl || (cleanU ? `https://x.com/${cleanU}` : "https://x.com");
+                showToast(`Note: DMs can't be opened for @${cleanU} on X. Opened their profile instead — message copied to clipboard!`, "warning");
+                if (vDmReadyGuideText) {
+                    vDmReadyGuideText.innerHTML = `Direct messages can't be opened for @${escapeHtml(cleanU)} on X (DMs are closed or restricted).<br><strong>We opened their X profile for you</strong> and copied your message to clipboard so you can mention or reply to them.<br><span style="font-size: 12px; margin-top: 6px; display: inline-block;"><a href="${profUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Open @${escapeHtml(cleanU)}'s Profile on X ↗</a></span>`;
+                }
+            } else {
+                showToast(`Note: ${reason || "We couldn't insert the message into the DM, but we've copied it to your clipboard for you!"}`, "warning");
+            }
         } else if (type === "ARCLENT_EXTENSION_PONG" || type === "ARCLENT_EXTENSION_READY" || type === "ARCLENT_INSTAGRAM_EXTENSION_READY") {
             updateExtensionStatusUI(true);
         }
@@ -2484,7 +2509,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (vDmReadyGuideText) {
                     const pasteHint = isMob ? "Just paste your message and tap Send." : "Just paste (Ctrl+V) your message and click Send.";
                     const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
-                    vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                    if (pLower.includes("x") || pLower.includes("twitter")) {
+                        const cleanX = (handle || "").replace(/^@+/, "");
+                        const profUrl = cleanX ? `https://x.com/${cleanX}` : "https://x.com";
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s profile on X (@${escapeHtml(cleanX)}). ${pasteHint} Click Message on their profile, or if DMs can't be opened, you can mention or reply to them on their profile.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${profUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open @${escapeHtml(cleanX)} on X ↗</a></span>`;
+                    } else {
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                    }
                 }
 
                 if (deliveryHeaderRow) deliveryHeaderRow.classList.remove("hidden");

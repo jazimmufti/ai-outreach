@@ -248,11 +248,13 @@ async function handleIncomingMessage(request, sender) {
         const currentPlatform = platform || active.platform || "instagram";
 
         // Notify Arclent web app
+        const profUrl = request.profileUrl || (active.username && currentPlatform === "x" ? `https://x.com/${active.username}` : null);
         await notifyArclentTabs({
             type: "ARCLENT_SOCIAL_DM_FAILED",
             platform: currentPlatform,
             username: username || active.username,
             sessionId: sessionId || active.sessionId,
+            profileUrl: profUrl,
             reason: reason || `Could not automatically prepare ${currentPlatform} DM.`
         });
 
