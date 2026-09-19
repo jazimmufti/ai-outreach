@@ -79,7 +79,7 @@
         return success;
     }
 
-    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = true, durationMs = 6000, buttonLabel = null }) {
+    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = true, durationMs = 5000, buttonLabel = null }) {
         removeFloatingBanner();
 
         const borderColor = type === "warning" ? "#F59E0B" : type === "info" ? "#38BDF8" : type === "error" ? "#EF4444" : "#00D26A";
@@ -922,8 +922,17 @@
 
         let sessionData = null;
         try {
-            const data = await chrome.storage.local.get("activeOutreachSession");
-            sessionData = data.activeOutreachSession;
+            if (force) {
+                const data = await chrome.storage.local.get("activeOutreachSession");
+                sessionData = data.activeOutreachSession;
+            } else {
+                const check = await chrome.runtime.sendMessage({ type: "VERIFY_OUTREACH_TAB" });
+                if (!check || !check.isOutreachTab || !check.session) {
+                    // This tab is NOT an automated outreach tab (e.g. user just opened profile to browse).
+                    return;
+                }
+                sessionData = check.session;
+            }
         } catch (e) {
             return;
         }
@@ -933,7 +942,7 @@
         }
 
         // Do not re-process if already completed unless manually forced
-        if (!force && sessionData.status === "completed") {
+        if (!force && (sessionData.status === "completed" || sessionData.status === "cancelled")) {
             return;
         }
 

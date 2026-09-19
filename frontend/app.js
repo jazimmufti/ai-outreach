@@ -3151,33 +3151,9 @@ document.addEventListener("DOMContentLoaded", () => {
             igFoundLink.innerHTML = isDiscordServer
                 ? `<span>Visit Server</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`
                 : `<span>Open Profile</span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>`;
-            igFoundLink.onclick = async (e) => {
+            igFoundLink.onclick = (e) => {
                 if (e) e.preventDefault();
-                if (isDiscordServer) {
-                    openPlatformUrl(url);
-                    return;
-                }
-                const draftText = (igConfirmedMessageDraft && !igConfirmedMessageDraft.closest(".hidden") ? igConfirmedMessageDraft.value.trim() : "") ||
-                                  (instaMessageBody && !instaMessageBody.closest(".hidden") ? instaMessageBody.value.trim() : "") ||
-                                  generateSocialDmDraft(creatorName, c.video_title || "your video", state.userRole || "Video editor", meta.name);
-                
-                const isCountedPlatform = Boolean(pLower.includes("discord") && snowflake);
-                if (isCountedPlatform) {
-                    await showCopyAndRedirectCountdown({
-                        text: draftText,
-                        meta: meta,
-                        clickedBtn: igFoundLink,
-                        openAction: () => {
-                            openPlatformUrl(url);
-                        }
-                    });
-                } else {
-                    if (draftText) {
-                        await copyTextToClipboard(draftText);
-                        showToast(`✓ Copied message for ${meta.name}!`);
-                    }
-                    openPlatformUrl(url);
-                }
+                openPlatformUrl(url);
             };
         }
 

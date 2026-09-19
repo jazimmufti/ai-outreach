@@ -270,13 +270,33 @@ async function handleIncomingMessage(request, sender) {
         return { acknowledged: true };
     }
 
-    // 5. Get current active session status
+    // 5. Verify if caller tab is the designated outreach tab
+    if (type === "VERIFY_OUTREACH_TAB") {
+        const stored = await chrome.storage.local.get("activeOutreachSession");
+        const active = stored.activeOutreachSession;
+        if (!active) return { isOutreachTab: false };
+
+        const age = Date.now() - (active.createdAt || 0);
+        if (age > 60000 || active.status === "completed") {
+            await chrome.storage.local.remove("activeOutreachSession");
+            return { isOutreachTab: false };
+        }
+
+        const callerTabId = sender.tab ? sender.tab.id : null;
+        const isMatch = callerTabId && active.tabId && callerTabId === active.tabId;
+        return {
+            isOutreachTab: Boolean(isMatch),
+            session: isMatch ? active : null
+        };
+    }
+
+    // 6. Get current active session status
     if (type === "GET_OUTREACH_STATUS") {
         const data = await chrome.storage.local.get("activeOutreachSession");
         return { session: data.activeOutreachSession || null };
     }
 
-    // 6. Clear active session
+    // 7. Clear active session
     if (type === "CLEAR_OUTREACH_SESSION") {
         await chrome.storage.local.remove("activeOutreachSession");
         return { success: true };
@@ -284,6 +304,16 @@ async function handleIncomingMessage(request, sender) {
 
     return { error: `Unknown message type: ${type}` };
 }
+
+// Clean up session if outreach tab is closed
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    try {
+        const stored = await chrome.storage.local.get("activeOutreachSession");
+        if (stored.activeOutreachSession && stored.activeOutreachSession.tabId === tabId) {
+            await chrome.storage.local.remove("activeOutreachSession");
+        }
+    } catch (_) {}
+});
 
 // Listen to internal messages (content script, popup, bridge)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
