@@ -79,7 +79,7 @@
         return success;
     }
 
-    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = false, durationMs = 6000, buttonLabel = null }) {
+    function showFloatingBanner({ title, message, type = "success", showCopyBtn = false, copyText = "", autoDismiss = true, durationMs = 6000, buttonLabel = null }) {
         removeFloatingBanner();
 
         const borderColor = type === "warning" ? "#F59E0B" : type === "info" ? "#38BDF8" : type === "error" ? "#EF4444" : "#00D26A";
@@ -151,12 +151,22 @@
         const closeBtn = banner.querySelector("#arclent-banner-close");
         if (closeBtn) closeBtn.onclick = removeFloatingBanner;
 
+        const startDismissTimer = (ms) => {
+            if (bannerDismissTimer) clearTimeout(bannerDismissTimer);
+            bannerDismissTimer = setTimeout(() => {
+                removeFloatingBanner();
+            }, ms);
+        };
+
         if (showCopyBtn && copyText) {
             const copyBtn = banner.querySelector("#arclent-banner-copy-btn");
             if (copyBtn) {
                 copyBtn.onclick = async () => {
                     await copyTextToClipboard(copyText);
                     copyBtn.textContent = "✓ Copied to Clipboard!";
+                    if (autoDismiss) {
+                        startDismissTimer(2500);
+                    }
                     setTimeout(() => {
                         if (copyBtn) copyBtn.textContent = initialBtnText;
                     }, 2500);
@@ -165,9 +175,18 @@
         }
 
         if (autoDismiss) {
-            bannerDismissTimer = setTimeout(() => {
-                removeFloatingBanner();
-            }, durationMs);
+            startDismissTimer(durationMs);
+
+            banner.addEventListener("mouseenter", () => {
+                if (bannerDismissTimer) {
+                    clearTimeout(bannerDismissTimer);
+                    bannerDismissTimer = null;
+                }
+            });
+
+            banner.addEventListener("mouseleave", () => {
+                startDismissTimer(3000);
+            });
         }
     }
 
