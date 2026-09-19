@@ -2020,12 +2020,31 @@ document.addEventListener("DOMContentLoaded", () => {
             vDmReadySub.textContent = `Your message has been prepared for ${handle} in ${meta.name}.`;
         }
         if (vDmReadyGuideText) {
-            if (p.includes("x") || p.includes("twitter")) {
-                const cleanX = (handle || "").replace(/^@+/, "");
-                const profUrl = cleanX ? `https://x.com/${cleanX}` : "https://x.com";
-                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s account on X (@${escapeHtml(cleanX)}). Review their profile and click Message (or mention/reply if DMs can't be opened).<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Need their profile? <a href="${profUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Open @${escapeHtml(cleanX)} on X ↗</a></span>`;
+            const cleanHandle = String(handle || "").split("?")[0].replace(/^@+/, "").trim();
+            const pLower = (platform || "").toLowerCase();
+            let targetUrl = "";
+            let linkText = "";
+
+            if (pLower.includes("x") || pLower.includes("twitter")) {
+                targetUrl = cleanHandle ? `https://x.com/${cleanHandle}` : "https://x.com";
+                linkText = cleanHandle ? `open @${escapeHtml(cleanHandle)} on X ↗` : `open X ↗`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s account on X (@${escapeHtml(cleanHandle)}). Review their profile and click Message (or mention/reply if DMs can't be opened).<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to ${linkText}</a></span>`;
+            } else if (pLower.includes("instagram")) {
+                targetUrl = cleanHandle ? `https://ig.me/m/${cleanHandle}` : "https://www.instagram.com/direct/inbox/";
+                linkText = cleanHandle ? `open @${escapeHtml(cleanHandle)} on Instagram ↗` : `open Instagram ↗`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s DM in Instagram and populated your draft. Review the message and click Send in Instagram.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to ${linkText}</a></span>`;
+            } else if (pLower.includes("discord")) {
+                targetUrl = cleanHandle && /^\d{17,20}$/.test(cleanHandle) ? `https://discord.com/users/${cleanHandle}` : "https://discord.com/channels/@me";
+                linkText = `open Discord ↗`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s profile on Discord and prepared your message. Review the message and click Send.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to ${linkText}</a></span>`;
+            } else if (pLower.includes("facebook") || pLower.includes("messenger") || pLower === "fb") {
+                targetUrl = cleanHandle ? `https://m.me/${cleanHandle}` : "https://www.messenger.com/";
+                linkText = cleanHandle ? `open ${escapeHtml(cleanHandle)} on Messenger ↗` : `open Messenger ↗`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat in ${meta.name} and populated your draft. Review the message and click Send in ${meta.name}.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to ${linkText}</a></span>`;
             } else {
-                vDmReadyGuideText.textContent = `We opened ${creatorName}'s DM in ${meta.name} and populated your draft. Review the message and click Send in ${meta.name}.`;
+                targetUrl = getDirectMessageUrl(platform, handle, text) || "#";
+                linkText = `open ${meta.name} ↗`;
+                vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s DM in ${meta.name} and populated your draft. Review the message and click Send in ${meta.name}.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to ${linkText}</a></span>`;
             }
         }
 
@@ -2156,7 +2175,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const profUrl = event.data.profileUrl || (cleanU ? `https://x.com/${cleanU}` : "https://x.com");
                 showToast(`Note: DMs can't be opened for @${cleanU} on X. Opened their profile instead — message copied to clipboard!`, "warning");
                 if (vDmReadyGuideText) {
-                    vDmReadyGuideText.innerHTML = `Direct messages can't be opened for @${escapeHtml(cleanU)} on X (DMs are closed or restricted).<br><strong>We opened their X profile for you</strong> and copied your message to clipboard so you can mention or reply to them.<br><span style="font-size: 12px; margin-top: 6px; display: inline-block;"><a href="${profUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Open @${escapeHtml(cleanU)}'s Profile on X ↗</a></span>`;
+                    vDmReadyGuideText.innerHTML = `Direct messages can't be opened for @${escapeHtml(cleanU)} on X (DMs are closed or restricted).<br><strong>We opened their X profile for you</strong> and copied your message to clipboard so you can mention or reply to them.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${profUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Click here to open @${escapeHtml(cleanU)} on X ↗</a></span>`;
                 }
             } else {
                 showToast(`Note: ${reason || "We couldn't insert the message into the DM, but we've copied it to your clipboard for you!"}`, "warning");
@@ -2393,11 +2412,11 @@ document.addEventListener("DOMContentLoaded", () => {
                                     🌐 Open in Discord Web
                                 </a>
                             </div>
-                            <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord profile ↗</a></span>
+                            <span style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: inline-block;">Didn't open? <a href="${targetUrl}" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to open Discord profile ↗</a></span>
                         `;
                     } else {
                         const fallbackTarget = isMob ? "" : 'target="_blank" rel="noopener noreferrer"';
-                        vDmReadyGuideText.innerHTML = `We opened creator's Discord server. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open Discord ↗</a></span>`;
+                        vDmReadyGuideText.innerHTML = `We opened creator's Discord server. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${targetUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to open Discord ↗</a></span>`;
                     }
                 }
 
@@ -2512,9 +2531,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (pLower.includes("x") || pLower.includes("twitter")) {
                         const cleanX = (handle || "").replace(/^@+/, "");
                         const profUrl = cleanX ? `https://x.com/${cleanX}` : "https://x.com";
-                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s profile on X (@${escapeHtml(cleanX)}). ${pasteHint} Click Message on their profile, or if DMs can't be opened, you can mention or reply to them on their profile.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${profUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open @${escapeHtml(cleanX)} on X ↗</a></span>`;
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s profile on X (@${escapeHtml(cleanX)}). ${pasteHint} Click Message on their profile, or if DMs can't be opened, you can mention or reply to them on their profile.<br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${profUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to open @${escapeHtml(cleanX)} on X ↗</a></span>`;
                     } else {
-                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Tap here to open ${meta.name} ↗</a></span>`;
+                        vDmReadyGuideText.innerHTML = `We opened ${escapeHtml(creatorName)}'s chat on ${meta.name}. ${pasteHint} <br><span style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: inline-block;">Didn't open? <a href="${dmUrl}" ${fallbackTarget} style="color: var(--primary); text-decoration: underline; font-weight: 700;">Click here to open ${meta.name} ↗</a></span>`;
                     }
                 }
 
